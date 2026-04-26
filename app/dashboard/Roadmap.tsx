@@ -154,7 +154,7 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
   const activeNode = nodes.find(n=>n.id===active)
   const toggle = (id:string,ti:number) => {
     const k=`${id}-${ti}`
-    onToggle(d=>({...d,[k]:!d[k]}))
+    onToggle(`${id}-${ti}`)
   }
   const pct = (n:Node) => {
     const d = n.tasks.filter((t,ti)=>t.done||!!taskDone[`${n.id}-${ti}`]).length
