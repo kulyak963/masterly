@@ -42,15 +42,26 @@ const sans = "'Geist', sans-serif"
 const serif = "'Instrument Serif', serif"
 const mono = "'Geist Mono', monospace"
 
-const COUNTRIES = [
-  {c:'de',n:'Германия',  tag:'Бесплатно'},
-  {c:'nl',n:'Нидерланды',tag:'Holland'},
-  {c:'se',n:'Швеция',    tag:'SI Grant'},
-  {c:'ch',n:'Швейцария', tag:'ETH/EPFL'},
-  {c:'fi',n:'Финляндия', tag:'Бесплатно'},
-  {c:'fr',n:'Франция',   tag:'Eiffel'},
-  {c:'cz',n:'Чехия',     tag:'Бесплатно'},
-  {c:'at',n:'Австрия',   tag:'TU Wien'},
+const COUNTRIES_MAIN = [
+  {c:'de',f:'DE',n:'Германия',   tag:'Бесплатно · DAAD'},
+  {c:'nl',f:'NL',n:'Нидерланды', tag:'Holland Scholarship'},
+  {c:'se',f:'SE',n:'Швеция',     tag:'SI Grant · Free'},
+  {c:'ch',f:'CH',n:'Швейцария',  tag:'ETH · EPFL'},
+  {c:'fi',f:'FI',n:'Финляндия',  tag:'Aalto · Free'},
+  {c:'fr',f:'FR',n:'Франция',    tag:'Eiffel Excellence'},
+  {c:'cz',f:'CZ',n:'Чехия',      tag:'Бесплатно на чешском'},
+  {c:'at',f:'AT',n:'Австрия',    tag:'TU Wien · WU'},
+]
+
+const COUNTRIES_MORE = [
+  {c:'it',f:'IT',n:'Италия',     tag:'Politecnico · Bologna'},
+  {c:'dk',f:'DK',n:'Дания',      tag:'DTU · Copenhagen'},
+  {c:'no',f:'NO',n:'Норвегия',   tag:'NTNU · Бесплатно'},
+  {c:'be',f:'BE',n:'Бельгия',    tag:'KU Leuven · UCL'},
+  {c:'es',f:'ES',n:'Испания',    tag:'Barcelona · Madrid'},
+  {c:'ee',f:'EE',n:'Эстония',    tag:'Tallinn · Startup'},
+  {c:'pl',f:'PL',n:'Польша',     tag:'Warsaw · Wrocław'},
+  {c:'hu',f:'HU',n:'Венгрия',    tag:'Стипендия Stipendium'},
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
 const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Другое']
@@ -167,8 +178,10 @@ export default function Home() {
     field:'', university:'',
     countries:[] as string[],
     timeline:'', budget:'',
-    gpa:4.0, ielts:6.5, work:'',
+    gpa:4.0, ielts:6.5, work:'', quiz_cost:'', quiz_stay:'', quiz_lang:'', quiz_vibe:'',
   })
+  const [showMoreCountries, setShowMoreCountries] = useState(false)
+  const [quizMode, setQuizMode] = useState(false)
 
   useEffect(()=>{
     const s = document.createElement('style')
@@ -204,9 +217,9 @@ export default function Home() {
   setStep(99)
 }
   }
-  setStep(s => s+1)
+  setStep((s:any)=> s+1)
 }
-  const goBack = () => setStep(s => Math.max(0,s-1))
+  const goBack = () => setStep((s:any)=> Math.max(0,s-1))
 
   const score = Math.min(97, Math.round(
     (a.gpa>=4.5?28:a.gpa>=4.0?20:12)+
@@ -220,36 +233,39 @@ export default function Home() {
   // STEP 0 — WELCOME
   if(step===0) return (
     <Shell step={0} total={TOTAL}>
-      <div style={{textAlign:'center',paddingTop:16}}>
-        <div style={{display:'inline-flex',alignItems:'center',gap:8,padding:'6px 14px',borderRadius:20,border:`1px solid ${line}`,background:'rgba(255,255,255,.03)',marginBottom:28}}>
-          <span style={{fontFamily:mono,fontSize:9,color:t2,letterSpacing:'0.08em'}}>УЖЕ 2 400 СТУДЕНТОВ СТРОЯТ ПЛАН</span>
-        </div>
-        <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:46,color:t1,fontWeight:400,letterSpacing:'-.025em',lineHeight:1.0,marginBottom:14}}>
-          Перестань гуглить<br/>по 20 вкладкам.
-        </h1>
-        <p style={{fontFamily:sans,fontSize:15,color:t2,lineHeight:1.65,maxWidth:360,margin:'0 auto 32px',fontWeight:300}}>
-          Masterly собирает всё что нужно для поступления в европейскую магистратуру — в один персональный план.
-        </p>
-        <div style={{display:'flex',flexDirection:'column',gap:0,marginBottom:32,textAlign:'left'}}>
-          {[
-            ['01','Персональный roadmap — от нуля до оффера'],
-            ['02','Дедлайны вузов и стипендий в одном месте'],
-            ['03','ИИ пишет SoP под конкретную программу'],
-            ['04','Работает даже если не знаешь куда хочешь'],
-          ].map(([n,text])=>(
-            <div key={n} style={{display:'flex',gap:16,alignItems:'center',padding:'13px 0',borderBottom:`1px solid ${line}`}}>
-              <span style={{fontFamily:mono,fontSize:10,color:t3,minWidth:20}}>{n}</span>
-              <span style={{fontFamily:sans,fontSize:13,color:t2,letterSpacing:'-.01em'}}>{text}</span>
-            </div>
-          ))}
-        </div>
-        <button className="btn" onClick={goNext} style={{width:'100%',padding:'15px',borderRadius:6,border:'none',background:t1,color:bg0,fontFamily:sans,fontSize:14,fontWeight:500,letterSpacing:'-.01em',cursor:'pointer'}}>
-          Начать — займёт 3 минуты
-        </button>
-        <p style={{fontFamily:mono,fontSize:10,color:t3,marginTop:14,letterSpacing:'0.08em'}}>
-          БЕСПЛАТНО · 8 ВОПРОСОВ
-        </p>
-      </div>
+     <div style={{textAlign:'center'}}>
+
+  <div style={{fontFamily:mono,fontSize:9,color:t3,
+    letterSpacing:'0.14em',marginBottom:28}}>
+    УЖЕ 2 400 СТУДЕНТОВ СТРОЯТ ПЛАН
+  </div>
+
+  <h1 style={{fontFamily:serif,fontStyle:'italic',
+    fontSize:54,color:t1,fontWeight:400,
+    letterSpacing:'-.03em',lineHeight:.95,marginBottom:20}}>
+    Магистратура в Европе.<br/>
+    <span style={{color:t2}}>Твой план за 3 минуты.</span>
+  </h1>
+
+  <p style={{fontFamily:sans,fontSize:15,color:t2,
+    lineHeight:1.65,maxWidth:340,margin:'0 auto 40px',fontWeight:300}}>
+    Персональный roadmap, дедлайны стипендий и список вузов —
+    без гугления по 20 вкладкам.
+  </p>
+
+  <button className="btn" onClick={goNext} style={{
+    width:'100%',padding:'16px',borderRadius:8,border:'none',
+    background:t1,color:bg0,fontFamily:sans,fontSize:15,
+    fontWeight:600,letterSpacing:'-.01em',cursor:'pointer'}}>
+    Начать — это бесплатно
+  </button>
+
+  <p style={{fontFamily:mono,fontSize:9,color:t3,
+    marginTop:14,letterSpacing:'0.08em'}}>
+    БЕЗ РЕГИСТРАЦИИ · 8 ВОПРОСОВ
+  </p>
+
+</div> 
     </Shell>
   )
 
@@ -276,7 +292,7 @@ export default function Home() {
       <SH n={2} total={TOTAL} title="Как тебя зовут?" sub="Персонализируем план под тебя"/>
       <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:4}}>
         <input type="text" placeholder="Имя" value={a.name} onChange={e=>set('name',e.target.value)} onKeyDown={e=>e.key==='Enter'&&a.name.trim().length>1&&goNext()}/>
-        <input type="email" placeholder="Email — уведомления о дедлайнах" value={a.email} onChange={e=>set('email',e.target.value)} onKeyDown={e=>e.key==='Enter'&&a.name.trim().length>1&&goNext()}/>
+  
       </div>
       <NavBtns step={step} onBack={goBack} onNext={goNext} can={a.name.trim().length>1}/>
     </Shell>
@@ -329,17 +345,163 @@ export default function Home() {
   if(step===5) return (
     <Shell step={step} total={TOTAL}>
       <SH n={5} total={TOTAL} title="Куда хочешь поехать?" sub="Можно несколько стран — подберём программы в каждой"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:4}}>
-        {COUNTRIES.map(c=>{
-          const sel = a.countries.includes(c.c)
-          return (
-            <div key={c.c} onClick={()=>set('countries',tog(a.countries,c.c))} className="chip" style={{padding:'14px 8px',borderRadius:6,textAlign:'center',cursor:'pointer',background:sel?'rgba(255,255,255,.07)':'rgba(255,255,255,.02)',border:`1px solid ${sel?'rgba(255,255,255,.25)':line}`}}>
-              <div style={{fontFamily:sans,fontSize:11,fontWeight:500,color:sel?t1:t2,letterSpacing:'-.01em',marginBottom:3}}>{c.n}</div>
-              <div style={{fontFamily:mono,fontSize:9,color:t3}}>{c.tag}</div>
-            </div>
-          )
-        })}
+      {/* основные страны */}
+{/* кнопка запуска квиза */}
+{!quizMode&&a.countries.length===0&&(
+  <div onClick={()=>setQuizMode(true)}
+    style={{display:'flex',alignItems:'center',gap:14,
+      padding:'16px 18px',marginBottom:16,borderRadius:8,
+      background:`rgba(200,162,86,0.08)`,
+      border:`1px solid rgba(200,162,86,0.3)`,
+      cursor:'pointer',transition:'all .15s'}}
+    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(200,162,86,0.6)'}
+    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(200,162,86,0.3)'}>
+    <div style={{flex:1}}>
+      <div style={{fontFamily:sans,fontSize:14,color:gold,
+        fontWeight:500,letterSpacing:'-.01em',marginBottom:3}}>
+        Не знаю куда хочу — помоги выбрать
       </div>
+      <div style={{fontFamily:sans,fontSize:12,color:t3}}>
+        4 быстрых вопроса о твоих приоритетах
+      </div>
+    </div>
+    <span style={{fontFamily:mono,fontSize:14,color:gold}}>→</span>
+  </div>
+)}
+{quizMode&&(
+  <div className="in">
+    {[
+      {id:'cost',q:'Что важнее по деньгам?',opts:[
+        {v:'free', l:'Учёба должна быть бесплатной',s:'Германия, Финляндия, Чехия'},
+        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, SI покроют расходы'},
+        {v:'any',  l:'Деньги не ключевой фактор',s:'Фокус на качестве программы'},
+      ]},
+      {id:'stay',q:'Планируешь остаться в Европе после учёбы?',opts:[
+        {v:'yes',  l:'Да, хочу остаться',s:'Нидерланды, Германия, Швеция'},
+        {v:'maybe',l:'Посмотрю по ситуации',s:'Оставим варианты открытыми'},
+        {v:'no',   l:'Нет, вернусь домой',s:'Фокус на диплом и нетворк'},
+      ]},
+      {id:'lang',q:'Язык обучения?',opts:[
+        {v:'en', l:'Только английский',s:'Нидерланды, Швеция, Финляндия'},
+        {v:'de', l:'Готов учить немецкий',s:'Бесплатные программы Германии'},
+        {v:'any',l:'Не важно',s:'Рассмотрим все варианты'},
+      ]},
+      {id:'vibe',q:'Какая среда важнее?',opts:[
+        {v:'research',l:'Сильная научная среда',s:'ETH, TU Munich, KTH'},
+        {v:'startup', l:'Предпринимательская экосистема',s:'Нидерланды, Финляндия'},
+        {v:'life',    l:'Качество жизни',s:'Германия, Австрия, Швейцария'},
+      ]},
+    ].filter(q=>!({cost:1,stay:1,lang:1,vibe:1} as any)[q.id] || true).map((quiz,qi)=>{
+      const answered = (a as any)[`quiz_${quiz.id}`]
+      if(qi>0&&!(a as any)[`quiz_${['cost','stay','lang'][qi-1]}`]) return null
+      return(
+        <div key={quiz.id} style={{marginBottom:16}}>
+          <div style={{fontFamily:sans,fontSize:14,color:t1,fontWeight:500,
+            marginBottom:10,letterSpacing:'-.01em'}}>{quiz.q}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:2}}>
+            {quiz.opts.map(o=>(
+              <SelectRow key={o.v} label={o.l} sub={o.s}
+                selected={answered===o.v}
+                onClick={()=>{
+                  set(`quiz_${quiz.id}` as any, o.v)
+                  // если последний вопрос — считаем результат
+                  if(quiz.id==='vibe') {
+                    const qa = {
+                      cost:(a as any).quiz_cost||'',
+                      stay:(a as any).quiz_stay||'',
+                      lang:(a as any).quiz_lang||'',
+                      vibe:o.v,
+                    }
+                    const scores: Record<string,number>={de:0,nl:0,se:0,ch:0,fi:0,fr:0,cz:0,at:0}
+                    if(qa.cost==='free')    {scores.de+=3;scores.fi+=3;scores.cz+=3;scores.se+=2}
+                    if(qa.cost==='schol')   {scores.de+=2;scores.se+=2;scores.fr+=2;scores.nl+=1}
+                    if(qa.cost==='any')     {scores.ch+=2;scores.nl+=2}
+                    if(qa.stay==='yes')     {scores.nl+=3;scores.de+=2;scores.se+=2;scores.fi+=1}
+                    if(qa.stay==='no')      {scores.cz+=2;scores.at+=1}
+                    if(qa.lang==='en')      {scores.nl+=2;scores.se+=2;scores.fi+=2}
+                    if(qa.lang==='de')      {scores.de+=3;scores.at+=2;scores.ch+=1}
+                    if(qa.vibe==='research'){scores.ch+=3;scores.de+=2;scores.se+=2}
+                    if(qa.vibe==='startup') {scores.nl+=3;scores.fi+=2}
+                    if(qa.vibe==='life')    {scores.de+=2;scores.at+=2;scores.fr+=1}
+                    const top3 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c])=>c)
+                    set('countries', top3)
+                    setQuizMode(false)
+                  }
+                }}/>
+            ))}
+          </div>
+        </div>
+      )
+    })}
+    <div style={{padding:'10px 12px',background:`rgba(200,162,86,.08)`,
+      borderLeft:`2px solid ${gold}`,borderRadius:'0 4px 4px 0',marginTop:8}}>
+      <span style={{fontFamily:sans,fontSize:12,color:gold}}>
+        После ответов мы подберём 3 лучших страны под твои приоритеты
+      </span>
+    </div>
+    <button onClick={()=>setQuizMode(false)} style={{
+      marginTop:12,background:'none',border:'none',
+      fontFamily:sans,fontSize:12,color:t3,cursor:'pointer',textDecoration:'underline'}}>
+      Выбрать страну самому
+    </button>
+  </div>
+)}
+<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}>
+  {COUNTRIES_MAIN.map(c=>{
+    const sel=a.countries.includes(c.c)
+    return(
+      <div key={c.c} onClick={()=>set('countries',tog(a.countries,c.c))}
+        className="chip"
+        style={{padding:'12px 8px',borderRadius:6,textAlign:'center',cursor:'pointer',
+          background:sel?'rgba(255,255,255,.07)':'rgba(255,255,255,.02)',
+          border:`1px solid ${sel?'rgba(255,255,255,.25)':line}`}}>
+        <div style={{fontFamily:mono,fontSize:11,color:sel?t1:t2,
+          marginBottom:3,letterSpacing:'0.04em'}}>{c.f}</div>
+        <div style={{fontFamily:sans,fontSize:11,fontWeight:500,
+          color:sel?t1:t2,letterSpacing:'-.01em',marginBottom:2}}>{c.n}</div>
+        <div style={{fontFamily:mono,fontSize:8,color:t3}}>{c.tag}</div>
+      </div>
+    )
+  })}
+</div>
+
+{/* кнопка показать ещё */}
+<div onClick={()=>setShowMoreCountries(s=>!s)}
+  style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,
+    padding:'10px',borderRadius:6,border:`1px solid ${line}`,
+    cursor:'pointer',marginBottom:8,transition:'all .15s'}}
+  onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.2)'}
+  onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=line}>
+  <span style={{fontFamily:mono,fontSize:9,color:t2,letterSpacing:'0.1em'}}>
+    {showMoreCountries?'СКРЫТЬ':'ЕЩЁ 8 СТРАН — Италия, Дания, Норвегия...'}
+  </span>
+  <span style={{fontFamily:mono,fontSize:11,color:t2}}>
+    {showMoreCountries?'↑':'↓'}
+  </span>
+</div>
+
+{/* дополнительные страны */}
+{showMoreCountries&&(
+  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}
+    className="in">
+    {COUNTRIES_MORE.map(c=>{
+      const sel=a.countries.includes(c.c)
+      return(
+        <div key={c.c} onClick={()=>set('countries',tog(a.countries,c.c))}
+          className="chip"
+          style={{padding:'12px 8px',borderRadius:6,textAlign:'center',cursor:'pointer',
+            background:sel?'rgba(255,255,255,.07)':'rgba(255,255,255,.02)',
+            border:`1px solid ${sel?'rgba(255,255,255,.25)':line}`}}>
+          <div style={{fontFamily:mono,fontSize:11,color:sel?t1:t2,
+            marginBottom:3,letterSpacing:'0.04em'}}>{c.f}</div>
+          <div style={{fontFamily:sans,fontSize:11,fontWeight:500,
+            color:sel?t1:t2,letterSpacing:'-.01em',marginBottom:2}}>{c.n}</div>
+          <div style={{fontFamily:mono,fontSize:8,color:t3}}>{c.tag}</div>
+        </div>
+      )
+    })}
+  </div>
+)}
       <NavBtns step={step} onBack={goBack} onNext={goNext} can={a.countries.length>0}/>
     </Shell>
   )
@@ -483,9 +645,81 @@ export default function Home() {
             </div>
           ))}
 
-         <button className="btn" onClick={()=>setStep(99)} style={{marginTop:28,width:'100%',padding:'14px',borderRadius:6,border:'none',background:t1,color:bg0,fontFamily:sans,fontSize:14,fontWeight:500,letterSpacing:'-.01em',cursor:'pointer'}}>
-              Открыть мой Journey Map →
-             </button>
+         <div style={{marginTop:28,display:'flex',flexDirection:'column',gap:10}}>
+  {/* что получишь */}
+<div style={{marginTop:24,marginBottom:8,
+  border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
+  {[
+    {icon:'◈', text:'Персональный Journey Map — все шаги до оффера', color:blue},
+    {icon:'◉', text:'Дедлайны вузов и стипендий в одном месте', color:gold},
+    {icon:'*', text:'Программы подобраны под твои страны и бюджет', color:'#A78BFA'},
+    {icon:'◎', text:'Таймлайн от сегодня до переезда с экспортом в календарь', color:'#3FB950'},
+  ].map((f,i,arr)=>(
+    <div key={i} style={{display:'flex',alignItems:'center',gap:12,
+      padding:'12px 16px',
+      borderBottom:i<arr.length-1?`1px solid ${line}`:'none',
+      background:'rgba(255,255,255,.02)'}}>
+      <span style={{fontFamily:mono,fontSize:13,color:f.color,flexShrink:0}}>{f.icon}</span>
+      <span style={{fontFamily:sans,fontSize:13,color:t2,letterSpacing:'-.01em'}}>{f.text}</span>
+    </div>
+  ))}
+</div>
+  <div style={{fontFamily:mono,fontSize:10,color:t3,
+    letterSpacing:'0.1em',textAlign:'center',marginBottom:4}}>
+    СОХРАНИТЬ МОЙ ПЛАН
+  </div>
+  <button onClick={async()=>{
+    const {error} = await supabase.auth.signInWithOAuth({
+      provider:'google',
+      options:{redirectTo:`${window.location.origin}/dashboard`}
+    })
+  }} style={{
+    width:'100%',padding:'13px',borderRadius:8,
+    border:`1px solid ${line}`,
+    background:'rgba(255,255,255,.05)',
+    display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+    fontFamily:sans,fontSize:14,fontWeight:500,color:t1,cursor:'pointer',
+  }}>
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+    Войти через Google
+  </button>
+  <div style={{display:'flex',alignItems:'center',gap:10}}>
+    <div style={{flex:1,height:1,background:line}}/>
+    <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em'}}>ИЛИ</span>
+    <div style={{flex:1,height:1,background:line}}/>
+  </div>
+  <input type="email" placeholder="твой@email.com"
+    value={a.email} onChange={e=>set('email',e.target.value)}
+    onKeyDown={async e=>{
+      if(e.key==='Enter'&&a.email.trim()) {
+        await supabase.auth.signInWithOtp({
+          email:a.email.trim(),
+          options:{emailRedirectTo:`${window.location.origin}/dashboard`}
+        })
+        setStep(99)
+      }
+    }}/>
+  <button onClick={async()=>{
+    if(!a.email.trim()) return
+    await supabase.auth.signInWithOtp({
+      email:a.email.trim(),
+      options:{emailRedirectTo:`${window.location.origin}/dashboard`}
+    })
+    setStep(99)
+  }} style={{
+    width:'100%',padding:'13px',borderRadius:8,border:'none',
+    background:a.email.trim()?t1:'rgba(255,255,255,.06)',
+    color:a.email.trim()?bg0:t3,
+    fontFamily:sans,fontSize:14,fontWeight:500,cursor:'pointer',
+  }}>
+    Отправить ссылку на email
+  </button>
+</div>
           <p style={{fontFamily:mono,fontSize:10,color:t3,textAlign:'center',marginTop:14,letterSpacing:'0.08em'}}>
             ПЛАН ПЕРСОНАЛИЗИРОВАН ПОД ТВОЙ ПРОФИЛЬ
           </p>
@@ -556,8 +790,10 @@ if(step === 99) return (
     window.location.href = '/dashboard'
   } else {
     window.location.href = '/login'
-  }
+    }
 }}
+>
+
       <div className="logo-in">
         <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',fontSize:48,color:'#F2EFE9',letterSpacing:'-.025em',lineHeight:1,marginBottom:18}}>
           Masterly
