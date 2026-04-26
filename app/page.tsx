@@ -774,14 +774,8 @@ if(step === 99) return (
 
     {/* логотип */}
     <div style={{textAlign:'center',position:'relative',zIndex:10}}
-      onAnimationEnd={async ()=>{
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session) {
-    window.location.href = '/dashboard'
-  } else {
-    window.location.href = '/login'
-    }
-}}
+  onAnimationEnd={()=>{ setStep(8) }}
+ 
 >
 
       <div className="logo-in">
