@@ -198,7 +198,7 @@ export default function Home() {
       score: score,
     })
     if(error) console.error('Ошибка сохранения:', JSON.stringify(error))
-    else console.log('Сохранено!')
+    else setStep(99)
   }
   setStep(s => s+1)
 }
@@ -424,7 +424,7 @@ export default function Home() {
   )
 
   // STEP 8 — RESULT
-  if(step>=8) {
+  if(step>=8 && step !== 99) {
     const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT'}
     const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия'}
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
@@ -479,9 +479,9 @@ export default function Home() {
             </div>
           ))}
 
-          <button className="btn" style={{marginTop:28,width:'100%',padding:'14px',borderRadius:6,border:'none',background:t1,color:bg0,fontFamily:sans,fontSize:14,fontWeight:500,letterSpacing:'-.01em',cursor:'pointer'}}>
-            Открыть мой Journey Map →
-          </button>
+         <button className="btn" onClick={()=>setStep(99)} style={{marginTop:28,width:'100%',padding:'14px',borderRadius:6,border:'none',background:t1,color:bg0,fontFamily:sans,fontSize:14,fontWeight:500,letterSpacing:'-.01em',cursor:'pointer'}}>
+              Открыть мой Journey Map →
+             </button>
           <p style={{fontFamily:mono,fontSize:10,color:t3,textAlign:'center',marginTop:14,letterSpacing:'0.08em'}}>
             ПЛАН ПЕРСОНАЛИЗИРОВАН ПОД ТВОЙ ПРОФИЛЬ
           </p>
@@ -489,6 +489,75 @@ export default function Home() {
       </div>
     )
   }
+if(step === 99) return (
+  <div style={{position:'fixed',inset:0,background:'#0A0A0C',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,overflow:'hidden'}}>
+    <style>{`
+      @keyframes logoIn {
+        0%   { opacity:0; transform:translateY(16px); }
+        35%  { opacity:1; transform:translateY(0); }
+        75%  { opacity:1; transform:translateY(0); }
+        100% { opacity:0; transform:translateY(-10px); }
+      }
+      @keyframes lineIn {
+        0%   { width:0; opacity:0; }
+        35%  { width:80px; opacity:1; }
+        75%  { width:80px; opacity:1; }
+        100% { width:120px; opacity:0; }
+      }
+      @keyframes tagIn {
+        0%   { opacity:0; }
+        40%  { opacity:1; }
+        75%  { opacity:1; }
+        100% { opacity:0; }
+      }
+      @keyframes drift {
+        0%   { transform:translateY(0) translateX(0) rotate(0deg); opacity:0; }
+        10%  { opacity:1; }
+        100% { transform:translateY(-280px) translateX(var(--dx)) rotate(var(--rot)); opacity:0; }
+      }
+      .logo-in { animation: logoIn 2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
+      .line-in  { animation: lineIn  2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
+      .tag-in   { animation: tagIn   2.8s ease forwards; }
+    `}</style>
 
+    {/* золотые частицы */}
+    {[
+      {l:'44%', delay:.1, dx:'12px',  rot:'45deg',  size:1.5},
+      {l:'50%', delay:.4, dx:'-8px',  rot:'-30deg', size:1},
+      {l:'47%', delay:.7, dx:'18px',  rot:'90deg',  size:2},
+      {l:'53%', delay:.2, dx:'-14px', rot:'60deg',  size:1.5},
+      {l:'48%', delay:.9, dx:'6px',   rot:'-45deg', size:1},
+      {l:'52%', delay:.5, dx:'-20px', rot:'120deg', size:2},
+      {l:'45%', delay:.8, dx:'22px',  rot:'-60deg', size:1},
+      {l:'55%', delay:.3, dx:'-6px',  rot:'30deg',  size:1.5},
+      {l:'49%', delay:.6, dx:'14px',  rot:'-90deg', size:1},
+      {l:'51%', delay:1.0, dx:'-10px', rot:'75deg', size:2},
+    ].map((p,i)=>(
+      <div key={i} style={{
+        position:'absolute', left:p.l, bottom:'45%',
+        width:p.size, height:p.size, borderRadius:'50%',
+        background:'#C8A256',
+        boxShadow:`0 0 ${p.size*3}px #C8A256`,
+        animation:`drift ${1.8+i*.1}s cubic-bezier(.2,.8,.4,1) forwards`,
+        animationDelay:`${p.delay}s`,
+        '--dx':p.dx, '--rot':p.rot,
+      } as React.CSSProperties}/>
+    ))}
+
+    {/* логотип */}
+    <div style={{textAlign:'center',position:'relative',zIndex:10}}
+      onAnimationEnd={()=>{ window.location.href='/dashboard' }}>
+      <div className="logo-in">
+        <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',fontSize:48,color:'#F2EFE9',letterSpacing:'-.025em',lineHeight:1,marginBottom:18}}>
+          Masterly
+        </div>
+        <div className="line-in" style={{height:1,background:'linear-gradient(90deg,transparent,#C8A256,transparent)',margin:'0 auto',marginBottom:16}}/>
+        <div className="tag-in" style={{fontFamily:"'Geist Mono',monospace",fontSize:9,color:'#4A4845',letterSpacing:'.16em'}}>
+          СТРОИМ ТВОЙ ПЛАН
+        </div>
+      </div>
+    </div>
+  </div>
+)
   return null
 }
