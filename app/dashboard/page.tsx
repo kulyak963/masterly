@@ -312,18 +312,26 @@ export default function Dashboard() {
   const [taskDone, setTaskDone] = useState<Record<string,boolean>>({})
 const [saving, setSaving] = useState(false)
 
-  useEffect(()=>{
-    const fetchProfile = async () => {
-      const {data} = await supabase
-        .from('profiles').select('*')
-        .order('created_at',{ascending:false})
-        .limit(1).single()
-      setProfile(data)
-      if(data?.tasks_done) setTaskDone(data.tasks_done)
-      setLoading(false)
+  useEffect(() => {
+  const init = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.href = '/login'
+      return
     }
-    fetchProfile()
-  },[])
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    setProfile(data)
+    if (data?.tasks_done) setTaskDone(data.tasks_done)
+    setLoading(false)
+  }
+  init()
+}, [])
+ 
 
   useEffect(()=>{
     const style = document.createElement('style')
