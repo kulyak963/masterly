@@ -198,7 +198,11 @@ export default function Home() {
       score: score,
     })
     if(error) console.error('Ошибка сохранения:', JSON.stringify(error))
-    else setStep(99)
+    else {
+  // сохраняем профиль в localStorage чтобы не потерять
+  localStorage.setItem('onboarding_done', 'true')
+  setStep(99)
+}
   }
   setStep(s => s+1)
 }
@@ -546,7 +550,14 @@ if(step === 99) return (
 
     {/* логотип */}
     <div style={{textAlign:'center',position:'relative',zIndex:10}}
-      onAnimationEnd={()=>{ window.location.href='/dashboard' }}>
+      onAnimationEnd={async ()=>{
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    window.location.href = '/dashboard'
+  } else {
+    window.location.href = '/login'
+  }
+}}
       <div className="logo-in">
         <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',fontSize:48,color:'#F2EFE9',letterSpacing:'-.025em',lineHeight:1,marginBottom:18}}>
           Masterly
