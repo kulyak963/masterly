@@ -1,4 +1,5 @@
 'use client'
+import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
 const CSS = `
@@ -179,7 +180,28 @@ export default function Home() {
   const set = (k: string, v: unknown) => setA(x => ({...x,[k]:v}))
   const TOTAL = 8
 
-  const goNext = () => setStep(s => s+1)
+  const goNext = async () => {
+  if(step === 7) {
+    const { error } = await supabase.from('profiles').insert({
+      name: a.name,
+      email: a.email,
+      mode: a.mode,
+      pain: a.pain,
+      university: a.university,
+      field: a.field,
+      countries: a.countries.join(','),
+      timeline: a.timeline,
+      budget: a.budget,
+      gpa: a.gpa,
+      ielts: a.ielts,
+      work: a.work,
+      score: score,
+    })
+    if(error) console.error('Ошибка сохранения:', JSON.stringify(error))
+    else console.log('Сохранено!')
+  }
+  setStep(s => s+1)
+}
   const goBack = () => setStep(s => Math.max(0,s-1))
 
   const score = Math.min(97, Math.round(
