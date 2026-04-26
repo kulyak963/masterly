@@ -195,28 +195,18 @@ export default function Home() {
 
   const goNext = async () => {
   if(step === 7) {
-    const { error } = await supabase.from('profiles').insert({
-      name: a.name,
-      email: a.email,
-      mode: a.mode,
-      pain: a.pain,
-      university: a.university,
-      field: a.field,
-      countries: a.countries.join(','),
-      timeline: a.timeline,
-      budget: a.budget,
-      gpa: a.gpa,
-      ielts: a.ielts,
-      work: a.work,
-      score: score,
-    })
-    if(error) console.error('Ошибка сохранения:', JSON.stringify(error))
-    else {
-  // сохраняем профиль в localStorage чтобы не потерять
-  localStorage.setItem('onboarding_done', 'true')
+  const { error } = await supabase.from('profiles').insert({
+    name: a.name, email: a.email, mode: a.mode, pain: a.pain,
+    university: a.university, field: a.field,
+    countries: a.countries.join(','),
+    timeline: a.timeline, budget: a.budget,
+    gpa: a.gpa, ielts: a.ielts, work: a.work, score: score,
+  })
+  if(error) console.error('Ошибка сохранения:', JSON.stringify(error))
+  // запускаем анимацию вместо прямого перехода
   setStep(99)
+  return
 }
-  }
   setStep((s:any)=> s+1)
 }
   const goBack = () => setStep((s:any)=> Math.max(0,s-1))
