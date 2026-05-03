@@ -72,7 +72,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${https://masterly-topaz.vercel.app}/dashboard`,
       },
     })
     if (error) { setError(error.message); setLoading(false) }
