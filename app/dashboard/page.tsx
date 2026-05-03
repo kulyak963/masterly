@@ -314,7 +314,9 @@ const [saving, setSaving] = useState(false)
 
   useEffect(() => {
   const init = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
+    // ждём пока Supabase обработает хэш из URL
+await new Promise(r => setTimeout(r, 500))
+const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       window.location.href = '/login'
       return
