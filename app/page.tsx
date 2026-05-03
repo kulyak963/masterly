@@ -196,6 +196,8 @@ export default function Home() {
   const goNext = async () => {
   if(step === 7) {
   const { error } = await supabase.from('profiles').insert({
+  user_id: (await supabase.auth.getUser()).data.user?.id,
+ 
     name: a.name, email: a.email, mode: a.mode, pain: a.pain,
     university: a.university, field: a.field,
     countries: a.countries.join(','),

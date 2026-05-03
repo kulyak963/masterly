@@ -322,11 +322,12 @@ const { data: { session } } = await supabase.auth.getSession()
       return
     }
     const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+  .from('profiles')
+  .select('*')
+  .eq('user_id', session.user.id)
+  .order('created_at', { ascending: false })
+  .limit(1)
+  .single()
     setProfile(data)
     if (data?.tasks_done) setTaskDone(data.tasks_done)
     setLoading(false)
