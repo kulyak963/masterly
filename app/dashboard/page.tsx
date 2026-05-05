@@ -584,44 +584,43 @@ const unis = programs.map((p: any, i: number) => ({
 )}
 
         {/* ══ ПРОГРАММЫ ══ */}
-        {tab==='unis'&&(
-          <div style={{padding:'36px 40px'}}>
-            <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
-            <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:24}}>Программы</h1>
-
-            {profile.ielts<6.5&&(
-              <div style={{padding:'11px 16px',marginBottom:20,borderRadius:6,background:`${red}0D`,borderLeft:`3px solid ${red}`}}>
-                <span style={{fontFamily:sans,fontSize:12,color:red}}>IELTS {profile.ielts} — ниже минимума. Подача заблокирована до сдачи.</span>
-              </div>
-            )}
-
-            <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 55px 110px 70px 80px',
-                padding:'10px 20px',background:bg1,borderBottom:`1px solid ${line}`}}>
-                {['Программа','Страна','Стоимость','Шанс','Дней'].map((h,i)=>(
-                  <Mono key={i}>{h.toUpperCase()}</Mono>
-                ))}
-              </div>
-              {unis.map((u:any,i:number)=>(
-                <div key={i} className="hc" style={{display:'grid',gridTemplateColumns:'1fr 55px 110px 70px 80px',
-                  padding:'16px 20px',alignItems:'center',
-                  borderBottom:i<unis.length-1?`1px solid ${line}`:'none',
-                  border:`1px solid transparent`,transition:'border-color .15s'}}>
-                  <div>
-                    <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:4}}>{u.n}</div>
-                    <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:7}}>{u.p}</div>
-                    <div style={{width:120}}><Bar v={u.pct} color={u.c} h={2}/></div>
-                  </div>
-                  <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3}}>
-                    </span>
-                    {u.country?.toUpperCase()}
-                  <Mono style={{color:t2}}>{u.cost}</Mono>
-                  <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:u.c}}>{u.pct}%</div>
-                  <Mono style={{color:u.days<30?red:t2}}>{u.days} дн.</Mono>
-                </div>
-              ))}
+     {tab==='unis'&&(
+  <div style={{padding:'36px 40px'}}>
+    <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
+    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:24}}>Программы</h1>
+    {profile.ielts<6.5&&(
+      <div style={{padding:'11px 16px',marginBottom:20,borderRadius:6,background:`${red}0D`,borderLeft:`3px solid ${red}`}}>
+        <span style={{fontFamily:sans,fontSize:12,color:red}}>IELTS {profile.ielts} — ниже минимума. Подача заблокирована до сдачи.</span>
+      </div>
+    )}
+    <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 55px 110px 70px 80px',
+        padding:'10px 20px',background:bg1,borderBottom:`1px solid ${line}`}}>
+        {['Программа','Страна','Стоимость','Шанс','Дней'].map((h,i)=>(
+          <Mono key={i}>{h.toUpperCase()}</Mono>
+        ))}
+      </div>
+      {unis.map((u:any,i:number)=>(
+        <div key={i} className="hc" style={{display:'grid',gridTemplateColumns:'1fr 55px 110px 70px 80px',
+          padding:'16px 20px',alignItems:'center',
+          borderBottom:i<unis.length-1?`1px solid ${line}`:'none',
+          border:'1px solid transparent',transition:'border-color .15s'}}>
+          <div>
+            <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:4}}>{u.n}</div>
+            <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:7}}>{u.p}</div>
+            <div style={{width:120}}><Bar v={u.pct} color={u.c} h={2}/></div>
           </div>
-        )}
+          <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3}}>
+            {u.country?.toUpperCase()}
+          </span>
+          <Mono style={{color:t2}}>{u.cost}</Mono>
+          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:u.c}}>{u.pct}%</div>
+          <Mono style={{color:u.days<30?red:t2}}>{u.days} дн.</Mono>
+        </div>
+      ))}
+    </div>
+  </div>
+)}   
 
 {tab==='timeline'&&(
   <GanttTimeline profile={profile}/>
