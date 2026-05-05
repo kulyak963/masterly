@@ -717,74 +717,77 @@ setStep((s:any)=> s+1)
     )
   }
 if(step === 99) return (
-  <div style={{position:'fixed',inset:0,background:'#0A0A0C',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,overflow:'hidden'}}>
+  <div style={{position:'fixed',inset:0,background:'#0A0A0C',
+    display:'flex',alignItems:'center',justifyContent:'center',
+    zIndex:999,overflow:'hidden'}}>
     <style>{`
+      @keyframes particle {
+        0%   { transform:translate(0,0) scale(1); opacity:0; }
+        5%   { opacity:1; }
+        100% { transform:translate(var(--x),var(--y)) scale(0); opacity:0; }
+      }
       @keyframes logoIn {
-        0%   { opacity:0; transform:translateY(16px); }
-        35%  { opacity:1; transform:translateY(0); }
-        75%  { opacity:1; transform:translateY(0); }
-        100% { opacity:0; transform:translateY(-10px); }
+        0%   { opacity:0; transform:scale(.9) translateY(20px); }
+        40%  { opacity:1; transform:scale(1) translateY(0); }
+        75%  { opacity:1; }
+        100% { opacity:0; transform:scale(1.05) translateY(-10px); }
       }
       @keyframes lineIn {
         0%   { width:0; opacity:0; }
-        35%  { width:80px; opacity:1; }
-        75%  { width:80px; opacity:1; }
-        100% { width:120px; opacity:0; }
+        40%  { width:100px; opacity:1; }
+        75%  { width:100px; opacity:1; }
+        100% { width:160px; opacity:0; }
       }
       @keyframes tagIn {
-        0%   { opacity:0; }
-        40%  { opacity:1; }
-        75%  { opacity:1; }
-        100% { opacity:0; }
+        0%,30% { opacity:0; }
+        50%    { opacity:1; }
+        75%    { opacity:1; }
+        100%   { opacity:0; }
       }
-      @keyframes drift {
-  0%   { transform:translateY(0) translateX(0) scale(1); opacity:0; }
-  8%   { opacity:1; }
-  100% { transform:translateY(var(--dy, -400px)) translateX(var(--dx)) scale(0) rotate(var(--rot)); opacity:0; }
-}
-      .logo-in { animation: logoIn 2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
-      .line-in  { animation: lineIn  2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
-      .tag-in   { animation: tagIn   2.8s ease forwards; }
     `}</style>
 
-    {/* золотые частицы */}
-  
-    {[...Array(40)].map((_,i)=>{
-  const left = 10+Math.random()*80
-  const delay = Math.random()*1.2
-  const size = 1+Math.random()*2.5
-  const dx = (Math.random()-0.5)*600+'px'
-  const dy = -(200+Math.random()*500)+'px'
-  return(
-    <div key={i} style={{
-      position:'absolute',
-      left:`${left}%`,
-      bottom:'45%',
-      width:size, height:size,
-      borderRadius:'50%',
-      background:'#C8A256',
-      boxShadow:`0 0 ${size*4}px #C8A256`,
-      animation:`drift ${1.8+Math.random()*1}s cubic-bezier(.2,.8,.4,1) forwards`,
-      animationDelay:`${delay}s`,
-      '--dx':dx,
-      '--rot':`${Math.random()*360}deg`,
-    } as React.CSSProperties}/>
-  )
-})}
-    {/* логотип */}
-    <div style={{textAlign:'center',position:'relative',zIndex:10}}
-  onAnimationEnd={()=>{ setStep(8) }}
- 
->
+    {/* частицы по всему экрану */}
+    {[...Array(60)].map((_,i) => {
+      const angle = (i/60)*Math.PI*2
+      const dist = 250+Math.random()*500
+      const x = Math.cos(angle)*dist*(0.7+Math.random()*0.6)
+      const y = Math.sin(angle)*dist*(0.7+Math.random()*0.6)
+      const size = 1+Math.random()*3
+      const dur = 2+Math.random()*2
+      const delay = Math.random()*1.5
+      return (
+        <div key={i} style={{
+          position:'absolute',
+          left:'50%',top:'50%',
+          width:size,height:size,
+          borderRadius:'50%',
+          background: i%3===0?'#C8A256':i%3===1?'#F2EFE9':'#6B8CFF',
+          boxShadow:`0 0 ${size*4}px ${i%3===0?'#C8A256':i%3===1?'rgba(242,239,233,0.8)':'#6B8CFF'}`,
+          animation:`particle ${dur}s cubic-bezier(.2,.6,.4,1) forwards`,
+          animationDelay:`${delay}s`,
+          '--x':`${x}px`,
+          '--y':`${y}px`,
+        } as React.CSSProperties}/>
+      )
+    })}
 
-      <div className="logo-in">
-        <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',fontSize:48,color:'#F2EFE9',letterSpacing:'-.025em',lineHeight:1,marginBottom:18}}>
-          Masterly
-        </div>
-        <div className="line-in" style={{height:1,background:'linear-gradient(90deg,transparent,#C8A256,transparent)',margin:'0 auto',marginBottom:16}}/>
-        <div className="tag-in" style={{fontFamily:"'Geist Mono',monospace",fontSize:9,color:'#4A4845',letterSpacing:'.16em'}}>
-          СТРОИМ ТВОЙ ПЛАН
-        </div>
+    {/* логотип */}
+    <div style={{textAlign:'center',position:'relative',zIndex:10,
+      animation:'logoIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}
+      onAnimationEnd={()=>setStep(8)}>
+      <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',
+        fontSize:52,color:'#F2EFE9',letterSpacing:'-.025em',
+        lineHeight:1,marginBottom:20}}>
+        Masterly
+      </div>
+      <div style={{height:1,
+        background:'linear-gradient(90deg,transparent,#C8A256,transparent)',
+        margin:'0 auto',marginBottom:18,
+        animation:'lineIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}/>
+      <div style={{fontFamily:"'Geist Mono',monospace",fontSize:10,
+        color:'#4A4845',letterSpacing:'.16em',
+        animation:'tagIn 3.5s ease forwards'}}>
+        СТРОИМ ТВОЙ ПЛАН
       </div>
     </div>
   </div>

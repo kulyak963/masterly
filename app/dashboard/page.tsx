@@ -27,16 +27,6 @@ const CNAME: Record<string,string> = {
   ch:'Швейцария', fi:'Финляндия', fr:'Франция',
   cz:'Чехия', at:'Австрия'
 }
-const UNIS: Record<string,{n:string,p:string,days:number,pct:number,cost:string,rank:string,c:string}[]> = {
-  de:[{n:'TU Munich',    p:'Computer Science M.Sc.', days:84, pct:72,cost:'Бесплатно', rank:'#49 QS',c:blue}],
-  nl:[{n:'TU Delft',     p:'Robotics / CS M.Sc.',    days:100,pct:68,cost:'€2 314/год',rank:'#47 QS',c:grn}],
-  se:[{n:'KTH Stockholm',p:'Machine Learning M.Sc.', days:112,pct:65,cost:'Бесплатно', rank:'#98 QS',c:gold}],
-  fi:[{n:'Aalto',        p:'AI & ML M.Sc.',           days:98, pct:69,cost:'Бесплатно', rank:'#115 QS',c:purp}],
-  ch:[{n:'ETH Zurich',   p:'Computer Science M.Sc.', days:54, pct:38,cost:'CHF 730/сем',rank:'#7 QS',c:'#5AC8FA'}],
-  fr:[{n:'Sciences Po',  p:'Data Science M.Sc.',     days:78, pct:55,cost:'€3 770/год',rank:'#260 QS',c:'#E8795A'}],
-  cz:[{n:'CTU Prague',   p:'Software Engineering',   days:128,pct:71,cost:'Бесплатно', rank:'#801 QS',c:t2}],
-  at:[{n:'TU Wien',      p:'Informatics M.Sc.',       days:140,pct:66,cost:'€363/сем', rank:'#251 QS',c:'#D4843A'}],
-}
 
 /* ── journey phases ── */
 function makePhases(profile: any) {
@@ -311,6 +301,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('overview')
   const [taskDone, setTaskDone] = useState<Record<string,boolean>>({})
 const [saving, setSaving] = useState(false)
+const [programs, setPrograms] = useState<any[]>([])
 
   useEffect(() => {
   const init = async () => {
@@ -352,6 +343,22 @@ setProfile(data)
   init()
 }, [])
  
+useEffect(() => {
+  if (!profile) return
+  const countries = profile.countries?.split(',').filter(Boolean) || []
+
+  supabase
+    .from('programs')
+    .select('*, university:universities(*)')
+    .then(({ data }) => {
+      if (data) {
+        const filtered = data.filter(p =>
+          p.university && countries.includes(p.university.country)
+        )
+        setPrograms(filtered)
+      }
+    })
+}, [profile])
 
   useEffect(()=>{
     const style = document.createElement('style')
@@ -394,9 +401,24 @@ setProfile(data)
 
   const name = profile.name?.split(' ')[0] || ''
   const countries = profile.countries?.split(',').filter(Boolean) || []
-  const unis = countries.flatMap((c:string) => UNIS[c] || []).sort((a:any,b:any)=>a.days-b.days)
-  const score = Math.min(97,Math.round(
-    (profile.gpa>=4.5?28:profile.gpa>=4.0?20:12)+
+ const COLORS = ['#6B8CFF','#3FB950','#C8A256','#A78BFA','#5AC8FA','#E8795A','#D4843A','#E5534B']
+const daysUntil = (month: number, day: number) => {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), month - 1, day)
+  if (d < now) d.setFullYear(d.getFullYear() + 1)
+  return Math.ceil((d.getTime() - now.getTime()) / 86400000)
+}
+const unis = programs.map((p: any, i: number) => ({
+  n: p.university?.name || '',
+  p: p.name,
+  days: daysUntil(p.deadline_month, p.deadline_day),
+  pct: p.acceptance_rate || 50,
+  cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
+  rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
+  c: COLORS[i % COLORS.length],
+  country: p.university?.country || '',
+})).sort((a: any, b: any) => a.days - b.days)
+    const score = Math.min(97,Math.round((profile.gpa>=4.5?28:profile.gpa>=4.0?20:12)+
     (profile.ielts>=6.5?22:8)+
     (profile.work==='yes'?18:profile.work==='some'?10:4)+10+15
   ))
