@@ -738,39 +738,39 @@ if(step === 99) return (
         100% { opacity:0; }
       }
       @keyframes drift {
-        0%   { transform:translateY(0) translateX(0) rotate(0deg); opacity:0; }
-        10%  { opacity:1; }
-        100% { transform:translateY(-280px) translateX(var(--dx)) rotate(var(--rot)); opacity:0; }
-      }
+  0%   { transform:translateY(0) translateX(0) scale(1); opacity:0; }
+  8%   { opacity:1; }
+  100% { transform:translateY(var(--dy, -400px)) translateX(var(--dx)) scale(0) rotate(var(--rot)); opacity:0; }
+}
       .logo-in { animation: logoIn 2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
       .line-in  { animation: lineIn  2.8s cubic-bezier(.22,.68,0,1.1) forwards; }
       .tag-in   { animation: tagIn   2.8s ease forwards; }
     `}</style>
 
     {/* золотые частицы */}
-    {[
-      {l:'44%', delay:.1, dx:'12px',  rot:'45deg',  size:1.5},
-      {l:'50%', delay:.4, dx:'-8px',  rot:'-30deg', size:1},
-      {l:'47%', delay:.7, dx:'18px',  rot:'90deg',  size:2},
-      {l:'53%', delay:.2, dx:'-14px', rot:'60deg',  size:1.5},
-      {l:'48%', delay:.9, dx:'6px',   rot:'-45deg', size:1},
-      {l:'52%', delay:.5, dx:'-20px', rot:'120deg', size:2},
-      {l:'45%', delay:.8, dx:'22px',  rot:'-60deg', size:1},
-      {l:'55%', delay:.3, dx:'-6px',  rot:'30deg',  size:1.5},
-      {l:'49%', delay:.6, dx:'14px',  rot:'-90deg', size:1},
-      {l:'51%', delay:1.0, dx:'-10px', rot:'75deg', size:2},
-    ].map((p,i)=>(
-      <div key={i} style={{
-        position:'absolute', left:p.l, bottom:'45%',
-        width:p.size, height:p.size, borderRadius:'50%',
-        background:'#C8A256',
-        boxShadow:`0 0 ${p.size*3}px #C8A256`,
-        animation:`drift ${1.8+i*.1}s cubic-bezier(.2,.8,.4,1) forwards`,
-        animationDelay:`${p.delay}s`,
-        '--dx':p.dx, '--rot':p.rot,
-      } as React.CSSProperties}/>
-    ))}
-
+  
+    {[...Array(40)].map((_,i)=>{
+  const left = 10+Math.random()*80
+  const delay = Math.random()*1.2
+  const size = 1+Math.random()*2.5
+  const dx = (Math.random()-0.5)*600+'px'
+  const dy = -(200+Math.random()*500)+'px'
+  return(
+    <div key={i} style={{
+      position:'absolute',
+      left:`${left}%`,
+      bottom:'45%',
+      width:size, height:size,
+      borderRadius:'50%',
+      background:'#C8A256',
+      boxShadow:`0 0 ${size*4}px #C8A256`,
+      animation:`drift ${1.8+Math.random()*1}s cubic-bezier(.2,.8,.4,1) forwards`,
+      animationDelay:`${delay}s`,
+      '--dx':dx,
+      '--rot':`${Math.random()*360}deg`,
+    } as React.CSSProperties}/>
+  )
+})}
     {/* логотип */}
     <div style={{textAlign:'center',position:'relative',zIndex:10}}
   onAnimationEnd={()=>{ setStep(8) }}
