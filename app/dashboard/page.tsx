@@ -321,6 +321,16 @@ const { data: { session } } = await supabase.auth.getSession()
       window.location.href = '/login'
       return
     }
+    // если есть сохранённый профиль из онбординга — записываем с user_id
+const saved = localStorage.getItem('masterly_profile')
+if(saved) {
+  const profile = JSON.parse(saved)
+  await supabase.from('profiles').insert({
+    ...profile,
+    user_id: session.user.id,
+  })
+  localStorage.removeItem('masterly_profile')
+}
     const { data } = await supabase
   .from('profiles')
   .select('*')
