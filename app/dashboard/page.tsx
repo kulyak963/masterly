@@ -94,6 +94,7 @@ function makePhases(profile: any) {
       tasks: (profile.countries?.split(',').filter(Boolean) || []).map((c: string) => ({
   t: `Подать заявку — ${CNAME[c] || c.toUpperCase()}`
 })),
+},
     {
       id:'results', n:6, color:grn,
       title:'Оффер и переезд', when:'Март — Сентябрь',
