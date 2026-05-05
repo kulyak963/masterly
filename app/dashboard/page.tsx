@@ -315,7 +315,7 @@ const [saving, setSaving] = useState(false)
   useEffect(() => {
   const init = async () => {
     // ждём пока Supabase обработает хэш из URL
-await new Promise(r => setTimeout(r, 500))
+await new Promise(r => setTimeout(r, 100))
 const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       window.location.href = '/login'
@@ -325,10 +325,10 @@ const { data: { session } } = await supabase.auth.getSession()
 const saved = localStorage.getItem('masterly_profile')
 if(saved) {
   const profile = JSON.parse(saved)
-  await supabase.from('profiles').insert({
-    ...profile,
-    user_id: session.user.id,
-  })
+  await supabase.from('profiles').upsert({
+  ...profile,
+  user_id: session.user.id,
+}, { onConflict: 'user_id' })
   localStorage.removeItem('masterly_profile')
 }
     const { data } = await supabase
