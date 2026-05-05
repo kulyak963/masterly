@@ -613,8 +613,7 @@ const unis = programs.map((p: any, i: number) => ({
                     <div style={{width:120}}><Bar v={u.pct} color={u.c} h={2}/></div>
                   </div>
                   <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3}}>
-                    {countries.find((c:string)=>UNIS[c]?.[0]?.n===u.n)?.toUpperCase()}
-                  </span>
+                    {u.country?.toUpperCase()}
                   <Mono style={{color:t2}}>{u.cost}</Mono>
                   <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:u.c}}>{u.pct}%</div>
                   <Mono style={{color:u.days<30?red:t2}}>{u.days} дн.</Mono>
