@@ -93,8 +93,7 @@ function makePhases(profile: any) {
       why:'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка: 2–4 часа.',
       tasks: (profile.countries?.split(',') || []).map((c: string) => {
         const u = UNIS[c]?.[0]
-        return u ? {t:`${u.n} — дедлайн через ${u.days} дней`} : null
-      }).filter(Boolean),
+       return {t:`Подать заявку — ${CNAME[c] || c.toUpperCase()}`}
     },
     {
       id:'results', n:6, color:grn,
