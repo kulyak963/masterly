@@ -338,8 +338,11 @@ if(saved) {
   .order('created_at', { ascending: false })
   .limit(1)
   .single()
-    if(!data) {
-  window.location.href = '/'
+   if(!data) {
+  const saved = localStorage.getItem('masterly_profile')
+  if(!saved) {
+    window.location.href = '/'
+  }
   return
 }
 setProfile(data)
