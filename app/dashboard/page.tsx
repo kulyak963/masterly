@@ -328,7 +328,11 @@ const { data: { session } } = await supabase.auth.getSession()
   .order('created_at', { ascending: false })
   .limit(1)
   .single()
-    setProfile(data)
+    if(!data) {
+  window.location.href = '/'
+  return
+}
+setProfile(data)
     if (data?.tasks_done) setTaskDone(data.tasks_done)
     setLoading(false)
   }
@@ -437,6 +441,18 @@ const { data: { session } } = await supabase.auth.getSession()
           </div>
           <Bar v={score} color={t1} h={2}/>
         </div>
+        <button onClick={async()=>{
+  await supabase.auth.signOut()
+  window.location.href='/login'
+}} style={{
+  marginTop:8,width:'100%',padding:'8px',
+  borderRadius:6,border:`1px solid ${line}`,
+  background:'transparent',color:t3,
+  fontFamily:sans,fontSize:12,cursor:'pointer',
+  letterSpacing:'-.01em',
+}}>
+  Выйти
+</button>
       </aside>
 
       {/* main */}
