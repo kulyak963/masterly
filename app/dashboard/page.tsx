@@ -91,10 +91,9 @@ function makePhases(profile: any) {
       title:'Подать заявки', when:'Декабрь — Февраль',
       status:'future',
       why:'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка: 2–4 часа.',
-      tasks: (profile.countries?.split(',') || []).map((c: string) => {
-        const u = UNIS[c]?.[0]
-       return {t:`Подать заявку — ${CNAME[c] || c.toUpperCase()}`}
-    },
+      tasks: (profile.countries?.split(',').filter(Boolean) || []).map((c: string) => ({
+  t: `Подать заявку — ${CNAME[c] || c.toUpperCase()}`
+})),
     {
       id:'results', n:6, color:grn,
       title:'Оффер и переезд', when:'Март — Сентябрь',
