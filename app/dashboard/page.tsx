@@ -644,206 +644,153 @@ const getVerdict = async (p: any) => {
 )}
 
         {/* ══ ПРОГРАММЫ ══ */}
-     {tab==='unis'&&(
-  <div style={{display:'flex',height:'100%'}}>
-
-    {/* ── список программ ── */}
-    <div style={{flex:1,overflowY:'auto',padding:'36px 40px'}}>
-      <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
-      <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:28}}>Программы</h1>
-
-      {(['reach','target','safety'] as const).map(bucket => {
-        const items = unis.filter((u:any) => u._bucket === bucket)
-        if (!items.length) return null
-        const cfg = BUCKET_CFG[bucket]
-        return (
-          <div key={bucket} style={{marginBottom:32}}>
-            <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:14}}>
-             <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.14em',color:t2}}>{cfg.label.toUpperCase()}</span>
-             <span style={{fontFamily:sans,fontSize:12,color:t3}}>{cfg.sub}</span>
-              <Mono style={{color:t3,marginLeft:'auto'}}>{items.length} программ</Mono>
-            </div>
-            <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
-              {items.map((u:any,i:number)=>(
-                <div key={u.id} onClick={()=>{setSelectedProgram(u);setVerdict(null)}}
-                  className="hc" style={{display:'grid',gridTemplateColumns:'1fr 60px 110px 60px 70px',
-                  padding:'16px 20px',alignItems:'center',cursor:'pointer',
-                  borderBottom:i<items.length-1?`1px solid ${line}`:'none',
-                  background:selectedProgram?.id===u.id?'rgba(255,255,255,.04)':'transparent',
-                  borderLeft:`2px solid ${selectedProgram?.id===u.id?cfg.color:'transparent'}`,
-                  transition:'all .15s'}}>
-                  <div>
-                    <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
-                    <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
-                    <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
-                  </div>
-                  <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
-                    {u._country?.toUpperCase()}
-                  </span>
-                  <Mono style={{color:t2}}>{u._cost}</Mono>
-                  <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{u._score}</div>
-                  <Mono style={{color:u._days<30?red:t2}}>{u._days} дн.</Mono>
-                </div>
-              ))}
-            </div>
+ {/* ══ ПРОГРАММЫ ══ */}
+{tab==='unis'&&(
+  <div style={{padding:'36px 40px'}}>
+    <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
+    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:28}}>Программы</h1>
+    {(['reach','target','safety'] as const).map(bucket => {
+      const items = unis.filter((u:any) => u._bucket === bucket)
+      if (!items.length) return null
+      const cfg = BUCKET_CFG[bucket]
+      return (
+        <div key={bucket} style={{marginBottom:32}}>
+          <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:14}}>
+            <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.14em',color:t2}}>{cfg.label.toUpperCase()}</span>
+            <span style={{fontFamily:sans,fontSize:12,color:t3}}>{cfg.sub}</span>
+            <Mono style={{color:t3,marginLeft:'auto'}}>{items.length} программ</Mono>
           </div>
-        )
-      })}
-    </div>
-
-    {/* ── карточка ── */}
+          <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
+            {items.map((u:any,i:number)=>(
+              <div key={u.id} onClick={()=>{setSelectedProgram(u);setVerdict(null)}}
+                className="hc" style={{display:'grid',gridTemplateColumns:'1fr 60px 110px 60px 70px',
+                padding:'16px 20px',alignItems:'center',cursor:'pointer',
+                borderBottom:i<items.length-1?`1px solid ${line}`:'none',
+                background:selectedProgram?.id===u.id?'rgba(255,255,255,.04)':'transparent',
+                borderLeft:`2px solid ${selectedProgram?.id===u.id?cfg.color:'transparent'}`,
+                transition:'all .15s'}}>
+                <div>
+                  <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
+                  <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
+                  <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
+                </div>
+                <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
+                  {u._country?.toUpperCase()}
+                </span>
+                <Mono style={{color:t2}}>{u._cost}</Mono>
+                <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{u._score}</div>
+                <Mono style={{color:u._days<30?red:t2}}>{u._days} дн.</Mono>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    })}
     {selectedProgram&&(
-      <div style={{width:380,borderLeft:`1px solid ${line}`,overflowY:'auto',
-        background:bg1,flexShrink:0,animation:'slideUp .3s ease both'}}>
-        <div style={{padding:'24px'}}>
-
-          {/* закрыть */}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-            <Mono style={{color:BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].color}}>
-              {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label}
-            </Mono>
-            <button onClick={()=>setSelectedProgram(null)}
-              style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:18}}>×</button>
-          </div>
-
-          {/* заголовок */}
-          <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:22,color:t1,fontWeight:400,
-            letterSpacing:'-.01em',lineHeight:1.2,marginBottom:4}}>{selectedProgram._p}</h2>
-          <div style={{fontFamily:sans,fontSize:12,color:t2,marginBottom:4}}>{selectedProgram._n}</div>
-          <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
-            <Mono style={{color:t2}}>{selectedProgram._rank}</Mono>
-            <Mono style={{color:t3}}>·</Mono>
-            <Mono style={{color:t2}}>{selectedProgram._cost}</Mono>
-            <Mono style={{color:t3}}>·</Mono>
-            <Mono style={{color:selectedProgram._days<30?red:t2}}>{selectedProgram._days} дн. до дедлайна</Mono>
-          </div>
-
-          {/* score */}
-          <div style={{padding:'16px',borderRadius:8,marginBottom:20,
-            background:`${BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].color}10`,
-            border:`1px solid ${BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].color}30`}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
-              <Mono>MATCH SCORE</Mono>
-              <span style={{fontFamily:serif,fontStyle:'italic',fontSize:24,
-                color:BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].color}}>
-                {selectedProgram._score}
-              </span>
+      <div onClick={()=>setSelectedProgram(null)}
+        style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',
+          zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',
+          padding:24,backdropFilter:'blur(4px)'}}>
+        <div onClick={e=>e.stopPropagation()}
+          style={{width:'100%',maxWidth:520,maxHeight:'85vh',overflowY:'auto',
+            background:bg1,borderRadius:12,border:`1px solid ${line}`,
+            animation:'slideUp .3s ease both'}}>
+          <div style={{padding:'28px 32px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
+              <div>
+                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.14em',color:t3,marginBottom:8}}>
+                  {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · MATCH {selectedProgram._score}
+                </div>
+                <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:24,color:t1,fontWeight:400,letterSpacing:'-.01em',lineHeight:1.2,marginBottom:4}}>
+                  {selectedProgram._p}
+                </h2>
+                <div style={{fontFamily:sans,fontSize:13,color:t2}}>{selectedProgram._n}</div>
+              </div>
+              <button onClick={()=>setSelectedProgram(null)}
+                style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:20,padding:'0 0 0 16px',flexShrink:0}}>×</button>
             </div>
-            <Bar v={selectedProgram._score} color={BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].color} h={3}/>
-          </div>
-
-          {/* описание */}
-          {selectedProgram.summary&&(
-            <div style={{marginBottom:20}}>
-              <Mono style={{display:'block',marginBottom:8}}>О ПРОГРАММЕ</Mono>
-              <p style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.65}}>{selectedProgram.summary}</p>
-            </div>
-          )}
-
-          {/* плюсы */}
-          {selectedProgram.pros?.length>0&&(
-            <div style={{marginBottom:16}}>
-              <Mono style={{display:'block',marginBottom:8,color:grn}}>ПЛЮСЫ</Mono>
-              {selectedProgram.pros.map((p:string,i:number)=>(
-                <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'flex-start'}}>
-                  <span style={{color:grn,fontSize:11,marginTop:1,flexShrink:0}}>✓</span>
-                  <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>{p}</span>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderTop:`1px solid ${line}`,borderLeft:`1px solid ${line}`,marginBottom:24}}>
+              {[
+                {l:'РЕЙТИНГ',v:selectedProgram._rank},
+                {l:'СТОИМОСТЬ',v:selectedProgram._cost},
+                {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,warn:selectedProgram._days<30},
+              ].map((m,i)=>(
+                <div key={i} style={{padding:'12px 14px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:4}}>{m.l}</div>
+                  <div style={{fontFamily:sans,fontSize:13,color:m.warn?red:t1}}>{m.v}</div>
                 </div>
               ))}
             </div>
-          )}
-
-          {/* минусы */}
-          {selectedProgram.cons?.length>0&&(
-            <div style={{marginBottom:20}}>
-              <Mono style={{display:'block',marginBottom:8,color:red}}>МИНУСЫ</Mono>
-              {selectedProgram.cons.map((c:string,i:number)=>(
-                <div key={i} style={{display:'flex',gap:8,marginBottom:6,alignItems:'flex-start'}}>
-                  <span style={{color:red,fontSize:11,marginTop:1,flexShrink:0}}>⚠</span>
-                  <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>{c}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* стипендии */}
-          {selectedProgram.scholarships?.length>0&&(
-            <div style={{marginBottom:20}}>
-              <Mono style={{display:'block',marginBottom:8,color:gold}}>СТИПЕНДИИ</Mono>
-              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                {selectedProgram.scholarships.map((s:string,i:number)=>(
-                  <span key={i} style={{fontFamily:mono,fontSize:9,padding:'3px 8px',
-                    borderRadius:3,border:`1px solid ${gold}40`,color:gold}}>{s}</span>
+            {selectedProgram.summary&&(
+              <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.7,marginBottom:24,fontWeight:300}}>{selectedProgram.summary}</p>
+            )}
+            <div style={{height:1,background:line,marginBottom:20}}/>
+            {selectedProgram.pros?.length>0&&(
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЛЮСЫ</div>
+                {selectedProgram.pros.map((p:string,i:number)=>(
+                  <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
+                    <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
+                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{p}</span>
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* персональный анализ */}
-          <div style={{marginBottom:16}}>
-            <button onClick={()=>getVerdict(selectedProgram)}
-              disabled={verdictLoading}
+            )}
+            {selectedProgram.cons?.length>0&&(
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>МИНУСЫ</div>
+                {selectedProgram.cons.map((c:string,i:number)=>(
+                  <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
+                    <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
+                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{c}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedProgram.scholarships?.length>0&&(
+              <div style={{marginBottom:24}}>
+                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>СТИПЕНДИИ</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                  {selectedProgram.scholarships.map((s:string,i:number)=>(
+                    <span key={i} style={{fontFamily:mono,fontSize:9,padding:'4px 10px',borderRadius:3,border:`1px solid ${line}`,color:t2}}>{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button onClick={()=>getVerdict(selectedProgram)} disabled={verdictLoading}
               style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
                 background:verdictLoading?'rgba(255,255,255,.04)':t1,
                 color:verdictLoading?t3:bg0,fontFamily:sans,fontSize:13,
                 fontWeight:500,cursor:verdictLoading?'not-allowed':'pointer',
-                letterSpacing:'-.01em',transition:'all .2s'}}>
-              {verdictLoading ? '✦ Анализируем...' : '✦ Персональный анализ'}
+                letterSpacing:'-.01em',marginBottom:10,transition:'all .2s'}}>
+              {verdictLoading ? 'Анализируем...' : 'Персональный анализ'}
             </button>
-          </div>
-
-          {/* вердикт */}
-          {verdict&&(
-            <div style={{animation:'slideUp .4s ease both'}}>
-              <div style={{padding:'16px',borderRadius:8,marginBottom:12,
-                background:'rgba(107,140,255,.06)',border:`1px solid ${blue}25`}}>
-                <Mono style={{display:'block',marginBottom:8,color:blue}}>ВЕРДИКТ</Mono>
-                <p style={{fontFamily:sans,fontSize:13,color:t1,lineHeight:1.6,fontStyle:'italic'}}>
-                  "{verdict.verdict}"
-                </p>
-              </div>
-              {verdict.fit?.length>0&&(
-                <div style={{marginBottom:12}}>
-                  <Mono style={{display:'block',marginBottom:8,color:grn}}>ПОЧЕМУ ТЕБЕ ПОДХОДИТ</Mono>
-                  {verdict.fit.map((f:string,i:number)=>(
-                    <div key={i} style={{display:'flex',gap:8,marginBottom:6}}>
-                      <span style={{color:grn,flexShrink:0}}>✓</span>
-                      <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {verdict.warnings?.length>0&&(
-                <div style={{marginBottom:12}}>
-                  <Mono style={{display:'block',marginBottom:8,color:gold}}>НА ЧТО ОБРАТИТЬ ВНИМАНИЕ</Mono>
-                  {verdict.warnings.map((w:string,i:number)=>(
-                    <div key={i} style={{display:'flex',gap:8,marginBottom:6}}>
-                      <span style={{color:gold,flexShrink:0}}>⚠</span>
-                      <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>{w}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ссылка */}
-          {selectedProgram.url&&(
-            <a href={selectedProgram.url} target="_blank" rel="noopener"
-              style={{display:'block',textAlign:'center',padding:'11px',
-                borderRadius:6,border:`1px solid ${line}`,
-                fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
-                transition:'border-color .15s'}}
-              onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.2)'}
-              onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=line}>
-              Официальный сайт программы →
+            <a href={`https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
+              target="_blank" rel="noopener"
+              style={{display:'block',textAlign:'center',padding:'11px',borderRadius:8,
+                border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none'}}>
+              Найти на сайте вуза →
             </a>
-          )}
+            {verdict&&(
+              <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
+                <div style={{height:1,background:line,marginBottom:20}}/>
+                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЕРСОНАЛЬНЫЙ АНАЛИЗ</div>
+                <p style={{fontFamily:serif,fontStyle:'italic',fontSize:15,color:t1,lineHeight:1.6,marginBottom:16}}>"{verdict.verdict}"</p>
+                {verdict.fit?.map((f:string,i:number)=>(
+                  <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
+                    <span style={{color:t3,flexShrink:0}}>—</span>
+                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{f}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )}
   </div>
 )}
+
 {tab==='timeline'&&(
   <GanttTimeline profile={profile}/>
 )}
