@@ -58,9 +58,9 @@ function getBucket(score: number) {
 }
 
 const BUCKET_CFG = {
-  reach:  { label:'🔥 Амбиция',  sub:'Сложно, но мечта',         color:'#A78BFA' },
-  target: { label:'🎯 Таргет',   sub:'Реальный шанс',             color:'#6B8CFF' },
-  safety: { label:'🛡 Запасная', sub:'Высокий шанс оффера',       color:'#3FB950' },
+  reach:  { label:'Амбиция',  sub:'Сложно, но мечта',      color:t1,   accent:'rgba(255,255,255,.06)' },
+  target: { label:'Таргет',   sub:'Реальный шанс',          color:t1,   accent:'rgba(255,255,255,.06)' },
+  safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:t1,   accent:'rgba(255,255,255,.06)' },
 }
 /* ── journey phases ── */
 function makePhases(profile: any) {
@@ -659,8 +659,8 @@ const getVerdict = async (p: any) => {
         return (
           <div key={bucket} style={{marginBottom:32}}>
             <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:14}}>
-              <span style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{cfg.label}</span>
-              <Mono style={{color:t3}}>{cfg.sub}</Mono>
+             <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.14em',color:t2}}>{cfg.label.toUpperCase()}</span>
+             <span style={{fontFamily:sans,fontSize:12,color:t3}}>{cfg.sub}</span>
               <Mono style={{color:t3,marginLeft:'auto'}}>{items.length} программ</Mono>
             </div>
             <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
