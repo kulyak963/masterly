@@ -24,6 +24,9 @@ TARGETS = [
     {"country": "fr", "country_name": "Франция",     "field": "Data Science"},
     {"country": "at", "country_name": "Австрия",     "field": "Computer Science"},
     {"country": "cz", "country_name": "Чехия",       "field": "Computer Science"},
+    {"country": "it", "country_name": "Италия", "field": "Business Analytics"},
+{"country": "it", "country_name": "Италия", "field": "Data Science"},
+{"country": "it", "country_name": "Италия", "field": "Computer Science / AI"},
 ]
  
 PROMPT_TEMPLATE = """
