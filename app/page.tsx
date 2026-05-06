@@ -85,6 +85,16 @@ const FIELD_TO_DB: Record<string,string> = {
   'Социальные науки':        'Business Analytics',
   'Другое':                  '',
 }
+const RELATED_FIELDS: Record<string, string[]> = {
+  'Компьютерные науки / ИИ': ['Artificial Intelligence','Data Science','Cybersecurity','Robotics','Human-Computer Interaction'],
+  'Инженерия':               ['Robotics','Computational Engineering','Computer Science','Artificial Intelligence'],
+  'Экономика':               ['Business Analytics','Data Science','Human-Computer Interaction'],
+  'Физика / Математика':     ['Computational Engineering','Data Science','Artificial Intelligence','Robotics'],
+  'Биотех':                  ['Computational Engineering','Data Science','Artificial Intelligence'],
+  'Дизайн':                  ['Human-Computer Interaction','Computer Science'],
+  'Социальные науки':        ['Human-Computer Interaction','Business Analytics','Data Science'],
+  'Другое':                  ['Computer Science','Data Science','Business Analytics','Artificial Intelligence'],
+}
 const BUDGETS = [
   {id:'zero',l:'Только стипендия',   s:'Финансирование — обязательное условие'},
   {id:'low', l:'До €5 000 / год',    s:'Подработка или частичная помощь'},
@@ -362,17 +372,20 @@ setStep((s:any)=> s+1)
         <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.master_direction===o.v} onClick={()=>set('master_direction',o.v)}/>
       ))}
     </div>
-    {(a.master_direction==='related'||a.master_direction==='change')&&(
-      <div className="in">
-        <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:10}}>КУДА ХОЧЕШЬ ПЕРЕЙТИ</div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-          {MASTER_FIELDS.map(f=>(
-            <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
-          ))}
-        </div>
-      </div>
-    )}
+{(a.master_direction==='related'||a.master_direction==='change')&&(
+  <div className="in">
+    <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:10}}>КУДА ХОЧЕШЬ ПЕРЕЙТИ</div>
+    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+      {MASTER_FIELDS
+        .filter(f => a.master_direction==='change' || (RELATED_FIELDS[a.field]||[]).includes(f.v))
+        .map(f=>(
+          <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
+        ))
+      }
+    </div>
   </div>
+)}
+</div>
 )}
 <NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&(a.master_direction==='same'||!!a.master_field)}/>
     </Shell>
