@@ -351,9 +351,12 @@ useEffect(() => {
     .select('*, university:universities(*)')
     .then(({ data }) => {
       if (data) {
-        const filtered = data.filter(p =>
-          p.university && countries.includes(p.university.country)
-        )
+    const masterField = profile.master_field || ''
+const filtered = data.filter(p =>
+  p.university &&
+  countries.includes(p.university.country) &&
+  (!masterField || p.field === masterField)
+)
         setPrograms(filtered)
       }
     })
