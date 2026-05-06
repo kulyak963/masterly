@@ -416,7 +416,7 @@ const unis = programs.map((p: any, i: number) => ({
   rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
   c: COLORS[i % COLORS.length],
   country: p.university?.country || '',
-})).sort((a: any, b: any) => a.days - b.days)
+})).sort((a: any, b: any) => a.days - b.days).slice(0, 20)
     const score = Math.min(97,Math.round((profile.gpa>=4.5?28:profile.gpa>=4.0?20:12)+
     (profile.ielts>=6.5?22:8)+
     (profile.work==='yes'?18:profile.work==='some'?10:4)+10+15
