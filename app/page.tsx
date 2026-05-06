@@ -65,6 +65,26 @@ const COUNTRIES_MORE = [
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
 const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Другое']
+const MASTER_FIELDS = [
+  {v:'Computer Science',      l:'CS / Разработка'},
+  {v:'Artificial Intelligence',l:'ИИ / ML'},
+  {v:'Data Science',          l:'Data Science'},
+  {v:'Cybersecurity',         l:'Кибербезопасность'},
+  {v:'Business Analytics',    l:'Бизнес / Аналитика'},
+  {v:'Robotics',              l:'Робототехника'},
+  {v:'Human-Computer Interaction', l:'UX / HCI'},
+  {v:'Computational Engineering',  l:'Матмех / Вычисления'},
+]
+const FIELD_TO_DB: Record<string,string> = {
+  'Компьютерные науки / ИИ': 'Computer Science',
+  'Инженерия':               'Robotics',
+  'Экономика':               'Business Analytics',
+  'Физика / Математика':     'Computational Engineering',
+  'Биотех':                  'Computational Engineering',
+  'Дизайн':                  'Human-Computer Interaction',
+  'Социальные науки':        'Business Analytics',
+  'Другое':                  '',
+}
 const BUDGETS = [
   {id:'zero',l:'Только стипендия',   s:'Финансирование — обязательное условие'},
   {id:'low', l:'До €5 000 / год',    s:'Подработка или частичная помощь'},
@@ -173,10 +193,12 @@ function Shell({children,step,total}: {children:React.ReactNode,step:number,tota
 
 export default function Home() {
   const [step, setStep] = useState(0)
-  const [a, setA] = useState({
-    name:'', email:'', mode:'', pain:'',
-    field:'', university:'',
-    countries:[] as string[],
+ const [a, setA] = useState({
+  name:'', email:'', mode:'', pain:'',
+  field:'', university:'',
+  master_field:'', master_direction:'',   // ← добавь эти два
+  countries:[] as string[],
+
     timeline:'', budget:'',
     gpa:4.0, ielts:6.5, work:'', quiz_cost:'', quiz_stay:'', quiz_lang:'', quiz_vibe:'',
   })
@@ -202,6 +224,7 @@ export default function Home() {
     countries: a.countries.join(','),
     timeline: a.timeline, budget: a.budget,
     gpa: a.gpa, ielts: a.ielts, work: a.work, score: score,
+    master_field: a.master_direction==='same' ? FIELD_TO_DB[a.field] : a.master_field,
   }))
   setStep(99)
   return
@@ -326,7 +349,32 @@ setStep((s:any)=> s+1)
           </div>
         </div>
       )}
-      <NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field}/>
+      {a.field&&(
+  <div className="in">
+    <Divider/>
+    <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>НАПРАВЛЕНИЕ МАГИСТРАТУРЫ</div>
+    <div style={{display:'flex',flexDirection:'column',gap:2,marginBottom:12}}>
+      {[
+        {v:'same',   l:'Продолжить в той же сфере',    s:'Углубляюсь в то, что уже изучаю'},
+        {v:'related',l:'Перейти в смежную область',    s:'Например, физика → data science'},
+        {v:'change', l:'Кардинально сменить направление', s:'Хочу что-то совсем другое'},
+      ].map(o=>(
+        <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.master_direction===o.v} onClick={()=>set('master_direction',o.v)}/>
+      ))}
+    </div>
+    {(a.master_direction==='related'||a.master_direction==='change')&&(
+      <div className="in">
+        <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:10}}>КУДА ХОЧЕШЬ ПЕРЕЙТИ</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          {MASTER_FIELDS.map(f=>(
+            <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
+<NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&(a.master_direction==='same'||!!a.master_field)}/>
     </Shell>
   )
 
