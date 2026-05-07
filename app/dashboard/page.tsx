@@ -654,7 +654,7 @@ const getVerdict = async (p: any) => {
       if (!items.length) return null
       const cfg = BUCKET_CFG[bucket]
       return (
-        <div key={bucket} style={{marginBottom:32}}>
+        <div key={bucket} style={{marginBottom:32,paddingLeft:12,borderLeft:`2px solid ${cfg.color}18`}}>
           <div style={{display:'flex',alignItems:'baseline',gap:10,marginBottom:14}}>
             <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.14em',color:t2}}>{cfg.label.toUpperCase()}</span>
             <span style={{fontFamily:sans,fontSize:12,color:t3}}>{cfg.sub}</span>
