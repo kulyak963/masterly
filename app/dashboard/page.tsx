@@ -58,9 +58,9 @@ function getBucket(score: number) {
 }
 
 const BUCKET_CFG = {
-  reach:  { label:'Амбиция',  sub:'Сложно, но мечта',      color:t1,   accent:'rgba(255,255,255,.06)' },
-  target: { label:'Таргет',   sub:'Реальный шанс',          color:t1,   accent:'rgba(255,255,255,.06)' },
-  safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:t1,   accent:'rgba(255,255,255,.06)' },
+  reach:  { label:'Амбиция',  sub:'Сложно, но мечта',      color:'#A78BFA' },
+  target: { label:'Таргет',   sub:'Реальный шанс',          color:'#6B8CFF' },
+  safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:'#3FB950' },
 }
 /* ── journey phases ── */
 function makePhases(profile: any) {
