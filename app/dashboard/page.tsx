@@ -530,6 +530,7 @@ const getVerdict = async (p: any) => {
   {id:'unis',     l:'Программы'},
   {id:'saved',    l:'Избранное'},
   {id:'timeline', l:'Таймлайн'},
+  {id:'settings', l:'Настройки'},
 ]
 
   return (
@@ -934,6 +935,139 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
         })()}
       </>
     )}
+  </div>
+)}
+{tab==='settings'&&(
+  <div style={{padding:'36px 40px',maxWidth:560}}>
+    <Mono style={{display:'block',marginBottom:12}}>НАСТРОЙКИ</Mono>
+    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:32}}>Профиль</h1>
+
+    {/* GPA */}
+    <div style={{marginBottom:28}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
+        <Mono>GPA</Mono>
+        <Mono style={{color:t1}}>{profile.gpa?.toFixed(1)} / 5</Mono>
+      </div>
+      <input type="range" min="2.5" max="5.0" step="0.1"
+        value={profile.gpa||4.0}
+        onChange={e=>setProfile((p:any)=>({...p,gpa:parseFloat(e.target.value)}))}
+        style={{width:'100%',height:2,background:'rgba(255,255,255,.1)',borderRadius:1,outline:'none',cursor:'pointer',appearance:'none',WebkitAppearance:'none'}}/>
+    </div>
+
+    <div style={{height:1,background:line,marginBottom:28}}/>
+
+    {/* IELTS */}
+    <div style={{marginBottom:28}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
+        <Mono>IELTS</Mono>
+        <Mono style={{color:profile.ielts>=6.5?grn:red}}>{profile.ielts?.toFixed(1)}</Mono>
+      </div>
+      <input type="range" min="4.0" max="9.0" step="0.5"
+        value={profile.ielts||6.5}
+        onChange={e=>setProfile((p:any)=>({...p,ielts:parseFloat(e.target.value)}))}
+        style={{width:'100%',height:2,background:'rgba(255,255,255,.1)',borderRadius:1,outline:'none',cursor:'pointer',appearance:'none',WebkitAppearance:'none'}}/>
+    </div>
+
+    <div style={{height:1,background:line,marginBottom:28}}/>
+
+    {/* Опыт работы */}
+    <div style={{marginBottom:28}}>
+      <Mono style={{display:'block',marginBottom:12}}>ОПЫТ РАБОТЫ</Mono>
+      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+        {[
+          {v:'no',  l:'Нет'},
+          {v:'some',l:'Немного — стажировка, проекты'},
+          {v:'yes', l:'Есть — 1+ год'},
+        ].map(o=>(
+          <div key={o.v} onClick={()=>setProfile((p:any)=>({...p,work:o.v}))}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:6,
+              background:profile.work===o.v?'rgba(255,255,255,.06)':'transparent',
+              borderLeft:`2px solid ${profile.work===o.v?t1:'transparent'}`,
+              cursor:'pointer',transition:'all .15s'}}>
+            <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
+              border:`1.5px solid ${profile.work===o.v?t1:t3}`,
+              background:profile.work===o.v?t1:'transparent'}}>
+              {profile.work===o.v&&<div style={{width:6,height:6,background:bg0,borderRadius:'50%',margin:'3px auto'}}/>}
+            </div>
+            <span style={{fontFamily:sans,fontSize:13,color:profile.work===o.v?t1:t2}}>{o.l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div style={{height:1,background:line,marginBottom:28}}/>
+
+    {/* Бюджет */}
+    <div style={{marginBottom:28}}>
+      <Mono style={{display:'block',marginBottom:12}}>БЮДЖЕТ</Mono>
+      <div style={{display:'flex',flexDirection:'column',gap:4}}>
+        {[
+          {v:'zero',l:'Только стипендия'},
+          {v:'low', l:'До €5 000 / год'},
+          {v:'mid', l:'До €15 000 / год'},
+          {v:'high',l:'Бюджет не проблема'},
+        ].map(o=>(
+          <div key={o.v} onClick={()=>setProfile((p:any)=>({...p,budget:o.v}))}
+            style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:6,
+              background:profile.budget===o.v?'rgba(255,255,255,.06)':'transparent',
+              borderLeft:`2px solid ${profile.budget===o.v?t1:'transparent'}`,
+              cursor:'pointer',transition:'all .15s'}}>
+            <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
+              border:`1.5px solid ${profile.budget===o.v?t1:t3}`,
+              background:profile.budget===o.v?t1:'transparent'}}>
+              {profile.budget===o.v&&<div style={{width:6,height:6,background:bg0,borderRadius:'50%',margin:'3px auto'}}/>}
+            </div>
+            <span style={{fontFamily:sans,fontSize:13,color:profile.budget===o.v?t1:t2}}>{o.l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div style={{height:1,background:line,marginBottom:28}}/>
+
+    {/* Страны */}
+    <div style={{marginBottom:28}}>
+      <Mono style={{display:'block',marginBottom:12}}>СТРАНЫ</Mono>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {[
+          {c:'de',l:'Германия'},{c:'nl',l:'Нидерланды'},{c:'se',l:'Швеция'},
+          {c:'fi',l:'Финляндия'},{c:'ch',l:'Швейцария'},{c:'fr',l:'Франция'},
+          {c:'at',l:'Австрия'},{c:'cz',l:'Чехия'},{c:'dk',l:'Дания'},
+          {c:'be',l:'Бельгия'},{c:'ie',l:'Ирландия'},{c:'it',l:'Италия'},
+          {c:'es',l:'Испания'},{c:'no',l:'Норвегия'},{c:'pl',l:'Польша'},
+        ].map(({c,l})=>{
+          const sel = (profile.countries||'').split(',').includes(c)
+          return (
+            <button key={c} onClick={()=>{
+              const curr = (profile.countries||'').split(',').filter(Boolean)
+              const next = sel ? curr.filter((x:string)=>x!==c) : [...curr,c]
+              setProfile((p:any)=>({...p,countries:next.join(',')}))
+            }} style={{fontFamily:sans,fontSize:12,padding:'6px 12px',borderRadius:4,
+              border:`1px solid ${sel?'rgba(255,255,255,.35)':line}`,
+              background:sel?'rgba(255,255,255,.08)':'transparent',
+              color:sel?t1:t2,cursor:'pointer',transition:'all .15s'}}>
+              {l}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+
+    {/* Сохранить */}
+    <button onClick={async()=>{
+      await supabase.from('profiles').update({
+        gpa: profile.gpa,
+        ielts: profile.ielts,
+        work: profile.work,
+        budget: profile.budget,
+        countries: profile.countries,
+      }).eq('user_id', profile.user_id)
+      alert('Сохранено!')
+    }} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
+      background:t1,color:bg0,fontFamily:sans,fontSize:13,
+      fontWeight:500,cursor:'pointer',letterSpacing:'-.01em'}}>
+      Сохранить изменения
+    </button>
   </div>
 )}
 {tab==='timeline'&&(
