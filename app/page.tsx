@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useState, useEffect } from 'react'
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:4px}
