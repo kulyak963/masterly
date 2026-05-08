@@ -338,6 +338,8 @@ const [programs, setPrograms] = useState<any[]>([])
 const [selectedProgram, setSelectedProgram] = useState<any>(null)
 const [verdict, setVerdict] = useState<any>(null)
 const [verdictLoading, setVerdictLoading] = useState(false)
+const [favorites, setFavorites] = useState<Set<string>>(new Set())
+const [compareList, setCompareList] = useState<string[]>([])
   useEffect(() => {
   const init = async () => {
     // ждём пока Supabase обработает хэш из URL
@@ -395,6 +397,14 @@ const filtered = data.filter(p =>
 )
         setPrograms(filtered)
       }
+    })
+}, [profile])
+useEffect(() => {
+  if (!profile) return
+  supabase.from('favorites').select('program_id')
+    .eq('user_id', profile.user_id)
+    .then(({ data }) => {
+      if (data) setFavorites(new Set(data.map((f:any) => f.program_id)))
     })
 }, [profile])
 
@@ -458,7 +468,29 @@ const unis = programs.map((p: any, i: number) => ({
   _score: calcScore(p, profile),
   _bucket: getBucket(calcScore(p, profile)),
 })).sort((a: any, b: any) => b._score - a._score)
+const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
+  e.stopPropagation()
+  const isFav = favorites.has(programId)
+  const next = new Set(favorites)
+  if (isFav) {
+    next.delete(programId)
+    await supabase.from('favorites').delete()
+      .eq('user_id', profile.user_id).eq('program_id', programId)
+  } else {
+    next.add(programId)
+    await supabase.from('favorites').insert({ user_id: profile.user_id, program_id: programId })
+  }
+  setFavorites(next)
+}
 
+const toggleCompare = (programId: string, e: React.MouseEvent) => {
+  e.stopPropagation()
+  setCompareList(prev =>
+    prev.includes(programId)
+      ? prev.filter(id => id !== programId)
+      : prev.length < 3 ? [...prev, programId] : prev
+  )
+}
 const getVerdict = async (p: any) => {
   setVerdict(null)
   setVerdictLoading(true)
@@ -493,11 +525,12 @@ const getVerdict = async (p: any) => {
 }
 
   const NAV = [
-    {id:'overview', l:'Обзор'},
-    {id:'journey',  l:'Journey'},
-    {id:'unis',     l:'Программы'},
-    {id:'timeline', l:'Таймлайн'},
-  ]
+  {id:'overview', l:'Обзор'},
+  {id:'journey',  l:'Journey'},
+  {id:'unis',     l:'Программы'},
+  {id:'saved',    l:'Избранное'},
+  {id:'timeline', l:'Таймлайн'},
+]
 
   return (
     <div style={{display:'flex',height:'100vh',background:bg0,fontFamily:sans,color:t1,overflow:'hidden'}}>
@@ -663,8 +696,8 @@ const getVerdict = async (p: any) => {
           <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
             {items.map((u:any,i:number)=>(
               <div key={u.id} onClick={()=>{setSelectedProgram(u);setVerdict(null)}}
-                className="hc" style={{display:'grid',gridTemplateColumns:'1fr 60px 110px 60px 70px',
-                padding:'16px 20px',alignItems:'center',cursor:'pointer',
+                className="hc" style={{display:'grid',gridTemplateColumns:'1fr 40px 60px 110px 60px 70px',
+padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 borderBottom:i<items.length-1?`1px solid ${line}`:'none',
                 background:selectedProgram?.id===u.id?'rgba(255,255,255,.04)':'transparent',
                 borderLeft:`2px solid ${selectedProgram?.id===u.id?cfg.color:'transparent'}`,
@@ -673,6 +706,12 @@ const getVerdict = async (p: any) => {
                   <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
                   <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
                   <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
+                  <button onClick={(e)=>toggleFavorite(u.id,e)}
+  style={{background:'none',border:'none',cursor:'pointer',padding:'4px',
+    color:favorites.has(u.id)?gold:t3,fontSize:16,transition:'color .15s',
+    justifySelf:'center'}}>
+  {favorites.has(u.id)?'♥':'♡'}
+</button>
                 </div>
                 <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
                   {u._country?.toUpperCase()}
@@ -790,7 +829,113 @@ const getVerdict = async (p: any) => {
     )}
   </div>
 )}
+{tab==='saved'&&(
+  <div style={{padding:'36px 40px'}}>
+    <Mono style={{display:'block',marginBottom:12}}>{favorites.size} ПРОГРАММ В ИЗБРАННОМ</Mono>
+    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:8}}>Избранное</h1>
 
+    {compareList.length>=2&&(
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24,
+        padding:'12px 16px',borderRadius:8,background:`${gold}0A`,border:`1px solid ${gold}30`}}>
+        <span style={{fontFamily:sans,fontSize:13,color:t2,flex:1}}>
+          Выбрано {compareList.length} программы для сравнения
+        </span>
+        <button onClick={()=>setCompareList([])}
+          style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:12,fontFamily:sans}}>
+          Сбросить
+        </button>
+      </div>
+    )}
+
+    {favorites.size===0?(
+      <div style={{padding:'40px 0',textAlign:'center'}}>
+        <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t3,marginBottom:8}}>Пусто</div>
+        <div style={{fontFamily:sans,fontSize:13,color:t3}}>Добавляй программы через ♡ в списке</div>
+      </div>
+    ):(
+      <>
+        <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden',marginBottom:24}}>
+          {unis.filter((u:any)=>favorites.has(u.id)).map((u:any,i:number,arr:any[])=>(
+            <div key={u.id}
+              style={{display:'grid',gridTemplateColumns:'1fr 40px 60px 110px 60px 70px',
+              padding:'16px 20px',alignItems:'center',cursor:'pointer',
+              borderBottom:i<arr.length-1?`1px solid ${line}`:'none',
+              background:compareList.includes(u.id)?'rgba(255,255,255,.04)':'transparent',
+              transition:'all .15s'}}
+              onClick={()=>{setSelectedProgram(u);setVerdict(null)}}>
+              <div>
+                <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
+                <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontFamily:mono,fontSize:9,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>
+                    {BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <button onClick={(e)=>toggleCompare(u.id,e)}
+                style={{background:'none',border:`1px solid ${compareList.includes(u.id)?gold:line}`,
+                  borderRadius:4,cursor:'pointer',padding:'4px 6px',
+                  color:compareList.includes(u.id)?gold:t3,fontSize:9,fontFamily:mono,
+                  transition:'all .15s',justifySelf:'center'}}>
+                {compareList.includes(u.id)?'✓':'сравн'}
+              </button>
+              <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
+                {u._country?.toUpperCase()}
+              </span>
+              <Mono style={{color:t2}}>{u._cost}</Mono>
+              <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
+              <button onClick={(e)=>toggleFavorite(u.id,e)}
+                style={{background:'none',border:'none',cursor:'pointer',color:gold,fontSize:16,padding:'4px'}}>♥</button>
+            </div>
+          ))}
+        </div>
+
+        {compareList.length>=2&&(()=>{
+          const compared = unis.filter((u:any)=>compareList.includes(u.id))
+          return (
+            <div>
+              <Mono style={{display:'block',marginBottom:16}}>СРАВНЕНИЕ</Mono>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead>
+                    <tr>
+                      <td style={{padding:'10px 16px',fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',borderBottom:`1px solid ${line}`}}>КРИТЕРИЙ</td>
+                      {compared.map((u:any)=>(
+                        <td key={u.id} style={{padding:'10px 16px',fontFamily:sans,fontSize:12,color:t1,fontWeight:500,borderBottom:`1px solid ${line}`,borderLeft:`1px solid ${line}`}}>
+                          {u._n}<br/><span style={{color:t3,fontSize:11,fontWeight:400}}>{u._p}</span>
+                        </td>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      {l:'Match Score', fn:(u:any)=><span style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>},
+                      {l:'Корзина',     fn:(u:any)=>BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].label},
+                      {l:'Стоимость',   fn:(u:any)=>u._cost},
+                      {l:'Рейтинг QS', fn:(u:any)=>u._rank},
+                      {l:'IELTS min',  fn:(u:any)=>u.ielts_min||'6.5'},
+                      {l:'Дедлайн',    fn:(u:any)=><span style={{color:u._days<30?red:t2}}>{u._days} дн.</span>},
+                      {l:'Страна',     fn:(u:any)=>u._country?.toUpperCase()},
+                    ].map((row,ri)=>(
+                      <tr key={ri}>
+                        <td style={{padding:'12px 16px',fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em',borderBottom:`1px solid ${line}`}}>{row.l}</td>
+                        {compared.map((u:any)=>(
+                          <td key={u.id} style={{padding:'12px 16px',fontFamily:sans,fontSize:13,color:t2,borderBottom:`1px solid ${line}`,borderLeft:`1px solid ${line}`}}>
+                            {row.fn(u)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
+      </>
+    )}
+  </div>
+)}
 {tab==='timeline'&&(
   <GanttTimeline profile={profile}/>
 )}
