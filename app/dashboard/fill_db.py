@@ -10,7 +10,7 @@ from supabase import create_client
 # ── настройки ──────────────────────────────────────────────
 SUPABASE_URL = "https://sffbsxwpnspwttofhdxd.supabase.co"
 SUPABASE_KEY = "sb_publishable_Ar_cfGVq4uNEW-dx-u87aw_Q9gYD3lJ"  # вставь свой anon key
-ANTHROPIC_KEY = "wf_Gd7M6e38wdQroIb61O0kB5WSe9C7gdEzXkxIKQFLT8tCksuR" # вставь свой API key с console.anthropic.com
+ANTHROPIC_KEY = "sk-cfebbee2344c14c0e646f3eca1e6d42a41bd56372561e4dc" # вставь свой API key с console.anthropic.com
  
 # ── 20 стран ──────────────────────────────────────────────
 COUNTRIES = [
@@ -152,7 +152,10 @@ def save_program(supabase, country_code: str, field: str, prog: dict) -> bool:
     return True
 
 def main():
-    client   = Anthropic(api_key=ANTHROPIC_KEY)
+    client = Anthropic(
+        api_key=ANTHROPIC_KEY,
+        base_url="https://api.vibecode-claude.online/v1"
+    )
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     total   = 0
@@ -171,7 +174,7 @@ def main():
 
             try:
                 msg = client.messages.create(
-                    model="claude-opus-4-5",
+                    model="claude-sonnet-4.6",
                     max_tokens=3000,
                     temperature=0.1,   # минимум фантазии
                     messages=[{
