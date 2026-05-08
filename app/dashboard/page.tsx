@@ -708,7 +708,7 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                   <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
                   <button onClick={(e)=>toggleFavorite(u.id,e)}
   style={{background:'none',border:'none',cursor:'pointer',padding:'4px',
-    color:favorites.has(u.id)?gold:t3,fontSize:16,transition:'color .15s',
+   color:favorites.has(u.id)?gold:'rgba(255,255,255,.25)',fontSize:16,transition:'color .15s',
     justifySelf:'center'}}>
   {favorites.has(u.id)?'♥':'♡'}
 </button>
