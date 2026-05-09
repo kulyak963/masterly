@@ -602,8 +602,8 @@ const getVerdict = async (p: any) => {
       </aside>
 
       {/* main */}
-     <main key={tab} style={{flex:1,overflowY:'auto',zIndex:5,paddingBottom:isMobile?80:0}}
-{isMobile&&(
+    <main key={tab} style={{flex:1,overflowY:'auto',zIndex:5,paddingBottom:isMobile?80:0}} className="fu">
+  {isMobile&&(
   <div style={{position:'sticky',top:0,zIndex:20,background:bg0,
     borderBottom:`1px solid ${line}`,padding:'14px 20px',
     display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -1099,6 +1099,39 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
   <GanttTimeline profile={profile}/>
 )}
       </main>
+      {isMobile&&(
+  <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,
+    background:'rgba(17,17,21,0.95)',backdropFilter:'blur(20px)',
+    borderTop:`1px solid ${line}`,
+    display:'flex',alignItems:'center',justifyContent:'space-around',
+    padding:'8px 0 20px',
+    boxShadow:'0 -8px 32px rgba(0,0,0,.4)'}}>
+    {[
+      {id:'overview', icon:'⊡', label:'Обзор'},
+      {id:'unis',     icon:'◫', label:'Программы'},
+      {id:'journey',  icon:'◈', label:'Journey'},
+      {id:'saved',    icon:'♡', label:'Избранное'},
+      {id:'settings', icon:'◎', label:'Профиль'},
+    ].map(n=>{
+      const isActive = tab===n.id
+      return (
+        <button key={n.id} onClick={()=>setTab(n.id)}
+          style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,
+            background:'none',border:'none',cursor:'pointer',padding:'6px 12px',
+            minWidth:56}}>
+          <span style={{fontSize:18,color:isActive?t1:t3,lineHeight:1,transition:'all .2s'}}>
+            {n.id==='saved'&&favorites.size>0?'♥':n.icon}
+          </span>
+          <span style={{fontFamily:mono,fontSize:8,letterSpacing:'0.06em',
+            color:isActive?t1:t3,transition:'color .2s'}}>
+            {n.label.toUpperCase()}
+          </span>
+          {isActive&&<div style={{width:16,height:2,background:t1,borderRadius:1}}/>}
+        </button>
+      )
+    })}
+  </nav>
+)}
     </div>
   )
 }
