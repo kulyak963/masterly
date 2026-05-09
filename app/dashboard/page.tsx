@@ -546,7 +546,7 @@ const toggleCompare = (programId: string, e: React.MouseEvent) => {
       : prev.length < 3 ? [...prev, programId] : prev
   )
 }
-const getVerdict = async (p: any) => {
+const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
   setVerdict(null)
   setVerdictLoading(true)
   try {
