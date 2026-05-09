@@ -1,7 +1,13 @@
+
+
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  baseURL: 'https://api.vibecode-claude.online/v1'
+})
+
 
 export async function POST(req: NextRequest) {
   const { program, profile } = await req.json()
@@ -15,7 +21,7 @@ export async function POST(req: NextRequest) {
 - Приоритеты: ${profile.quiz_vibe === 'research' ? 'сильная наука' : profile.quiz_vibe === 'startup' ? 'стартап-экосистема' : 'качество жизни'}
 - Хочет остаться в Европе: ${profile.quiz_stay === 'yes' ? 'да' : profile.quiz_stay === 'no' ? 'нет' : 'не решил'}
 - Главная боль: ${profile.pain}
-
+console.log("API KEY:", process.env.ANTHROPIC_API_KEY)
 ПРОГРАММА: ${program.name} в ${program.university_name}
 Стоимость: ${program.tuition_eur === 0 ? 'бесплатно' : `€${program.tuition_eur}/год`}
 IELTS минимум: ${program.ielts_min}
@@ -32,12 +38,23 @@ IELTS минимум: ${program.ielts_min}
 }`
 
   const msg = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-opus-4.7',
     max_tokens: 500,
     messages: [{ role: 'user', content: prompt }]
   })
 
+
   const text = (msg.content[0] as any).text.trim()
-  const json = JSON.parse(text)
-  return NextResponse.json(json)
+
+const start = text.indexOf('{')
+const end = text.lastIndexOf('}')
+
+if (start === -1 || end === -1) {
+  throw new Error('Invalid JSON response')
+}
+
+const cleanJson = text.slice(start, end + 1)
+const json = JSON.parse(cleanJson)
+
+return NextResponse.json(json)
 }

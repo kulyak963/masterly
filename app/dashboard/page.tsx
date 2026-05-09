@@ -427,24 +427,58 @@ useEffect(()=>{
   const style = document.createElement('style')
   style.textContent = `
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+    html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+    button,a{-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px}
+
     @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     @keyframes slideUpFull{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spring{0%{opacity:0;transform:translateY(20px) scale(.96)}60%{transform:translateY(-2px) scale(1.01)}100%{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes countUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 24px rgba(255,255,255,.06)}}
+
     .nb{transition:color .15s,background .15s;cursor:pointer}
     .nb:hover{color:#F2EFE9!important}
     .hr{transition:background .12s;cursor:pointer}
     .hc{transition:all .2s}
-    .fu{animation:tabIn .3s cubic-bezier(.22,.68,0,1.1) both}
-    .bnav-btn{transition:all .2s;-webkit-tap-highlight-color:transparent;user-select:none}
-    .bnav-btn:active{transform:scale(.92)}
-    .prog-card{transition:all .2s;-webkit-tap-highlight-color:transparent}
-    .prog-card:active{background:rgba(255,255,255,.06)!important}
+
+    .fu{animation:fadeUp .35s cubic-bezier(.22,.68,0,1.1) both}
+    .spring-in{animation:spring .5s cubic-bezier(.34,1.56,.64,1) both}
+
+    .tactile{transition:transform .12s cubic-bezier(.34,1.56,.64,1);user-select:none;-webkit-user-select:none}
+    .tactile:active{transform:scale(.96)}
+
+    .card-tactile{transition:all .25s cubic-bezier(.22,1,.36,1);user-select:none;-webkit-user-select:none}
+    .card-tactile:active{transform:scale(.985);background:rgba(255,255,255,.06)!important}
+
+    .stagger-1{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .04s both}
+    .stagger-2{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .08s both}
+    .stagger-3{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .12s both}
+    .stagger-4{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .16s both}
+    .stagger-5{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .20s both}
+    .stagger-6{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .24s both}
+    .stagger-7{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .28s both}
+    .stagger-8{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .32s both}
+
+    .hero-num{background:linear-gradient(180deg,#F2EFE9 0%,#A8A39B 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+    input[type="range"]::-webkit-slider-thumb{
+      appearance:none;width:22px;height:22px;border-radius:50%;
+      background:#F2EFE9;cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.5),0 0 0 4px rgba(242,239,233,.08);
+      transition:transform .15s
+    }
+    input[type="range"]::-webkit-slider-thumb:active{transform:scale(1.15)}
+    input[type="range"]::-moz-range-thumb{
+      width:22px;height:22px;border-radius:50%;border:none;
+      background:#F2EFE9;cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.5)
+    }
   `
   document.head.appendChild(style)
   return ()=>style.remove()
@@ -486,6 +520,9 @@ const unis = programs.map((p: any, i: number) => ({
   _score: calcScore(p, profile),
   _bucket: getBucket(calcScore(p, profile)),
 })).sort((a: any, b: any) => b._score - a._score)
+const haptic = (ms=8) => {
+  if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms)
+}
 const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
   e.stopPropagation()
   const isFav = favorites.has(programId)
@@ -1101,37 +1138,46 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
       </main>
       {isMobile&&(
   <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,
-    background:'rgba(17,17,21,0.95)',backdropFilter:'blur(20px)',
-    borderTop:`1px solid ${line}`,
+    background:'rgba(10,10,12,0.92)',backdropFilter:'blur(24px)',
+    WebkitBackdropFilter:'blur(24px)',
+    borderTop:'1px solid rgba(255,255,255,0.07)',
     display:'flex',alignItems:'center',justifyContent:'space-around',
-    padding:'8px 0 20px',
-    boxShadow:'0 -8px 32px rgba(0,0,0,.4)'}}>
+    padding:'10px 0 calc(12px + env(safe-area-inset-bottom))',
+    boxShadow:'0 -1px 0 rgba(255,255,255,.04),0 -20px 40px rgba(0,0,0,.6)'}}>
     {[
-      {id:'overview', icon:'⊡', label:'Обзор'},
-      {id:'unis',     icon:'◫', label:'Программы'},
-      {id:'journey',  icon:'◈', label:'Journey'},
-      {id:'saved',    icon:'♡', label:'Избранное'},
-      {id:'settings', icon:'◎', label:'Профиль'},
-    ].map(n=>{
+      {id:'overview', label:'Обзор',    icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>},
+      {id:'unis',     label:'Программы',icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/></svg>},
+      {id:'journey',  label:'Journey',  icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
+      {id:'saved',    label:'Избранное',icon:<svg width="22" height="22" viewBox="0 0 24 24" fill={tab==='saved'||favorites.size>0?"#C8A256":"none"} stroke={favorites.size>0?"#C8A256":"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>},
+      {id:'settings', label:'Профиль',  icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>},
+    ].map((n,idx)=>{
       const isActive = tab===n.id
       return (
-        <button key={n.id} onClick={()=>setTab(n.id)}
-          style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,
-            background:'none',border:'none',cursor:'pointer',padding:'6px 12px',
-            minWidth:56}}>
-          <span style={{fontSize:18,color:isActive?t1:t3,lineHeight:1,transition:'all .2s'}}>
-            {n.id==='saved'&&favorites.size>0?'♥':n.icon}
+        <button key={n.id} onClick={()=>{haptic();setTab(n.id)}}
+          className="tactile"
+          style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,
+            background:'none',border:'none',cursor:'pointer',
+            padding:'6px 14px',borderRadius:12,minWidth:60,
+            color:isActive?t1:'rgba(255,255,255,.3)',
+            transition:'color .2s'}}>
+          <div style={{
+            width:44,height:32,borderRadius:10,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            background:isActive?'rgba(255,255,255,.1)':'transparent',
+            transition:'all .25s cubic-bezier(.34,1.56,.64,1)',
+            transform:isActive?'scale(1.05)':'scale(1)'}}>
+            {n.icon}
+          </div>
+          <span style={{fontFamily:mono,fontSize:9,letterSpacing:'0.04em',
+            color:isActive?t1:'rgba(255,255,255,.3)',
+            fontWeight:isActive?500:400,
+            transition:'all .2s'}}>
+            {n.label}
           </span>
-          <span style={{fontFamily:mono,fontSize:8,letterSpacing:'0.06em',
-            color:isActive?t1:t3,transition:'color .2s'}}>
-            {n.label.toUpperCase()}
-          </span>
-          {isActive&&<div style={{width:16,height:2,background:t1,borderRadius:1}}/>}
         </button>
       )
     })}
   </nav>
-)}
-    </div>
+)}    </div>
   )
 }
