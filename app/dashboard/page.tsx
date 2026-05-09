@@ -340,7 +340,15 @@ const [verdict, setVerdict] = useState<any>(null)
 const [verdictLoading, setVerdictLoading] = useState(false)
 const [favorites, setFavorites] = useState<Set<string>>(new Set())
 const [compareList, setCompareList] = useState<string[]>([])
-  useEffect(() => {
+
+const [isMobile, setIsMobile] = useState(false)
+ useEffect(()=>{
+  const check = () => setIsMobile(window.innerWidth < 768)
+  check()
+  window.addEventListener('resize', check)
+  return () => window.removeEventListener('resize', check)
+},[]) 
+useEffect(() => {
   const init = async () => {
     // ждём пока Supabase обработает хэш из URL
 await new Promise(r => setTimeout(r, 100))
@@ -409,28 +417,38 @@ useEffect(() => {
 }, [profile])
 
   useEffect(()=>{
-    const style = document.createElement('style')
-    style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
-      *{box-sizing:border-box;margin:0;padding:0}
-      html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
-      ::-webkit-scrollbar{width:4px}
-      ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px}
-      @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-      @keyframes slideUp{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-      .nb{transition:color .15s,background .15s;cursor:pointer}
-      .nb:hover{color:#F2EFE9!important}
-      .hr{transition:background .12s;cursor:pointer}
-      .hr:hover{background:rgba(255,255,255,.035)!important}
-      .hc{transition:border-color .15s}
-      .hc:hover{border-color:rgba(255,255,255,.16)!important;cursor:pointer}
-      .fu{animation:fadeUp .45s cubic-bezier(.22,.68,0,1.1) both}
-    `
-    document.head.appendChild(style)
-    return ()=>style.remove()
-  },[])
+  const check = () => setIsMobile(window.innerWidth < 768)
+  check()
+  window.addEventListener('resize', check)
+  return () => window.removeEventListener('resize', check)
+},[])
+
+useEffect(()=>{
+  const style = document.createElement('style')
+  style.textContent = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px}
+    @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideUpFull{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .nb{transition:color .15s,background .15s;cursor:pointer}
+    .nb:hover{color:#F2EFE9!important}
+    .hr{transition:background .12s;cursor:pointer}
+    .hc{transition:all .2s}
+    .fu{animation:tabIn .3s cubic-bezier(.22,.68,0,1.1) both}
+    .bnav-btn{transition:all .2s;-webkit-tap-highlight-color:transparent;user-select:none}
+    .bnav-btn:active{transform:scale(.92)}
+    .prog-card{transition:all .2s;-webkit-tap-highlight-color:transparent}
+    .prog-card:active{background:rgba(255,255,255,.06)!important}
+  `
+  document.head.appendChild(style)
+  return ()=>style.remove()
+},[])
 
   if(loading) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -542,7 +560,7 @@ const getVerdict = async (p: any) => {
         backgroundRepeat:'repeat',backgroundSize:'128px',opacity:.6}}/>
 
       {/* sidebar */}
-      <aside style={{width:200,borderRight:`1px solid ${line}`,display:'flex',flexDirection:'column',flexShrink:0,background:bg1,zIndex:10}}>
+      <aside style={{width:200,borderRight:`1px solid ${line}`,display:isMobile?'none':'flex',flexDirection:'column',flexShrink:0,background:bg1,zIndex:10}}>
         <div style={{padding:'22px 18px 18px',borderBottom:`1px solid ${line}`}}>
           <div style={{fontFamily:serif,fontStyle:'italic',fontSize:19,color:t1,letterSpacing:'-.01em',marginBottom:3}}>Masterly</div>
           <Mono>ПАНЕЛЬ УПРАВЛЕНИЯ</Mono>
@@ -584,8 +602,15 @@ const getVerdict = async (p: any) => {
       </aside>
 
       {/* main */}
-      <main key={tab} style={{flex:1,overflowY:'auto',zIndex:5}} className="fu">
-
+     <main key={tab} style={{flex:1,overflowY:'auto',zIndex:5,paddingBottom:isMobile?80:0}}
+{isMobile&&(
+  <div style={{position:'sticky',top:0,zIndex:20,background:bg0,
+    borderBottom:`1px solid ${line}`,padding:'14px 20px',
+    display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+    <div style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:t1}}>Mastersly</div>
+    <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em'}}>{score}% ГОТОВНОСТЬ</div>
+  </div>
+)}
         {/* ══ ОБЗОР ══ */}
         {tab==='overview'&&(
           <div style={{padding:'36px 40px'}}>
