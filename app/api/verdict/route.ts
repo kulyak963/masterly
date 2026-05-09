@@ -10,6 +10,7 @@ const client = new Anthropic({
 
 
 export async function POST(req: NextRequest) {
+    console.log("КНОПКА ДОШЛА ДО СЕРВЕРА")
   const { program, profile } = await req.json()
 
   const prompt = `Ты помогаешь студенту понять подходит ли ему магистерская программа.
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
 - Приоритеты: ${profile.quiz_vibe === 'research' ? 'сильная наука' : profile.quiz_vibe === 'startup' ? 'стартап-экосистема' : 'качество жизни'}
 - Хочет остаться в Европе: ${profile.quiz_stay === 'yes' ? 'да' : profile.quiz_stay === 'no' ? 'нет' : 'не решил'}
 - Главная боль: ${profile.pain}
-console.log("API KEY:", process.env.ANTHROPIC_API_KEY)
+
 ПРОГРАММА: ${program.name} в ${program.university_name}
 Стоимость: ${program.tuition_eur === 0 ? 'бесплатно' : `€${program.tuition_eur}/год`}
 IELTS минимум: ${program.ielts_min}
