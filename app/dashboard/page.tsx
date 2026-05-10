@@ -737,10 +737,9 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
         )}
 
         {/* ══ JOURNEY ══ */}
-        
-  {tab==='journey'&&(
+        {tab==='journey'&&(
   <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
-    <Roadmap profile={profile} taskDone={taskDone} onToggle={toggleTask}/>
+   <Roadmap profile={profile} taskDone={taskDone} onToggle={toggleTask}/>
   </div>
 )}
 
@@ -883,11 +882,14 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                 border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none'}}>
               Найти на сайте вуза →
             </a>
-           {isMobile&&(
+            {isMobile&&(
   <button onClick={()=>setSelectedProgram(null)}
-    style={{position:'sticky',bottom:0,width:'100%',marginTop:20,padding:'16px',
-      background:bg1,border:'none',borderTop:`1px solid ${line}`,
-      color:t2,fontFamily:sans,fontSize:14,cursor:'pointer'}}>
+    style={{position:'sticky',bottom:0,left:0,right:0,
+      width:'100%',marginTop:20,padding:'16px',
+      background:`linear-gradient(to top, ${bg1} 80%, transparent)`,
+      border:'none',borderTop:`1px solid ${line}`,
+      color:t2,fontFamily:sans,fontSize:14,cursor:'pointer',
+      letterSpacing:'-.01em'}}>
     Закрыть
   </button>
 )}
