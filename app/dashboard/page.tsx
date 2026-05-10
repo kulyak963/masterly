@@ -1,6 +1,6 @@
 'use client'
 import Roadmap from './Roadmap'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import Timeline from './Timeline'
 import GanttTimeline from './GanttTimeline'
@@ -342,6 +342,9 @@ const [favorites, setFavorites] = useState<Set<string>>(new Set())
 const [compareList, setCompareList] = useState<string[]>([])
 
 const [isMobile, setIsMobile] = useState(false)
+const [dragY, setDragY] = useState(0)
+const [dragging, setDragging] = useState(false)
+const dragStart = useRef(0)
  useEffect(()=>{
   const check = () => setIsMobile(window.innerWidth < 768)
   check()
@@ -795,9 +798,14 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
           zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',
           padding:24,backdropFilter:'blur(4px)'}}>
         <div onClick={e=>e.stopPropagation()}
-          style={{width:'100%',maxWidth:520,maxHeight:'85vh',overflowY:'auto',
-            background:bg1,borderRadius:12,border:`1px solid ${line}`,
-            animation:'slideUp .3s ease both'}}>
+        onTouchStart={e=>{dragStart.current=e.touches[0].clientY;setDragging(true)}}
+onTouchMove={e=>{const dy=e.touches[0].clientY-dragStart.current;if(dy>0)setDragY(dy)}}
+onTouchEnd={()=>{if(dragY>120){setSelectedProgram(null);setDragY(0)}else setDragY(0);setDragging(false)}}
+          style={{width:'100%',maxWidth:isMobile?'100%':520,maxHeight:isMobile?'92vh':'85vh',overflowY:'auto',
+background:bg1,borderRadius:isMobile?'20px 20px 0 0':12,border:`1px solid ${line}`,
+animation:isMobile?'slideUpFull .35s cubic-bezier(.22,.68,0,1.1) both':'slideUp .3s ease both',
+transform:dragY>0?`translateY(${dragY}px)`:'none',
+transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
           <div style={{padding:'28px 32px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
               <div>
@@ -874,6 +882,17 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none'}}>
               Найти на сайте вуза →
             </a>
+            {isMobile&&(
+  <button onClick={()=>setSelectedProgram(null)}
+    style={{position:'sticky',bottom:0,left:0,right:0,
+      width:'100%',marginTop:20,padding:'16px',
+      background:`linear-gradient(to top, ${bg1} 80%, transparent)`,
+      border:'none',borderTop:`1px solid ${line}`,
+      color:t2,fontFamily:sans,fontSize:14,cursor:'pointer',
+      letterSpacing:'-.01em'}}>
+    Закрыть
+  </button>
+)}
             {verdict&&(
               <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
                 <div style={{height:1,background:line,marginBottom:20}}/>

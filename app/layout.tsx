@@ -19,7 +19,12 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   display: "swap",
 });
-
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 export const metadata: Metadata = {
   title: "Mastersly — магистратура в Европе",
   description: "Персональный гид поступления в европейскую магистратуру. Шортлист программ, дедлайны стипендий и roadmap за 3 минуты.",
