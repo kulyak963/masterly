@@ -523,6 +523,7 @@ const unis = programs.map((p: any, i: number) => ({
 const haptic = (ms=8) => {
   if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms)
 }
+
 const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
   e.stopPropagation()
   const isFav = favorites.has(programId)

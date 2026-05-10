@@ -59,7 +59,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `https://masterly-topaz.vercel.app/dashboard`,
+        redirectTo: `https://mastersly.ru/dashboard`,
       },
     })
     if (error) { setError(error.message); setLoading(false) }
@@ -72,7 +72,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: 'https://masterly-topaz.vercel.app/dashboard',
+        emailRedirectTo: 'https://mastersly.ru/dashboard',
       },
     })
     if (error) { setError(error.message); setLoading(false) }
