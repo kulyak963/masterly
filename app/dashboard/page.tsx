@@ -354,7 +354,7 @@ const dragStart = useRef(0)
 useEffect(() => {
   const init = async () => {
     // ждём пока Supabase обработает хэш из URL
-await new Promise(r => setTimeout(r, 100))
+await new Promise(r => setTimeout(r, 300))
 const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       window.location.href = '/login'
