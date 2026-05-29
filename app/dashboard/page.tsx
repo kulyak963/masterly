@@ -423,13 +423,6 @@ useEffect(() => {
     })
 }, [profile])
 
-  useEffect(()=>{
-  const check = () => setIsMobile(window.innerWidth < 768)
-  check()
-  window.addEventListener('resize', check)
-  return () => window.removeEventListener('resize', check)
-},[])
-
 useEffect(()=>{
   const style = document.createElement('style')
   style.textContent = `

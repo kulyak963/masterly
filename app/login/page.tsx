@@ -59,7 +59,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `https://mastersly.ru/dashboard`,
+        redirectTo: `${window.location.origin}/dashboard`,
       },
     })
     if (error) { setError(error.message); setLoading(false) }
@@ -72,7 +72,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: 'https://mastersly.ru/dashboard',
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     })
     if (error) { setError(error.message); setLoading(false) }
