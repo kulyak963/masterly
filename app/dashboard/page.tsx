@@ -352,43 +352,43 @@ const dragStart = useRef(0)
   return () => window.removeEventListener('resize', check)
 },[]) 
 useEffect(() => {
-  const init = async () => {
-    // ждём пока Supabase обработает хэш из URL
-await new Promise(r => setTimeout(r, 300))
-const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      window.location.href = '/login'
+  const loadProfile = async (session: any) => {
+    const saved = localStorage.getItem('masterly_profile')
+    if (saved) {
+      const savedProfile = JSON.parse(saved)
+      await supabase.from('profiles').upsert({
+        ...savedProfile,
+        user_id: session.user.id,
+      }, { onConflict: 'user_id' })
+      localStorage.removeItem('masterly_profile')
+    }
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    if (!data) {
+      window.location.href = '/'
       return
     }
-    // если есть сохранённый профиль из онбординга — записываем с user_id
-const saved = localStorage.getItem('masterly_profile')
-if(saved) {
-  const profile = JSON.parse(saved)
-  await supabase.from('profiles').upsert({
-  ...profile,
-  user_id: session.user.id,
-}, { onConflict: 'user_id' })
-  localStorage.removeItem('masterly_profile')
-}
-    const { data } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('user_id', session.user.id)
-  .order('created_at', { ascending: false })
-  .limit(1)
-  .single()
-   if(!data) {
-  const saved = localStorage.getItem('masterly_profile')
-  if(!saved) {
-    window.location.href = '/'
-  }
-  return
-}
-setProfile(data)
+    setProfile(data)
     if (data?.tasks_done) setTaskDone(data.tasks_done)
     setLoading(false)
   }
-  init()
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+      if (!session) {
+        window.location.href = '/login'
+        return
+      }
+      await loadProfile(session)
+    }
+  })
+
+  return () => subscription.unsubscribe()
 }, [])
  
 useEffect(() => {
