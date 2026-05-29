@@ -353,38 +353,42 @@ const dragStart = useRef(0)
 },[]) 
 useEffect(() => {
   const loadProfile = async (session: any) => {
-    const saved = localStorage.getItem('masterly_profile')
-    if (saved) {
-      const savedProfile = JSON.parse(saved)
-      await supabase.from('profiles').upsert({
-        ...savedProfile,
-        user_id: session.user.id,
-      }, { onConflict: 'user_id' })
-      localStorage.removeItem('masterly_profile')
+    try {
+      const saved = localStorage.getItem('masterly_profile')
+      if (saved) {
+        const savedProfile = JSON.parse(saved)
+        await supabase.from('profiles').upsert({
+          ...savedProfile,
+          user_id: session.user.id,
+        }, { onConflict: 'user_id' })
+        localStorage.removeItem('masterly_profile')
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (error || !data) {
+        window.location.href = '/'
+        return
+      }
+      setProfile(data)
+      if (data?.tasks_done) setTaskDone(data.tasks_done)
+      setLoading(false)
+    } catch {
+      window.location.href = '/login'
     }
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-    if (!data) {
-      window.location.href = '/'
-      return
-    }
-    setProfile(data)
-    if (data?.tasks_done) setTaskDone(data.tasks_done)
-    setLoading(false)
   }
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
       if (!session) {
         window.location.href = '/login'
         return
       }
-      await loadProfile(session)
+      loadProfile(session)
     }
   })
 
