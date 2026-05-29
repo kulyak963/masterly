@@ -363,13 +363,21 @@ useEffect(() => {
         }, { onConflict: 'user_id' })
         localStorage.removeItem('masterly_profile')
       }
+
+      const abort = new AbortController()
+      const timer = setTimeout(() => abort.abort(), 8000)
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(1)
+        .abortSignal(abort.signal)
         .single()
+
+      clearTimeout(timer)
+
       if (error || !data) {
         window.location.href = '/'
         return
