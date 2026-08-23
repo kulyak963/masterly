@@ -14,7 +14,7 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes kenburns{from{transform:scale(1.02) translateY(0)}to{transform:scale(1.11) translateY(-1.5%)}}
 @keyframes heroUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
 @keyframes cycleFade{0%{opacity:0}3%{opacity:1}17%{opacity:1}20%{opacity:0}100%{opacity:0}}
-@keyframes cycleZoom{0%{transform:scale(1.04)}20%{transform:scale(1.12)}100%{transform:scale(1.12)}}
+@keyframes cycleZoom{0%{transform:scale(1.02)}20%{transform:scale(1.08)}100%{transform:scale(1.08)}}
 .cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
 .up{animation:up .5s cubic-bezier(.22,.68,0,1.1) both}
 .in{animation:in .4s ease both}
@@ -136,18 +136,18 @@ const CITY_SHOTS = [
   {c:'fi',city:'Хельсинки',img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=440&q=65'},
 ]
 
-// крупные фоны для hero/баннеров — правильное разрешение (без апскейла), но лёгкие: ~60-120кб/фото
+// крупные фоны для hero/баннеров — 2200px, чтобы не мылило на десктопе и после зума
 const CITY_LARGE = [
-  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1100&q=56'},
-  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=1100&q=56'},
-  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=1100&q=56'},
-  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=1100&q=56'},
-  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2200&q=58'},
+  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=2200&q=58'},
+  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=2200&q=58'},
+  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=2200&q=58'},
+  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=2200&q=58'},
 ]
 
 const tog = (a: string[], v: string) => a.includes(v) ? a.filter(x => x !== v) : [...a, v]
 
-const CYCLE_SLOT = 5 // секунд на фото
+const CYCLE_SLOT = 6 // секунд на фото
 function PhotoCycler({images,offset=0}: {images:{img:string,city?:string}[],offset?:number}) {
   const total = images.length * CYCLE_SLOT
   return (
@@ -155,7 +155,7 @@ function PhotoCycler({images,offset=0}: {images:{img:string,city?:string}[],offs
       {images.map((im,i)=>(
         <div key={i} className="cycle-layer" style={{
           backgroundImage:`url(${im.img})`,
-          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-in-out infinite`,
+          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-out infinite`,
           animationDelay:`${-((i+offset)%images.length)*CYCLE_SLOT}s`,
         }}/>
       ))}
