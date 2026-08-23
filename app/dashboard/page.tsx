@@ -184,7 +184,7 @@ function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string
     <div style={{padding:'32px 40px'}}>
       <div style={{marginBottom:24}}>
         <Mono style={{display:'block',marginBottom:10}}>ТВОЙ ПУТЬ К ПОСТУПЛЕНИЮ</Mono>
-        <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:12}}>
+        <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:12}}>
           Journey Map
         </h1>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
