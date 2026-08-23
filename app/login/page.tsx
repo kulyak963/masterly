@@ -15,14 +15,11 @@ const serif = "'Fraunces', serif"
 const mono = "'Space Mono', monospace"
 
 const CITY_SHOTS = [
-  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=1920&q=70'},
-  {img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=1100&q=56'},
 ]
 const CYCLE_SLOT = 5
 function PhotoCycler() {
@@ -45,8 +42,8 @@ const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes cycleFade{0%{opacity:0}3%{opacity:1}10%{opacity:1}12.5%{opacity:0}100%{opacity:0}}
-@keyframes cycleZoom{0%{transform:scale(1.05)}12.5%{transform:scale(1.16)}100%{transform:scale(1.16)}}
+@keyframes cycleFade{0%{opacity:0}3%{opacity:1}17%{opacity:1}20%{opacity:0}100%{opacity:0}}
+@keyframes cycleZoom{0%{transform:scale(1.04)}20%{transform:scale(1.12)}100%{transform:scale(1.12)}}
 .cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
 .up{animation:fadeUp .5s cubic-bezier(.22,.68,0,1.1) both}
 .btn{transition:all .18s;cursor:pointer}

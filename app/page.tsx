@@ -13,8 +13,8 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes kenburns{from{transform:scale(1.02) translateY(0)}to{transform:scale(1.11) translateY(-1.5%)}}
 @keyframes heroUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
-@keyframes cycleFade{0%{opacity:0}3%{opacity:1}10%{opacity:1}12.5%{opacity:0}100%{opacity:0}}
-@keyframes cycleZoom{0%{transform:scale(1.05)}12.5%{transform:scale(1.16)}100%{transform:scale(1.16)}}
+@keyframes cycleFade{0%{opacity:0}3%{opacity:1}17%{opacity:1}20%{opacity:0}100%{opacity:0}}
+@keyframes cycleZoom{0%{transform:scale(1.04)}20%{transform:scale(1.12)}100%{transform:scale(1.12)}}
 .cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
 .up{animation:up .5s cubic-bezier(.22,.68,0,1.1) both}
 .in{animation:in .4s ease both}
@@ -124,15 +124,25 @@ const PAINS = [
   {id:'worth',  l:'Не уверен что оно того стоит',s:'Сомневаюсь в правильности выбора'},
 ]
 
+// маленькие превью — филмстрип и карточки стран (лёгкие, ~15-25кб каждая)
 const CITY_SHOTS = [
-  {c:'fr',city:'Париж',    img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=500&q=70'},
-  {c:'de',city:'Берлин',   img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=500&q=70'},
-  {c:'cz',city:'Прага',    img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=500&q=70'},
-  {c:'nl',city:'Амстердам',img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=500&q=70'},
-  {c:'at',city:'Вена',     img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=500&q=70'},
-  {c:'se',city:'Стокгольм',img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=500&q=70'},
-  {c:'ch',city:'Цюрих',    img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=500&q=70'},
-  {c:'fi',city:'Хельсинки',img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=500&q=70'},
+  {c:'fr',city:'Париж',    img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=440&q=65'},
+  {c:'de',city:'Берлин',   img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=440&q=65'},
+  {c:'cz',city:'Прага',    img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=440&q=65'},
+  {c:'nl',city:'Амстердам',img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=440&q=65'},
+  {c:'at',city:'Вена',     img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=440&q=65'},
+  {c:'se',city:'Стокгольм',img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=440&q=65'},
+  {c:'ch',city:'Цюрих',    img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=440&q=65'},
+  {c:'fi',city:'Хельсинки',img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=440&q=65'},
+]
+
+// крупные фоны для hero/баннеров — правильное разрешение (без апскейла), но лёгкие: ~60-120кб/фото
+const CITY_LARGE = [
+  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=1100&q=56'},
+  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=1100&q=56'},
 ]
 
 const tog = (a: string[], v: string) => a.includes(v) ? a.filter(x => x !== v) : [...a, v]
@@ -234,7 +244,7 @@ function Shell({children,step,total}: {children:React.ReactNode,step:number,tota
       <div style={{position:'fixed',top:0,left:0,right:0,height:280,zIndex:0,pointerEvents:'none',
         opacity:.18,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
         WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
-        <PhotoCycler images={CITY_SHOTS}/>
+        <PhotoCycler images={CITY_LARGE}/>
       </div>
       <div style={{position:'absolute',top:28,left:'50%',transform:'translateX(-50%)',fontFamily:serif,fontWeight:700,fontSize:17,color:t1,zIndex:1,letterSpacing:'-.01em'}}>
         Mastersly
@@ -304,7 +314,7 @@ setStep((s:any)=> s+1)
 
       {/* hero photo — cycles through European capitals */}
       <div style={{position:'absolute',inset:0,zIndex:0}}>
-        <PhotoCycler images={CITY_SHOTS}/>
+        <PhotoCycler images={CITY_LARGE}/>
       </div>
 
       {/* scrims for legibility */}
@@ -757,7 +767,7 @@ setStep((s:any)=> s+1)
         <div style={{position:'fixed',top:0,left:0,right:0,height:340,zIndex:0,pointerEvents:'none',
           opacity:.22,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
           WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
-          <PhotoCycler images={CITY_SHOTS} offset={3}/>
+          <PhotoCycler images={CITY_LARGE} offset={3}/>
         </div>
         <div style={{width:'100%',maxWidth:460,zIndex:1}} className="up">
 
