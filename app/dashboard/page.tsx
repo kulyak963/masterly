@@ -17,9 +17,9 @@ const blue = '#6B8CFF'
 const red = '#E5534B'
 const grn = '#3FB950'
 const purp = '#A78BFA'
-const sans = "'Geist', sans-serif"
-const serif = "'Instrument Serif', serif"
-const mono = "'Geist Mono', monospace"
+const sans = "'Manrope', sans-serif"
+const serif = "'Fraunces', serif"
+const mono = "'Space Mono', monospace"
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -501,7 +501,7 @@ useEffect(()=>{
   if(!profile) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center'}}>
-        <div style={{fontFamily:serif,fontStyle:'italic',fontSize:24,color:t1,marginBottom:12}}>Профиль не найден</div>
+        <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:24,color:t1,marginBottom:12}}>Профиль не найден</div>
         <a href="/" style={{fontFamily:sans,fontSize:13,color:t2,textDecoration:'none'}}>Пройти онбординг →</a>
       </div>
     </div>
@@ -608,7 +608,7 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
       {/* sidebar */}
       <aside style={{width:200,borderRight:`1px solid ${line}`,display:isMobile?'none':'flex',flexDirection:'column',flexShrink:0,background:bg1,zIndex:10}}>
         <div style={{padding:'22px 18px 18px',borderBottom:`1px solid ${line}`}}>
-          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:19,color:t1,letterSpacing:'-.01em',marginBottom:3}}>Masterly</div>
+          <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:19,color:t1,letterSpacing:'-.01em',marginBottom:3}}>Mastersly</div>
           <Mono>ПАНЕЛЬ УПРАВЛЕНИЯ</Mono>
         </div>
         <div style={{padding:'10px',flex:1}}>
@@ -653,7 +653,7 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
   <div style={{position:'sticky',top:0,zIndex:20,background:bg0,
     borderBottom:`1px solid ${line}`,padding:'14px 20px',
     display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-    <div style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:t1}}>Mastersly</div>
+    <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:18,color:t1}}>Mastersly</div>
     <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em'}}>{score}% ГОТОВНОСТЬ</div>
   </div>
 )}
@@ -661,7 +661,7 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
         {tab==='overview'&&(
           <div style={{padding:'36px 40px'}}>
             <div style={{marginBottom:28}}>
-              <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:34,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:6}}>
+              <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:36,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:6}}>
                 Привет, {name}
               </h1>
               <Mono style={{color:t2}}>
@@ -679,7 +679,7 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
               ].map((s,i)=>(
                 <div key={i} style={{padding:'18px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                   <Mono style={{display:'block',marginBottom:8}}>{s.l}</Mono>
-                  <div style={{fontFamily:serif,fontStyle:'italic',fontSize:28,color:s.warn?red:t1,fontWeight:400,letterSpacing:'-.02em'}}>
+                  <div style={{fontFamily:serif,fontStyle:'normal',fontSize:28,color:s.warn?red:t1,fontWeight:800,letterSpacing:'-.02em'}}>
                     {s.v}
                   </div>
                 </div>
@@ -753,7 +753,7 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
 {tab==='unis'&&(
   <div style={{padding:'36px 40px'}}>
     <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:28}}>Программы</h1>
+    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:28}}>Программы</h1>
     {(['reach','target','safety'] as const).map(bucket => {
       const items = unis.filter((u:any) => u._bucket === bucket)
       if (!items.length) return null
@@ -817,7 +817,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                 <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.14em',color:t3,marginBottom:8}}>
                   {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · MATCH {selectedProgram._score}
                 </div>
-                <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:24,color:t1,fontWeight:400,letterSpacing:'-.01em',lineHeight:1.2,marginBottom:4}}>
+                <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:24,color:t1,fontWeight:700,letterSpacing:'-.02em',lineHeight:1.2,marginBottom:4}}>
                   {selectedProgram._p}
                 </h2>
                 <div style={{fontFamily:sans,fontSize:13,color:t2}}>{selectedProgram._n}</div>
@@ -920,7 +920,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 {tab==='saved'&&(
   <div style={{padding:'36px 40px'}}>
     <Mono style={{display:'block',marginBottom:12}}>{favorites.size} ПРОГРАММ В ИЗБРАННОМ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:8}}>Избранное</h1>
+    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:8}}>Избранное</h1>
 
     {compareList.length>=2&&(
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24,
@@ -1027,7 +1027,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 {tab==='settings'&&(
   <div style={{padding:'36px 40px',maxWidth:560}}>
     <Mono style={{display:'block',marginBottom:12}}>НАСТРОЙКИ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,fontWeight:400,letterSpacing:'-.02em',marginBottom:32}}>Профиль</h1>
+    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:32}}>Профиль</h1>
 
     {/* GPA */}
     <div style={{marginBottom:28}}>

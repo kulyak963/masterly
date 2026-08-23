@@ -9,30 +9,59 @@ const t2 = '#7A7670'
 const t3 = '#3D3B38'
 const blue = '#6B8CFF'
 const grn = '#3FB950'
-const sans = "'Geist', sans-serif"
-const serif = "'Instrument Serif', serif"
-const mono = "'Geist Mono', monospace"
+const gold = '#C8A256'
+const sans = "'Manrope', sans-serif"
+const serif = "'Fraunces', serif"
+const mono = "'Space Mono', monospace"
+
+const CITY_SHOTS = [
+  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=1920&q=70'},
+  {img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=1920&q=70'},
+]
+const CYCLE_SLOT = 5
+function PhotoCycler() {
+  const total = CITY_SHOTS.length * CYCLE_SLOT
+  return (
+    <div style={{position:'fixed',inset:0,zIndex:0,overflow:'hidden'}}>
+      {CITY_SHOTS.map((im,i)=>(
+        <div key={i} className="cycle-layer" style={{
+          backgroundImage:`url(${im.img})`,
+          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-in-out infinite`,
+          animationDelay:`${-i*CYCLE_SLOT}s`,
+        }}/>
+      ))}
+    </div>
+  )
+}
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes grain{0%,100%{transform:translate(0,0)}50%{transform:translate(-1%,.5%)}}
+@keyframes cycleFade{0%{opacity:0}3%{opacity:1}10%{opacity:1}12.5%{opacity:0}100%{opacity:0}}
+@keyframes cycleZoom{0%{transform:scale(1.05)}12.5%{transform:scale(1.16)}100%{transform:scale(1.16)}}
+.cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
 .up{animation:fadeUp .5s cubic-bezier(.22,.68,0,1.1) both}
 .btn{transition:all .18s;cursor:pointer}
 .btn:hover{opacity:.85;transform:translateY(-1px)}
 .btn:active{transform:scale(.97)}
 input[type=email]{
-  font-family:'Geist',sans-serif;font-size:15px;
+  font-family:'Manrope',sans-serif;font-size:15px;
   color:#F2EFE9;caret-color:#F2EFE9;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
   border-radius:8px;padding:13px 16px;width:100%;
   outline:none;transition:border-color .2s;letter-spacing:-.01em;
 }
-input:focus{border-color:rgba(255,255,255,.3)}
-input::placeholder{color:rgba(242,239,233,.2)}
+input:focus{border-color:rgba(255,255,255,.35)}
+input::placeholder{color:rgba(242,239,233,.25)}
 `
 
 export default function LoginPage() {
@@ -86,37 +115,43 @@ export default function LoginPage() {
       padding:'40px 20px', position:'relative', overflow:'hidden',
       fontFamily:sans,
     }}>
-      {/* grain */}
+      {/* photo backdrop — cycles through European capitals */}
+      <PhotoCycler/>
+      <div style={{ position:'fixed', inset:0, zIndex:0,
+        background:'linear-gradient(180deg, rgba(6,6,8,.55) 0%, rgba(6,6,8,.72) 55%, #0A0A0C 100%)' }}/>
       <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0,
         backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-        backgroundRepeat:'repeat', backgroundSize:'128px',
-        animation:'grain 8s steps(1) infinite', opacity:.6 }}/>
+        backgroundRepeat:'repeat', backgroundSize:'128px', opacity:.5 }}/>
 
       <div style={{ width:'100%', maxWidth:400, zIndex:1 }} className="up">
 
         {/* logo */}
         <div style={{ textAlign:'center', marginBottom:40 }}>
-          <div style={{ fontFamily:serif, fontStyle:'italic', fontSize:32,
-            color:t1, letterSpacing:'-.02em', marginBottom:8 }}>
-            Masterly
+          <div style={{ fontFamily:serif, fontStyle:'normal', fontWeight:800, fontSize:34,
+            color:t1, letterSpacing:'-.03em', marginBottom:8,
+            textShadow:'0 4px 24px rgba(0,0,0,.4)' }}>
+            Mastersly
           </div>
-          <p style={{ fontFamily:sans, fontSize:14, color:t2,
+          <p style={{ fontFamily:sans, fontSize:14, color:'rgba(242,239,233,.8)',
             fontWeight:300, lineHeight:1.6 }}>
             Персональный план поступления<br/>в европейскую магистратуру
           </p>
         </div>
 
         {!sent ? (
-          <div style={{ background:'#111115', border:`1px solid ${line}`,
-            borderRadius:12, overflow:'hidden' }}>
+          <div style={{ background:'rgba(17,17,21,.72)', backdropFilter:'blur(20px)',
+            WebkitBackdropFilter:'blur(20px)',
+            border:`1px solid rgba(255,255,255,.12)`,
+            borderRadius:14, overflow:'hidden',
+            boxShadow:'0 24px 64px rgba(0,0,0,.5)' }}>
 
             {/* header */}
             <div style={{ padding:'24px 28px 20px',
               borderBottom:`1px solid ${line}` }}>
-              <div style={{ fontFamily:mono, fontSize:10, color:t3,
-                letterSpacing:'0.1em', marginBottom:8 }}>ВОЙТИ ИЛИ ЗАРЕГИСТРИРОВАТЬСЯ</div>
-              <h2 style={{ fontFamily:serif, fontStyle:'italic', fontSize:22,
-                color:t1, fontWeight:400, letterSpacing:'-.015em' }}>
+              <div style={{ fontFamily:mono, fontSize:9, fontWeight:700, color:gold,
+                letterSpacing:'0.1em', marginBottom:10 }}>ВОЙТИ ИЛИ ЗАРЕГИСТРИРОВАТЬСЯ</div>
+              <h2 style={{ fontFamily:serif, fontStyle:'normal', fontSize:24,
+                color:t1, fontWeight:700, letterSpacing:'-.02em' }}>
                 Добро пожаловать
               </h2>
             </div>
@@ -190,16 +225,18 @@ export default function LoginPage() {
           </div>
         ) : (
           /* sent screen */
-          <div style={{ background:'#111115', border:`1px solid ${line}`,
-            borderRadius:12, padding:'36px 28px', textAlign:'center' }}>
+          <div style={{ background:'rgba(17,17,21,.72)', backdropFilter:'blur(20px)',
+            WebkitBackdropFilter:'blur(20px)', border:`1px solid rgba(255,255,255,.12)`,
+            borderRadius:14, padding:'36px 28px', textAlign:'center',
+            boxShadow:'0 24px 64px rgba(0,0,0,.5)' }}>
             <div style={{ width:52, height:52, borderRadius:'50%',
               background:`${grn}15`, border:`1.5px solid ${grn}40`,
               display:'flex', alignItems:'center', justifyContent:'center',
               margin:'0 auto 16px' }}>
               <span style={{ fontSize:20 }}>✉️</span>
             </div>
-            <h2 style={{ fontFamily:serif, fontStyle:'italic', fontSize:22,
-              color:t1, fontWeight:400, marginBottom:8 }}>
+            <h2 style={{ fontFamily:serif, fontStyle:'normal', fontSize:24,
+              color:t1, fontWeight:700, marginBottom:8 }}>
               Проверь почту
             </h2>
             <p style={{ fontFamily:sans, fontSize:13, color:t2,

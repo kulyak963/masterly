@@ -6,9 +6,9 @@ const bg0='#0A0A0C', bg1='#111115'
 const line='rgba(255,255,255,0.07)'
 const t1='#F2EFE9', t2='#7A7670', t3='#3D3B38'
 const gold='#C8A256', blue='#6B8CFF', red='#E5534B', grn='#3FB950', purp='#A78BFA', amb='#D4843A'
-const sans="'Geist',sans-serif"
-const serif="'Instrument Serif',serif"
-const mono="'Geist Mono',monospace"
+const sans="'Manrope',sans-serif"
+const serif="'Fraunces',serif"
+const mono="'Space Mono',monospace"
 
 const NOW = new Date(); NOW.setHours(0,0,0,0)
 
@@ -158,7 +158,7 @@ export default function GanttTimeline({profile}:{profile:any}) {
   useEffect(()=>{
     const s=document.createElement('style')
     s.textContent=`
-      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
       @keyframes barIn{from{clip-path:inset(0 100% 0 0);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -209,8 +209,8 @@ export default function GanttTimeline({profile}:{profile:any}) {
               <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.12em',color:t3,marginBottom:8}}>
                 ПЛАН-ГРАФИК ПОСТУПЛЕНИЯ
               </div>
-              <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:28,
-                color:t1,fontWeight:400,letterSpacing:'-.025em',marginBottom:4}}>
+              <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:30,
+                color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:4}}>
                 От сегодня до переезда
               </h1>
               <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300}}>

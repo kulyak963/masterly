@@ -13,9 +13,9 @@ const blue = '#6B8CFF'
 const red = '#E5534B'
 const grn = '#3FB950'
 const purp = '#A78BFA'
-const sans = "'Geist',sans-serif"
-const serif = "'Instrument Serif',serif"
-const mono = "'Geist Mono',monospace"
+const sans = "'Manrope',sans-serif"
+const serif = "'Fraunces',serif"
+const mono = "'Space Mono',monospace"
 
 interface Task { t: string; done?: boolean; urgent?: boolean }
 interface Node {
@@ -184,8 +184,8 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
               <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,marginBottom:10}}>
                 ПЕРСОНАЛЬНЫЙ РОАДМАП
               </div>
-              <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:28,color:t1,
-                fontWeight:400,letterSpacing:'-.02em',marginBottom:6}}>
+              <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:30,color:t1,
+                fontWeight:800,letterSpacing:'-.03em',marginBottom:6}}>
                 {profile.name?.split(' ')[0]}, вот твой путь в Европу
               </h1>
               <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300}}>
@@ -194,7 +194,7 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
               <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>ПРОГРЕСС</div>
-              <div style={{fontFamily:serif,fontStyle:'italic',fontSize:36,color:t1,letterSpacing:'-.03em',lineHeight:1}}>
+              <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:800,fontSize:36,color:t1,letterSpacing:'-.03em',lineHeight:1}}>
                 {Math.round(doneT/totalT*100)||0}<span style={{fontSize:16,opacity:.4}}>%</span>
               </div>
               <div style={{width:80,marginTop:8,marginLeft:'auto'}}>
@@ -411,8 +411,8 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
                 fontFamily:mono,fontSize:12,padding:'2px 6px',borderRadius:3}}>✕</button>
             </div>
 
-            <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:22,color:t1,
-              fontWeight:400,letterSpacing:'-.015em',lineHeight:1.1,marginBottom:4}}>
+            <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:22,color:t1,
+              fontWeight:700,letterSpacing:'-.02em',lineHeight:1.1,marginBottom:4}}>
               {activeNode.label}
             </h2>
             <div style={{fontFamily:mono,fontSize:9,color:activeNode.color,letterSpacing:'0.08em',marginBottom:14}}>

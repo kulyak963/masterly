@@ -11,8 +11,23 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes in{from{opacity:0}to{opacity:1}}
 @keyframes bar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes kenburns{from{transform:scale(1.02) translateY(0)}to{transform:scale(1.11) translateY(-1.5%)}}
+@keyframes heroUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cycleFade{0%{opacity:0}3%{opacity:1}10%{opacity:1}12.5%{opacity:0}100%{opacity:0}}
+@keyframes cycleZoom{0%{transform:scale(1.05)}12.5%{transform:scale(1.16)}100%{transform:scale(1.16)}}
+.cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
 .up{animation:up .5s cubic-bezier(.22,.68,0,1.1) both}
 .in{animation:in .4s ease both}
+.hero-kb{animation:kenburns 22s ease-out forwards}
+.hero-up{animation:heroUp .8s cubic-bezier(.16,1,.3,1) both}
+.hero-cta{transition:transform .2s,box-shadow .2s,filter .2s}
+.hero-cta:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.hero-cta:active{transform:translateY(0) scale(.98)}
+.filmstrip::-webkit-scrollbar{display:none}
+.film-card{transition:transform .3s cubic-bezier(.22,.68,0,1.1),border-color .3s}
+.film-card:hover{transform:translateY(-5px);border-color:rgba(255,255,255,.4)!important}
+.country-card{transition:transform .2s cubic-bezier(.22,.68,0,1.1),border-color .2s,box-shadow .2s}
+.country-card:hover{transform:translateY(-3px)}
 .row{transition:background .15s;cursor:pointer}
 .row:hover{background:rgba(255,255,255,.04)!important}
 .chip{transition:all .15s;cursor:pointer}
@@ -22,7 +37,7 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 .btn:active{transform:scale(.98)}
 input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:rgba(255,255,255,.1);border-radius:1px;outline:none;cursor:pointer}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#F2EFE9;border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(242,239,233,.15)}
-input[type=text],input[type=email]{font-family:'Geist',sans-serif;font-size:15px;color:#F2EFE9;caret-color:#F2EFE9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
+input[type=text],input[type=email]{font-family:'Manrope',sans-serif;font-size:15px;color:#F2EFE9;caret-color:#F2EFE9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
 input:focus{border-color:rgba(255,255,255,.3)}
 input::placeholder{color:rgba(242,239,233,.2)}
 `
@@ -37,9 +52,9 @@ const gold = '#D4A853'
 const blue = '#6B8CFF'
 const red = '#E5534B'
 const grn = '#3FB950'
-const sans = "'Geist', sans-serif"
-const serif = "'Instrument Serif', serif"
-const mono = "'Geist Mono', monospace"
+const sans = "'Manrope', sans-serif"
+const serif = "'Fraunces', serif"
+const mono = "'Space Mono', monospace"
 
 const COUNTRIES_MAIN = [
   {c:'de',f:'DE',n:'Германия',   tag:'Бесплатно · DAAD'},
@@ -109,7 +124,34 @@ const PAINS = [
   {id:'worth',  l:'Не уверен что оно того стоит',s:'Сомневаюсь в правильности выбора'},
 ]
 
+const CITY_SHOTS = [
+  {c:'fr',city:'Париж',    img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=500&q=70'},
+  {c:'de',city:'Берлин',   img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=500&q=70'},
+  {c:'cz',city:'Прага',    img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=500&q=70'},
+  {c:'nl',city:'Амстердам',img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=500&q=70'},
+  {c:'at',city:'Вена',     img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=500&q=70'},
+  {c:'se',city:'Стокгольм',img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=500&q=70'},
+  {c:'ch',city:'Цюрих',    img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=500&q=70'},
+  {c:'fi',city:'Хельсинки',img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=500&q=70'},
+]
+
 const tog = (a: string[], v: string) => a.includes(v) ? a.filter(x => x !== v) : [...a, v]
+
+const CYCLE_SLOT = 5 // секунд на фото
+function PhotoCycler({images,offset=0}: {images:{img:string,city?:string}[],offset?:number}) {
+  const total = images.length * CYCLE_SLOT
+  return (
+    <div style={{position:'absolute',inset:0,overflow:'hidden'}}>
+      {images.map((im,i)=>(
+        <div key={i} className="cycle-layer" style={{
+          backgroundImage:`url(${im.img})`,
+          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-in-out infinite`,
+          animationDelay:`${-((i+offset)%images.length)*CYCLE_SLOT}s`,
+        }}/>
+      ))}
+    </div>
+  )
+}
 
 function Divider() {
   return <div style={{height:1,background:line,margin:'24px 0'}}/>
@@ -174,10 +216,10 @@ function NavBtns({step,onBack,onNext,label='Продолжить',can=true}: {st
 function SH({n,total,title,sub}: {n:number,total:number,title:string,sub?:string}) {
   return (
     <div style={{marginBottom:28}}>
-      <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.14em',color:t3,marginBottom:16}}>
+      <div style={{fontFamily:mono,fontSize:10,fontWeight:700,letterSpacing:'0.14em',color:gold,marginBottom:16}}>
         {String(n).padStart(2,'0')} / {String(total).padStart(2,'0')}
       </div>
-      <h2 style={{fontFamily:serif,fontSize:28,color:t1,fontWeight:400,lineHeight:1.15,letterSpacing:'-.01em',marginBottom:8,fontStyle:'italic'}}>
+      <h2 style={{fontFamily:serif,fontSize:32,color:t1,fontWeight:700,lineHeight:1.08,letterSpacing:'-.02em',marginBottom:10,fontStyle:'normal'}}>
         {title}
       </h2>
       {sub&&<p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.55}}>{sub}</p>}
@@ -189,8 +231,13 @@ function Shell({children,step,total}: {children:React.ReactNode,step:number,tota
   return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',padding:'80px 20px 40px',position:'relative',overflow:'auto'}}>
       <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,backgroundRepeat:'repeat',backgroundSize:'128px',opacity:.6}}/>
-      <div style={{position:'absolute',top:28,left:'50%',transform:'translateX(-50%)',fontFamily:serif,fontStyle:'italic',fontSize:18,color:t2,zIndex:1,letterSpacing:'-.01em'}}>
-        Masterly
+      <div style={{position:'fixed',top:0,left:0,right:0,height:280,zIndex:0,pointerEvents:'none',
+        opacity:.18,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
+        WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
+        <PhotoCycler images={CITY_SHOTS}/>
+      </div>
+      <div style={{position:'absolute',top:28,left:'50%',transform:'translateX(-50%)',fontFamily:serif,fontWeight:700,fontSize:17,color:t1,zIndex:1,letterSpacing:'-.01em'}}>
+        Mastersly
       </div>
       <div style={{width:'100%',maxWidth:460,zIndex:1}} className="up">
         {children}
@@ -251,43 +298,83 @@ setStep((s:any)=> s+1)
 
   const name = a.name.split(' ')[0] || 'друг'
 
-  // STEP 0 — WELCOME
+  // STEP 0 — WELCOME (photo hero)
   if(step===0) return (
-    <Shell step={0} total={TOTAL}>
-     <div style={{textAlign:'center'}}>
+    <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',background:bg0}}>
 
-  <div style={{fontFamily:mono,fontSize:9,color:t3,
-    letterSpacing:'0.14em',marginBottom:28}}>
-    УЖЕ 2 400 СТУДЕНТОВ СТРОЯТ ПЛАН
-  </div>
+      {/* hero photo — cycles through European capitals */}
+      <div style={{position:'absolute',inset:0,zIndex:0}}>
+        <PhotoCycler images={CITY_SHOTS}/>
+      </div>
 
-  <h1 style={{fontFamily:serif,fontStyle:'italic',
-    fontSize:54,color:t1,fontWeight:400,
-    letterSpacing:'-.03em',lineHeight:.95,marginBottom:20}}>
-    Магистратура в Европе.<br/>
-    <span style={{color:t2}}>Твой план за 3 минуты.</span>
-  </h1>
+      {/* scrims for legibility */}
+      <div style={{position:'absolute',inset:0,zIndex:1,
+        background:'linear-gradient(180deg, rgba(6,6,8,.62) 0%, rgba(6,6,8,.12) 32%, rgba(6,6,8,.55) 68%, #0A0A0C 97%)'}}/>
+      <div style={{position:'absolute',inset:0,zIndex:1,
+        background:'linear-gradient(100deg, rgba(6,6,8,.55) 0%, transparent 46%)'}}/>
 
-  <p style={{fontFamily:sans,fontSize:15,color:t2,
-    lineHeight:1.65,maxWidth:340,margin:'0 auto 40px',fontWeight:300}}>
-    Персональный roadmap, дедлайны стипендий и список вузов —
-    без гугления по 20 вкладкам.
-  </p>
+      {/* content */}
+      <div style={{position:'relative',zIndex:2,minHeight:'100vh',
+        display:'flex',flexDirection:'column'}}>
 
-  <button className="btn" onClick={goNext} style={{
-    width:'100%',padding:'16px',borderRadius:8,border:'none',
-    background:t1,color:bg0,fontFamily:sans,fontSize:15,
-    fontWeight:600,letterSpacing:'-.01em',cursor:'pointer'}}>
-    Начать — это бесплатно
-  </button>
+        {/* top bar */}
+        <div className="hero-up" style={{padding:'26px 28px',display:'flex',
+          alignItems:'center',justifyContent:'space-between'}}>
+          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:19,
+            color:t1,letterSpacing:'-.01em'}}>Mastersly</div>
+          <div style={{fontFamily:mono,fontSize:9,fontWeight:700,color:'rgba(242,239,233,.75)',
+            letterSpacing:'0.14em'}}>УЖЕ 2 400 СТУДЕНТОВ В ПУТИ</div>
+        </div>
 
-  <p style={{fontFamily:mono,fontSize:9,color:t3,
-    marginTop:14,letterSpacing:'0.08em'}}>
-    БЕЗ РЕГИСТРАЦИИ · 8 ВОПРОСОВ
-  </p>
+        {/* headline block */}
+        <div className="hero-up" style={{flex:1,display:'flex',flexDirection:'column',
+          justifyContent:'flex-end',padding:'0 28px 36px',maxWidth:760,
+          animationDelay:'.1s'}}>
+          <h1 style={{fontFamily:serif,fontStyle:'normal',
+            fontSize:'clamp(42px,7.5vw,92px)',color:t1,fontWeight:800,
+            letterSpacing:'-.04em',lineHeight:.94,marginBottom:20,
+            textShadow:'0 6px 40px rgba(0,0,0,.45)'}}>
+            Твоя магистратура<br/>в <span style={{color:gold,fontStyle:'italic',fontWeight:500}}>Европе</span> начинается здесь
+          </h1>
+          <p style={{fontFamily:sans,fontSize:15,color:'rgba(242,239,233,.82)',
+            lineHeight:1.65,maxWidth:420,marginBottom:28,fontWeight:300}}>
+            Персональный roadmap, дедлайны стипендий и список вузов —
+            от Берлина до Стокгольма. Без гугления по 20 вкладкам.
+          </p>
+          <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+            <button onClick={goNext} className="hero-cta" style={{
+              padding:'15px 28px',borderRadius:100,border:'none',
+              background:t1,color:bg0,fontFamily:sans,fontSize:14,
+              fontWeight:600,letterSpacing:'-.01em',cursor:'pointer',
+              boxShadow:'0 8px 30px rgba(0,0,0,.35)'}}>
+              Начать — это бесплатно
+            </button>
+            <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:'rgba(242,239,233,.6)',
+              letterSpacing:'0.08em'}}>БЕЗ РЕГИСТРАЦИИ · 8 ВОПРОСОВ</span>
+          </div>
+        </div>
 
-</div> 
-    </Shell>
+        {/* destination filmstrip */}
+        <div className="filmstrip hero-up" style={{display:'flex',gap:10,
+          padding:'0 28px 28px',overflowX:'auto',animationDelay:'.2s'}}>
+          {CITY_SHOTS.map(c=>(
+            <div key={c.c} className="film-card" style={{position:'relative',
+              width:92,height:118,flexShrink:0,borderRadius:10,overflow:'hidden',
+              border:'1px solid rgba(255,255,255,.16)',cursor:'default'}}>
+              <img src={c.img} alt={c.city} style={{width:'100%',height:'100%',
+                objectFit:'cover',display:'block'}}/>
+              <div style={{position:'absolute',inset:0,
+                background:'linear-gradient(180deg,transparent 45%,rgba(0,0,0,.8) 100%)'}}/>
+              <span style={{position:'absolute',bottom:8,left:9,right:9,
+                fontFamily:serif,fontStyle:'italic',fontWeight:500,fontSize:14,
+                color:'#F2EFE9',letterSpacing:'-.01em'}}>
+                {c.city}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 
   // STEP 1 — MODE
@@ -495,20 +582,34 @@ setStep((s:any)=> s+1)
     </button>
   </div>
 )}
-<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
   {COUNTRIES_MAIN.map(c=>{
     const sel=a.countries.includes(c.c)
+    const shot = CITY_SHOTS.find(s=>s.c===c.c)
     return(
       <div key={c.c} onClick={()=>set('countries',tog(a.countries,c.c))}
-        className="chip"
-        style={{padding:'12px 8px',borderRadius:6,textAlign:'center',cursor:'pointer',
-          background:sel?'rgba(255,255,255,.07)':'rgba(255,255,255,.02)',
-          border:`1px solid ${sel?'rgba(255,255,255,.25)':line}`}}>
-        <div style={{fontFamily:mono,fontSize:11,color:sel?t1:t2,
-          marginBottom:3,letterSpacing:'0.04em'}}>{c.f}</div>
-        <div style={{fontFamily:sans,fontSize:11,fontWeight:500,
-          color:sel?t1:t2,letterSpacing:'-.01em',marginBottom:2}}>{c.n}</div>
-        <div style={{fontFamily:mono,fontSize:8,color:t3}}>{c.tag}</div>
+        className="country-card"
+        style={{position:'relative',height:104,borderRadius:8,overflow:'hidden',cursor:'pointer',
+          border:`1.5px solid ${sel?gold:'rgba(255,255,255,.14)'}`,
+          boxShadow:sel?`0 0 0 3px ${gold}25`:'none',transition:'all .2s'}}>
+        {shot&&<img src={shot.img} alt={c.n} style={{position:'absolute',inset:0,
+          width:'100%',height:'100%',objectFit:'cover',
+          filter:sel?'none':'saturate(.7) brightness(.75)',transition:'filter .2s'}}/>}
+        <div style={{position:'absolute',inset:0,
+          background:sel
+            ?'linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.55) 100%)'
+            :'linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.7) 100%)'}}/>
+        {sel&&<div style={{position:'absolute',top:6,right:6,width:18,height:18,borderRadius:'50%',
+          background:gold,display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:'0 2px 8px rgba(0,0,0,.4)'}}>
+          <span style={{color:bg0,fontSize:10,fontWeight:700}}>✓</span>
+        </div>}
+        <div style={{position:'absolute',bottom:7,left:8,right:8}}>
+          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:15,fontWeight:600,
+            color:'#fff',letterSpacing:'-.01em',marginBottom:1}}>{c.n}</div>
+          <div style={{fontFamily:mono,fontSize:7,fontWeight:700,color:sel?gold:'rgba(255,255,255,.6)',
+            letterSpacing:'0.04em'}}>{c.tag}</div>
+        </div>
       </div>
     )
   })}
@@ -653,11 +754,16 @@ setStep((s:any)=> s+1)
     return (
       <div style={{minHeight:'100vh',background:bg0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 20px',position:'relative'}}>
         <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,backgroundRepeat:'repeat',backgroundSize:'128px',opacity:.6}}/>
+        <div style={{position:'fixed',top:0,left:0,right:0,height:340,zIndex:0,pointerEvents:'none',
+          opacity:.22,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
+          WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
+          <PhotoCycler images={CITY_SHOTS} offset={3}/>
+        </div>
         <div style={{width:'100%',maxWidth:460,zIndex:1}} className="up">
 
           <div style={{marginBottom:28,textAlign:'center'}}>
-            <div style={{fontFamily:mono,fontSize:10,color:t3,letterSpacing:'0.14em',marginBottom:14}}>ПРОФИЛЬ ГОТОВ</div>
-            <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:72,color:t1,fontWeight:400,letterSpacing:'-.04em',lineHeight:1,marginBottom:4}}>
+            <div style={{fontFamily:mono,fontSize:10,fontWeight:700,color:gold,letterSpacing:'0.14em',marginBottom:14}}>ПРОФИЛЬ ГОТОВ</div>
+            <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:76,color:t1,fontWeight:800,letterSpacing:'-.04em',lineHeight:1,marginBottom:4}}>
               {score}<span style={{fontSize:28,opacity:.4}}>%</span>
             </h1>
             <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t2,marginBottom:14}}>готовности к поступлению</div>
@@ -835,16 +941,16 @@ if(step === 99) return (
     <div style={{textAlign:'center',position:'relative',zIndex:10,
       animation:'logoIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}
       onAnimationEnd={()=>setStep(8)}>
-      <div style={{fontFamily:"'Instrument Serif',serif",fontStyle:'italic',
+      <div style={{fontFamily:"'Fraunces',serif",fontStyle:'italic',
         fontSize:52,color:'#F2EFE9',letterSpacing:'-.025em',
         lineHeight:1,marginBottom:20}}>
-        Masterly
+        Mastersly
       </div>
       <div style={{height:1,
         background:'linear-gradient(90deg,transparent,#C8A256,transparent)',
         margin:'0 auto',marginBottom:18,
         animation:'lineIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}/>
-      <div style={{fontFamily:"'Geist Mono',monospace",fontSize:10,
+      <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,
         color:'#4A4845',letterSpacing:'.16em',
         animation:'tagIn 3.5s ease forwards'}}>
         СТРОИМ ТВОЙ ПЛАН

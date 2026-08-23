@@ -5,9 +5,9 @@ const bg0='#0A0A0C',bg1='#111115',bg2='#17171C'
 const line='rgba(255,255,255,0.07)'
 const t1='#F2EFE9',t2='#7A7670',t3='#3D3B38'
 const gold='#C8A256',blue='#6B8CFF',red='#E5534B',grn='#3FB950',purp='#A78BFA'
-const sans="'Geist',sans-serif"
-const serif="'Instrument Serif',serif"
-const mono="'Geist Mono',monospace"
+const sans="'Manrope',sans-serif"
+const serif="'Fraunces',serif"
+const mono="'Space Mono',monospace"
 
 interface Event {
   id: string
@@ -195,7 +195,7 @@ function makeGcalUrl(event: Event): string {
   const start = event.date.replace(/-/g,'')
   const end = addDays(event.date,1).replace(/-/g,'')
   const title = encodeURIComponent(event.label)
-  const details = encodeURIComponent(event.sub||'Masterly — план поступления')
+  const details = encodeURIComponent(event.sub||'Mastersly — план поступления')
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}&sf=true&output=xml`
 }
 
@@ -205,10 +205,10 @@ function makeICS(events: Event[]): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Masterly//Plan//RU',
+    'PRODID:-//Mastersly//Plan//RU',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Masterly — Дедлайны',
+    'X-WR-CALNAME:Mastersly — Дедлайны',
     'X-WR-TIMEZONE:Europe/Moscow',
   ]
   gcalEvents.forEach(e=>{
@@ -284,7 +284,7 @@ export default function Timeline({profile}:{profile:any}) {
     const blob = new Blob([content],{type:'text/calendar;charset=utf-8'})
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href=url; a.download='masterly-deadlines.ics'
+    a.href=url; a.download='mastersly-deadlines.ics'
     a.click(); URL.revokeObjectURL(url)
     setExported(true)
     setTimeout(()=>setExported(false),3000)
@@ -301,8 +301,8 @@ export default function Timeline({profile}:{profile:any}) {
         <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,marginBottom:10}}>
           ПОЛНЫЙ ТАЙМЛАЙН
         </div>
-        <h1 style={{fontFamily:serif,fontStyle:'italic',fontSize:32,color:t1,
-          fontWeight:400,letterSpacing:'-.02em',marginBottom:8}}>
+        <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,
+          fontWeight:800,letterSpacing:'-.03em',marginBottom:8}}>
           От сегодня до переезда
         </h1>
         <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300,lineHeight:1.6}}>
@@ -321,7 +321,7 @@ export default function Timeline({profile}:{profile:any}) {
           <div key={i} style={{padding:'16px 18px',
             borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
             <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:8}}>{s.l}</div>
-            <div style={{fontFamily:serif,fontStyle:'italic',fontSize:24,color:s.c,letterSpacing:'-.02em'}}>{s.v}</div>
+            <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:800,fontSize:24,color:s.c,letterSpacing:'-.02em'}}>{s.v}</div>
           </div>
         ))}
       </div>

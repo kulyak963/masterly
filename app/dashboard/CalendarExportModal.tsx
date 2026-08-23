@@ -5,9 +5,9 @@ const bg0='#0A0A0C', bg1='#111115', bg2='#17171C'
 const line='rgba(255,255,255,0.08)'
 const t1='#F2EFE9', t2='#7A7670', t3='#3D3B38'
 const gold='#C8A256', blue='#6B8CFF', red='#E5534B', grn='#3FB950'
-const sans="'Geist',sans-serif"
-const serif="'Instrument Serif',serif"
-const mono="'Geist Mono',monospace"
+const sans="'Manrope',sans-serif"
+const serif="'Fraunces',serif"
+const mono="'Space Mono',monospace"
 
 /* ── reminder options ── */
 const REMINDER_OPTIONS = [
@@ -37,7 +37,7 @@ function makeGcalUrl(ev: CalEvent, reminders: string[]): string {
   const dtEnd = next.toISOString().slice(0,10).replace(/-/g,'')
   const title = encodeURIComponent(`📅 ${ev.label}`)
   const details = encodeURIComponent(
-    `${ev.desc||'Masterly — план поступления'}\n\nНапоминания настроены через Masterly.`
+    `${ev.desc||'Mastersly — план поступления'}\n\nНапоминания настроены через Mastersly.`
   )
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dt}/${dtEnd}&details=${details}&sf=true&output=xml`
 }
@@ -47,10 +47,10 @@ function makeICS(events: CalEvent[], selectedReminders: string[]): string {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Masterly//Deadlines//RU',
+    'PRODID:-//Mastersly//Deadlines//RU',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:Masterly — Дедлайны',
+    'X-WR-CALNAME:Mastersly — Дедлайны',
     'X-WR-CALDESC:Все дедлайны поступления в магистратуру',
     'X-WR-TIMEZONE:Europe/Moscow',
   ]
@@ -66,7 +66,7 @@ function makeICS(events: CalEvent[], selectedReminders: string[]): string {
       `DTSTART;VALUE=DATE:${dt}`,
       `DTEND;VALUE=DATE:${dtEnd}`,
       `SUMMARY:${ev.label}`,
-      `DESCRIPTION:${ev.desc || 'Masterly — план поступления'}`,
+      `DESCRIPTION:${ev.desc || 'Mastersly — план поступления'}`,
       `UID:${uid}`,
       `STATUS:CONFIRMED`,
     )
@@ -122,7 +122,7 @@ export default function CalendarExportModal({ events, onClose }: Props) {
       const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'})
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url; a.download = 'masterly-deadlines.ics'; a.click()
+      a.href = url; a.download = 'mastersly-deadlines.ics'; a.click()
       URL.revokeObjectURL(url)
       actions.push('apple')
     }
@@ -133,7 +133,7 @@ export default function CalendarExportModal({ events, onClose }: Props) {
   const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'})
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = 'masterly-google.ics'; a.click()
+  a.href = url; a.download = 'mastersly-google.ics'; a.click()
   URL.revokeObjectURL(url)
   actions.push('google')
 }
@@ -176,8 +176,8 @@ export default function CalendarExportModal({ events, onClose }: Props) {
                 letterSpacing:'0.12em',marginBottom:10}}>
                 ЭКСПОРТ В КАЛЕНДАРЬ
               </div>
-              <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:22,
-                color:t1,fontWeight:400,letterSpacing:'-.015em',marginBottom:4}}>
+              <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:23,
+                color:t1,fontWeight:700,letterSpacing:'-.02em',marginBottom:4}}>
                 {step==='done' ? 'Готово!' : 'Настрой напоминания'}
               </h2>
               <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300,lineHeight:1.6}}>
@@ -320,8 +320,8 @@ export default function CalendarExportModal({ events, onClose }: Props) {
               <span style={{color:grn,fontSize:22}}>✓</span>
             </div>
 
-            <h3 style={{fontFamily:serif,fontStyle:'italic',fontSize:20,
-              color:t1,fontWeight:400,marginBottom:8}}>
+            <h3 style={{fontFamily:serif,fontStyle:'normal',fontSize:21,
+              color:t1,fontWeight:700,marginBottom:8}}>
               Дедлайны добавлены
             </h3>
 
@@ -332,7 +332,7 @@ export default function CalendarExportModal({ events, onClose }: Props) {
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   <div style={{width:6,height:6,borderRadius:'50%',background:grn}}/>
                   <span style={{fontFamily:sans,fontSize:13,color:t2}}>
-                    Файл <strong style={{color:t1}}>masterly-deadlines.ics</strong> скачан — открой его чтобы добавить в календарь
+                    Файл <strong style={{color:t1}}>mastersly-deadlines.ics</strong> скачан — открой его чтобы добавить в календарь
                   </span>
                 </div>
               )}
@@ -341,7 +341,7 @@ export default function CalendarExportModal({ events, onClose }: Props) {
     <div style={{width:6,height:6,borderRadius:'50%',background:blue,marginTop:4,flexShrink:0}}/>
     <div>
       <span style={{fontFamily:sans,fontSize:13,color:t2}}>
-        Файл <strong style={{color:t1}}>masterly-google.ics</strong> скачан.
+        Файл <strong style={{color:t1}}>mastersly-google.ics</strong> скачан.
       </span>
       <div style={{fontFamily:sans,fontSize:12,color:t3,marginTop:4,lineHeight:1.6}}>
         Открой <strong style={{color:t2}}>calendar.google.com</strong> → 

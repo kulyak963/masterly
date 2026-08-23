@@ -1,5 +1,5 @@
 """
-Masterly — заполнение базы данных вузов через Claude API
+Mastersly — заполнение базы данных вузов через Claude API
 Запуск: python fill_db.py
 """
  
