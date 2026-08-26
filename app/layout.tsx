@@ -26,6 +26,7 @@ export const viewport = {
   userScalable: false,
 }
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mastersly.ru"),
   title: "Mastersly — магистратура в Европе",
   description: "Персональный гид поступления в европейскую магистратуру. Шортлист программ, дедлайны стипендий и roadmap за 3 минуты.",
 };

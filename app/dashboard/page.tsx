@@ -996,6 +996,11 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
               }}>
               {selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'}
             </a>
+            <a href={`/program/${selectedProgram.id}`} target="_blank" rel="noopener"
+              style={{display:'block',textAlign:'center',padding:'9px',fontFamily:sans,fontSize:11,
+                color:t3,textDecoration:'underline'}}>
+              Публичная страница этой программы (можно поделиться)
+            </a>
             {isMobile&&(
   <button onClick={()=>setSelectedProgram(null)}
     style={{position:'sticky',bottom:0,left:0,right:0,
