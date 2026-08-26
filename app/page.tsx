@@ -1,5 +1,6 @@
 'use client'
 import { supabase } from '../lib/supabase'
+import { useTurnstile } from '../lib/useTurnstile'
 import { useState, useEffect } from 'react'
 
 const CSS = `
@@ -37,7 +38,7 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 .btn:active{transform:scale(.98)}
 input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:rgba(255,255,255,.1);border-radius:1px;outline:none;cursor:pointer}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#F2EFE9;border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(242,239,233,.15)}
-input[type=text],input[type=email]{font-family:'Manrope',sans-serif;font-size:15px;color:#F2EFE9;caret-color:#F2EFE9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
+input[type=text],input[type=email],input[type=password]{font-family:'Manrope',sans-serif;font-size:15px;color:#F2EFE9;caret-color:#F2EFE9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
 input:focus{border-color:rgba(255,255,255,.3)}
 input::placeholder{color:rgba(242,239,233,.2)}
 `
@@ -259,6 +260,12 @@ function Shell({children,step,total}: {children:React.ReactNode,step:number,tota
 
 export default function Home() {
   const [step, setStep] = useState(0)
+  const [checkingSession, setCheckingSession] = useState(true)
+  const [emailSent, setEmailSent] = useState(false)
+  const [emailSending, setEmailSending] = useState(false)
+  const [password, setPassword] = useState('')
+  const [signupPending, setSignupPending] = useState(false)
+  const turnstile = useTurnstile()
  const [a, setA] = useState({
   name:'', email:'', mode:'', pain:'',
   field:'', university:'',
@@ -278,26 +285,87 @@ export default function Home() {
     return () => s.remove()
   },[])
 
+  // Если уже залогинен — сразу в личный кабинет, а не заново проходить опрос
+  useEffect(()=>{
+    let cancelled = false
+    supabase.auth.getSession().then(({data})=>{
+      if (cancelled) return
+      if (data.session) {
+        window.location.href = '/dashboard'
+      } else {
+        setCheckingSession(false)
+      }
+    })
+    return () => { cancelled = true }
+  },[])
+
   const set = (k: string, v: unknown) => setA(x => ({...x,[k]:v}))
   const TOTAL = 8
 
-  const goNext = async () => {
-  if(step === 7) {
-  // сохраняем в localStorage до логина
-  localStorage.setItem('masterly_profile', JSON.stringify({
+  const buildProfilePayload = () => ({
     name: a.name, email: a.email, mode: a.mode, pain: a.pain,
     university: a.university, field: a.field,
     countries: a.countries.join(','),
     timeline: a.timeline, budget: a.budget,
     gpa: a.gpa, ielts: a.ielts, work: a.work, score: score,
     master_field: a.master_direction==='same' ? FIELD_TO_DB[a.field] : a.master_field,
-  }))
+  })
+
+  const goNext = async () => {
+  if(step === 7) {
+  // сохраняем в localStorage до логина — работает, если ссылку открывают
+  // на этом же устройстве (например, вход через Google)
+  localStorage.setItem('masterly_profile', JSON.stringify(buildProfilePayload()))
   setStep(99)
   return
 }
 setStep((s:any)=> s+1)
 }
   const goBack = () => setStep((s:any)=> Math.max(0,s-1))
+
+  // Ссылка на почту часто открывается на другом устройстве (телефон), где
+  // localStorage пустой — поэтому дублируем анкету в pending_profiles по email,
+  // чтобы дашборд мог её найти после входа независимо от устройства.
+  // Если ввели пароль — регистрируем аккаунт с паролем, иначе шлём ссылку на
+  // почту. В обоих случаях анкета дублируется в pending_profiles по email —
+  // подтверждение может прийти на другое устройство, где localStorage пустой.
+  const sendMagicLink = async () => {
+    const email = a.email.trim()
+    if (!email || emailSending) return
+    if (turnstile.enabled && !turnstile.token) { alert('Подтверди, что ты не робот'); return }
+    setEmailSending(true)
+    const captchaOpt = turnstile.enabled ? { captchaToken: turnstile.token || undefined } : {}
+    try {
+      await supabase.from('pending_profiles').upsert({
+        email,
+        data: buildProfilePayload(),
+      })
+
+      if (password) {
+        if (password.length < 8) { alert('Пароль должен быть не короче 8 символов'); setEmailSending(false); return }
+        const { data, error } = await supabase.auth.signUp({
+          email, password,
+          options: { emailRedirectTo: `${window.location.origin}/dashboard`, ...captchaOpt },
+        })
+        if (error) throw error
+        turnstile.reset()
+        if (data.session) { window.location.href = '/dashboard'; return }
+        setSignupPending(true)
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: `${window.location.origin}/dashboard`, ...captchaOpt },
+        })
+        if (error) throw error
+        turnstile.reset()
+        setEmailSent(true)
+      }
+    } catch (e: any) {
+      console.error(e)
+      alert(e?.message || 'Не получилось — попробуй ещё раз')
+    }
+    setEmailSending(false)
+  }
 
   const score = Math.min(97, Math.round(
     (a.gpa>=4.5?28:a.gpa>=4.0?20:12)+
@@ -307,6 +375,10 @@ setStep((s:any)=> s+1)
   ))
 
   const name = a.name.split(' ')[0] || 'друг'
+
+  if (checkingSession) return (
+    <div style={{minHeight:'100vh',background:bg0}}/>
+  )
 
   // STEP 0 — WELCOME (photo hero)
   if(step===0) return (
@@ -332,8 +404,11 @@ setStep((s:any)=> s+1)
           alignItems:'center',justifyContent:'space-between'}}>
           <div style={{fontFamily:serif,fontStyle:'italic',fontSize:19,
             color:t1,letterSpacing:'-.01em'}}>Mastersly</div>
-          <div style={{fontFamily:mono,fontSize:9,fontWeight:700,color:'rgba(242,239,233,.75)',
-            letterSpacing:'0.14em'}}>УЖЕ 2 400 СТУДЕНТОВ В ПУТИ</div>
+          <a href="/login" style={{fontFamily:mono,fontSize:10,fontWeight:700,
+            color:'rgba(242,239,233,.85)',letterSpacing:'0.1em',textDecoration:'none',
+            padding:'7px 14px',borderRadius:100,border:'1px solid rgba(255,255,255,.25)'}}>
+            ВОЙТИ →
+          </a>
         </div>
 
         {/* headline block */}
@@ -853,37 +928,63 @@ setStep((s:any)=> s+1)
     </svg>
     Войти через Google
   </button>
-  <div style={{display:'flex',alignItems:'center',gap:10}}>
-    <div style={{flex:1,height:1,background:line}}/>
-    <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em'}}>ИЛИ</span>
-    <div style={{flex:1,height:1,background:line}}/>
-  </div>
-  <input type="email" placeholder="твой@email.com"
-    value={a.email} onChange={e=>set('email',e.target.value)}
-    onKeyDown={async e=>{
-      if(e.key==='Enter'&&a.email.trim()) {
-        await supabase.auth.signInWithOtp({
-          email:a.email.trim(),
-          options:{emailRedirectTo:`${window.location.origin}/dashboard`}
-        })
-        setStep(99)
-      }
-    }}/>
-  <button onClick={async()=>{
-    if(!a.email.trim()) return
-    await supabase.auth.signInWithOtp({
-      email:a.email.trim(),
-      options:{emailRedirectTo:`${window.location.origin}/dashboard`}
-    })
-    setStep(99)
-  }} style={{
-    width:'100%',padding:'13px',borderRadius:8,border:'none',
-    background:a.email.trim()?t1:'rgba(255,255,255,.06)',
-    color:a.email.trim()?bg0:t3,
-    fontFamily:sans,fontSize:14,fontWeight:500,cursor:'pointer',
-  }}>
-    Отправить ссылку на email
-  </button>
+  {emailSent ? (
+    <div style={{padding:'16px',borderRadius:8,textAlign:'center',
+      background:`${grn}0D`,border:`1px solid ${grn}30`}}>
+      <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500,marginBottom:4}}>
+        Проверь почту ✉️
+      </div>
+      <div style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.6}}>
+        Отправили ссылку на <strong style={{color:t1}}>{a.email}</strong>.<br/>
+        Открой её на любом устройстве — план сохранён и найдётся автоматически.
+      </div>
+      <button onClick={()=>setEmailSent(false)} style={{
+        marginTop:10,background:'none',border:'none',fontFamily:sans,fontSize:12,
+        color:t2,cursor:'pointer',textDecoration:'underline'}}>
+        Ввести другой email
+      </button>
+    </div>
+  ) : signupPending ? (
+    <div style={{padding:'16px',borderRadius:8,textAlign:'center',
+      background:`${grn}0D`,border:`1px solid ${grn}30`}}>
+      <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500,marginBottom:4}}>
+        Подтверди почту ✉️
+      </div>
+      <div style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.6}}>
+        Отправили письмо с подтверждением на <strong style={{color:t1}}>{a.email}</strong>.<br/>
+        Перейди по ссылке — и сможешь входить по email и паролю.
+      </div>
+      <button onClick={()=>setSignupPending(false)} style={{
+        marginTop:10,background:'none',border:'none',fontFamily:sans,fontSize:12,
+        color:t2,cursor:'pointer',textDecoration:'underline'}}>
+        Назад
+      </button>
+    </div>
+  ) : (
+    <>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <div style={{flex:1,height:1,background:line}}/>
+        <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em'}}>ИЛИ</span>
+        <div style={{flex:1,height:1,background:line}}/>
+      </div>
+      <input type="email" placeholder="твой@email.com"
+        value={a.email} onChange={e=>set('email',e.target.value)}
+        onKeyDown={e=>{ if(e.key==='Enter') sendMagicLink() }}/>
+      <input type="password" placeholder="Пароль (необязательно) — входить без письма"
+        value={password} onChange={e=>setPassword(e.target.value)}
+        onKeyDown={e=>{ if(e.key==='Enter') sendMagicLink() }}/>
+      {turnstile.enabled && <div ref={turnstile.containerRef} style={{margin:'2px auto 0'}}/>}
+      <button onClick={sendMagicLink} disabled={!a.email.trim()||emailSending} style={{
+        width:'100%',padding:'13px',borderRadius:8,border:'none',
+        background:a.email.trim()?t1:'rgba(255,255,255,.06)',
+        color:a.email.trim()?bg0:t3,
+        fontFamily:sans,fontSize:14,fontWeight:500,
+        cursor:a.email.trim()&&!emailSending?'pointer':'not-allowed',
+      }}>
+        {emailSending ? 'Отправляем...' : password ? 'Зарегистрироваться с паролем' : 'Отправить ссылку на email'}
+      </button>
+    </>
+  )}
 </div>
           <p style={{fontFamily:mono,fontSize:10,color:t3,textAlign:'center',marginTop:14,letterSpacing:'0.08em'}}>
             ПЛАН ПЕРСОНАЛИЗИРОВАН ПОД ТВОЙ ПРОФИЛЬ

@@ -29,12 +29,11 @@ interface Bar { startIdx:number; endIdx:number; label:string; blocker?:boolean }
 interface Marker { idx:number; label:string; urgent?:boolean }
 interface Lane { id:string; label:string; sub:string; color:string; bars:Bar[]; markers:Marker[] }
 
-function buildLanes(profile: any): { lanes: Lane[], calEvents: CalEvent[] } {
+function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: CalEvent[] } {
   const admYear = parseInt(profile.timeline)||2026
   const dy = admYear-1
   const ni = profile.ielts < 6.5
   const sf = profile.budget === 'zero'
-  const countries: string[] = (profile.countries?.split(',')||[]).filter(Boolean)
 
   const D = (y:number, m:number, d=15) => toIdx(new Date(y,m-1,d))
   const dateStr = (y:number,m:number,d=15) => {
@@ -42,18 +41,17 @@ function buildLanes(profile: any): { lanes: Lane[], calEvents: CalEvent[] } {
     return dt.toISOString().slice(0,10)
   }
 
-  const uniMap: Record<string,{label:string,idx:number,date:string}> = {
-    ch:{label:'ETH Zurich',    idx:D(dy,12,15), date:dateStr(dy,12,15)},
-    fr:{label:'Sciences Po',   idx:D(dy,1,9),   date:dateStr(dy,1,9)},
-    de:{label:'TU Munich',     idx:D(dy,1,15),  date:dateStr(dy,1,15)},
-    fi:{label:'Aalto',         idx:D(dy,1,20),  date:dateStr(dy,1,20)},
-    nl:{label:'TU Delft',      idx:D(dy,2,1),   date:dateStr(dy,2,1)},
-    se:{label:'KTH Stockholm', idx:D(dy,2,15),  date:dateStr(dy,2,15)},
-    cz:{label:'CTU Prague',    idx:D(dy,2,28),  date:dateStr(dy,2,28)},
-    at:{label:'TU Wien',       idx:D(dy,3,1),   date:dateStr(dy,3,1)},
-  }
-
-  const unis = countries.map(c=>uniMap[c]).filter(Boolean).sort((a,b)=>a.idx-b.idx)
+  // Реальные дедлайны конкретных программ студента (не догадка "одна дата на страну")
+  const unis = (programs||[]).map(p=>{
+    const m = p.deadline_month || 1
+    const d = p.deadline_day || 15
+    return {
+      label: `${p.university?.name || p._n || '?'} — ${p.name || p._p || ''}`,
+      idx: D(dy, m, d),
+      date: dateStr(dy, m, d),
+      url: p.url || p.university?.website || '',
+    }
+  }).sort((a,b)=>a.idx-b.idx)
   const firstDl = unis[0]?.idx ?? D(dy,1,15)
   const lastDl  = unis[unis.length-1]?.idx ?? D(dy,2,15)
 
@@ -63,7 +61,7 @@ function buildLanes(profile: any): { lanes: Lane[], calEvents: CalEvent[] } {
     {date:dateStr(dy,1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:sf},
     {date:dateStr(dy,2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'},
     {date:dateStr(dy,2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'},
-    ...unis.map(u=>({date:u.date, label:`Дедлайн подачи — ${u.label}`, desc:'Подача заявки в вуз', urgent:u.idx===firstDl})),
+    ...unis.map(u=>({date:u.date, label:`Дедлайн подачи — ${u.label}`, desc:`⚠ Дата собрана ИИ, может быть неточной — проверь на ${u.url||'сайте вуза'} перед подачей`, urgent:u.idx===firstDl})),
     {date:dateStr(admYear,4,15), label:'Ожидаются первые ответы от вузов', desc:'6–12 недель после дедлайна'},
     {date:dateStr(admYear,5,1),  label:'Принять оффер от вуза',  desc:'4–6 недель на решение'},
     {date:dateStr(admYear,5,7),  label:'Подать на студенческую визу', desc:'Германия 6–12 нед · Нидерланды 3–4 нед', urgent:true},
@@ -149,7 +147,7 @@ function buildLanes(profile: any): { lanes: Lane[], calEvents: CalEvent[] } {
   return {lanes, calEvents}
 }
 
-export default function GanttTimeline({profile}:{profile:any}) {
+export default function GanttTimeline({profile,programs=[]}:{profile:any,programs?:any[]}) {
   const [zoom, setZoom] = useState(1.4)
   const [ready, setReady] = useState(false)
   const [hoveredLane, setHoveredLane] = useState<string|null>(null)
@@ -178,7 +176,7 @@ export default function GanttTimeline({profile}:{profile:any}) {
     return()=>s.remove()
   },[])
 
-  const {lanes, calEvents} = buildLanes(profile)
+  const {lanes, calEvents} = buildLanes(profile, programs)
   const TOTAL=19, BASE_MW=70, MW=BASE_MW*zoom, LH=72, LW=220
 
   if(!ready) return (
@@ -259,6 +257,16 @@ export default function GanttTimeline({profile}:{profile:any}) {
                 </span>
               </button>
             </div>
+          </div>
+
+          {/* disclaimer — deadlines are AI-collected, not verified */}
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',
+            marginBottom:14,borderRadius:8,background:`${amb}12`,border:`1px solid ${amb}35`}}>
+            <span style={{fontFamily:mono,fontSize:12,color:amb,flexShrink:0}}>⚠</span>
+            <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>
+              Дедлайны собраны ИИ и могут быть неточными — обязательно проверь точную дату
+              на сайте вуза перед подачей (ссылка есть у каждого события).
+            </span>
           </div>
 
           {/* legend */}

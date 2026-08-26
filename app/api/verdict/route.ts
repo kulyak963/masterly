@@ -1,16 +1,7 @@
-
-
-import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'https://api.vibecode-claude.online/v1'
-})
-
+import { askAI, extractJson } from '../../../lib/ai'
 
 export async function POST(req: NextRequest) {
-    console.log("КНОПКА ДОШЛА ДО СЕРВЕРА")
   const { program, profile } = await req.json()
 
   const prompt = `Ты помогаешь студенту понять подходит ли ему магистерская программа.
@@ -38,24 +29,15 @@ IELTS минимум: ${program.ielts_min}
   "verdict": "одно предложение — стоит ли подавать и почему"
 }`
 
-  const msg = await client.messages.create({
-    model: 'claude-opus-4.7',
-    max_tokens: 500,
-    messages: [{ role: 'user', content: prompt }]
-  })
-
-
-  const text = (msg.content[0] as any).text.trim()
-
-const start = text.indexOf('{')
-const end = text.lastIndexOf('}')
-
-if (start === -1 || end === -1) {
-  throw new Error('Invalid JSON response')
-}
-
-const cleanJson = text.slice(start, end + 1)
-const json = JSON.parse(cleanJson)
-
-return NextResponse.json(json)
+  try {
+    const text = await askAI(prompt, { maxTokens: 500 })
+    const json = extractJson(text)
+    return NextResponse.json(json)
+  } catch (e: any) {
+    console.error('verdict AI call failed:', e)
+    return NextResponse.json(
+      { error: e?.message ?? 'AI request failed' },
+      { status: 502 }
+    )
+  }
 }

@@ -172,6 +172,22 @@ function StatusPill({status,color}:{status:string,color:string}) {
   )
 }
 
+function VerifiedBadge({verified}:{verified?:boolean}) {
+  return verified ? (
+    <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.06em',
+      padding:'2px 6px',borderRadius:3,flexShrink:0,
+      background:`${grn}18`,border:`1px solid ${grn}40`,color:grn}}>
+      ✓ ПРОВЕРЕНО
+    </span>
+  ) : (
+    <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.06em',
+      padding:'2px 6px',borderRadius:3,flexShrink:0,
+      background:`${gold}15`,border:`1px solid ${gold}35`,color:gold}}>
+      ⚠ ОЦЕНКА ИИ
+    </span>
+  )
+}
+
 /* ── Journey component ── */
 function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string,boolean>,onToggle:(k:string)=>void}) {
   const phases = makePhases(profile)
@@ -338,6 +354,7 @@ const [programs, setPrograms] = useState<any[]>([])
 const [selectedProgram, setSelectedProgram] = useState<any>(null)
 const [verdict, setVerdict] = useState<any>(null)
 const [verdictLoading, setVerdictLoading] = useState(false)
+const [verdictError, setVerdictError] = useState<string|null>(null)
 const [favorites, setFavorites] = useState<Set<string>>(new Set())
 const [compareList, setCompareList] = useState<string[]>([])
 
@@ -367,7 +384,7 @@ useEffect(() => {
       const abort = new AbortController()
       const timer = setTimeout(() => abort.abort(), 8000)
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', session.user.id)
@@ -377,6 +394,30 @@ useEffect(() => {
         .single()
 
       clearTimeout(timer)
+
+      // Магическая ссылка часто открывается на другом устройстве (например,
+      // почта на телефоне), где localStorage пустой — тогда ищем анкету,
+      // которую сохранили по email на шаге отправки ссылки.
+      if ((error || !data) && session.user.email) {
+        const { data: pending } = await supabase
+          .from('pending_profiles')
+          .select('data')
+          .eq('email', session.user.email)
+          .maybeSingle()
+
+        if (pending?.data) {
+          const { data: migrated, error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({ ...pending.data, user_id: session.user.id }, { onConflict: 'user_id' })
+            .select('*')
+            .single()
+          if (!upsertError && migrated) {
+            data = migrated
+            error = null
+            await supabase.from('pending_profiles').delete().eq('email', session.user.email)
+          }
+        }
+      }
 
       if (error || !data) {
         window.location.href = '/'
@@ -528,6 +569,19 @@ const unis = programs.map((p: any, i: number) => ({
   _score: calcScore(p, profile),
   _bucket: getBucket(calcScore(p, profile)),
 })).sort((a: any, b: any) => b._score - a._score)
+
+// Программы для таймлайна/календаря — избранное, а если его нет, топ-матч по каждой стране.
+// Раньше даты были одна на всю страну и не зависели от выбора студента.
+const timelinePrograms = (() => {
+  const favs = unis.filter((u: any) => favorites.has(u.id))
+  if (favs.length) return favs
+  const seen = new Set<string>()
+  const picked: any[] = []
+  for (const u of unis) {
+    if (!seen.has(u._country)) { seen.add(u._country); picked.push(u) }
+  }
+  return picked
+})()
 const haptic = (ms=8) => {
   if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms)
 }
@@ -555,8 +609,9 @@ const toggleCompare = (programId: string, e: React.MouseEvent) => {
       : prev.length < 3 ? [...prev, programId] : prev
   )
 }
-const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
+const getVerdict = async (p: any) => {
   setVerdict(null)
+  setVerdictError(null)
   setVerdictLoading(true)
   try {
     const res = await fetch('/api/verdict', {
@@ -568,8 +623,15 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
       })
     })
     const data = await res.json()
-    setVerdict(data)
-  } catch(e) { console.error(e) }
+    if (!res.ok) {
+      setVerdictError('Не получилось получить анализ — попробуй позже')
+    } else {
+      setVerdict(data)
+    }
+  } catch (e) {
+    console.error(e)
+    setVerdictError('Не получилось получить анализ — попробуй позже')
+  }
   setVerdictLoading(false)
 }
 
@@ -754,6 +816,22 @@ const getVerdict = async (p: any) => {console.log("GET VERDICT CLICKED")
   <div style={{padding:'36px 40px'}}>
     <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
     <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:28}}>Программы</h1>
+    {unis.length===0&&(
+      <div style={{padding:'32px',textAlign:'center',border:`1px solid ${line}`,borderRadius:8}}>
+        <div style={{fontFamily:serif,fontSize:18,color:t2,marginBottom:8}}>
+          Под твои страны и направление пока ничего не нашлось
+        </div>
+        <div style={{fontFamily:sans,fontSize:13,color:t3,marginBottom:16}}>
+          Попробуй добавить ещё стран или сменить направление в настройках
+        </div>
+        <button onClick={()=>setTab('settings')} style={{
+          padding:'10px 20px',borderRadius:8,border:`1px solid ${line}`,
+          background:'rgba(255,255,255,.05)',color:t1,fontFamily:sans,
+          fontSize:13,fontWeight:500,cursor:'pointer'}}>
+          Открыть настройки
+        </button>
+      </div>
+    )}
     {(['reach','target','safety'] as const).map(bucket => {
       const items = unis.filter((u:any) => u._bucket === bucket)
       if (!items.length) return null
@@ -775,7 +853,10 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 borderLeft:`2px solid ${selectedProgram?.id===u.id?cfg.color:'transparent'}`,
                 transition:'all .15s'}}>
                 <div>
-                  <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                    <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em'}}>{u._n}</div>
+                    <VerifiedBadge verified={u.verified}/>
+                  </div>
                   <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
                   <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
                   <button onClick={(e)=>toggleFavorite(u.id,e)}
@@ -815,12 +896,18 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
               <div>
                 <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.14em',color:t3,marginBottom:8}}>
-                  {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · MATCH {selectedProgram._score}
+                  {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · ПРИМЕРНАЯ ОЦЕНКА {selectedProgram._score}
                 </div>
-                <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:24,color:t1,fontWeight:700,letterSpacing:'-.02em',lineHeight:1.2,marginBottom:4}}>
-                  {selectedProgram._p}
-                </h2>
-                <div style={{fontFamily:sans,fontSize:13,color:t2}}>{selectedProgram._n}</div>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+                  <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:24,color:t1,fontWeight:700,letterSpacing:'-.02em',lineHeight:1.2}}>
+                    {selectedProgram._p}
+                  </h2>
+                  <VerifiedBadge verified={selectedProgram.verified}/>
+                </div>
+                <div style={{fontFamily:sans,fontSize:13,color:t2,marginBottom:4}}>{selectedProgram._n}</div>
+                <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.5}}>
+                  Оценка — грубая прикидка по IELTS/бюджету/рейтингу, не гарантия поступления.
+                </p>
               </div>
               <button onClick={()=>setSelectedProgram(null)}
                 style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:20,padding:'0 0 0 16px',flexShrink:0}}>×</button>
@@ -881,11 +968,17 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                 letterSpacing:'-.01em',marginBottom:10,transition:'all .2s'}}>
               {verdictLoading ? 'Анализируем...' : 'Персональный анализ'}
             </button>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
+            <a href={selectedProgram.url || `https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
               target="_blank" rel="noopener"
-              style={{display:'block',textAlign:'center',padding:'11px',borderRadius:8,
-                border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none'}}>
-              Найти на сайте вуза →
+              style={selectedProgram.verified ? {
+                display:'block',textAlign:'center',padding:'11px',borderRadius:8,
+                border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
+              } : {
+                display:'block',textAlign:'center',padding:'13px',borderRadius:8,
+                border:`1.5px solid ${gold}50`,background:`${gold}0F`,
+                fontFamily:sans,fontSize:13,fontWeight:500,color:gold,textDecoration:'none',
+              }}>
+              {selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'}
             </a>
             {isMobile&&(
   <button onClick={()=>setSelectedProgram(null)}
@@ -898,6 +991,12 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
     Закрыть
   </button>
 )}
+            {verdictError&&(
+              <div style={{marginTop:20,padding:'14px 16px',borderRadius:8,
+                background:`${red}0D`,border:`1px solid ${red}30`}}>
+                <span style={{fontFamily:sans,fontSize:13,color:red}}>{verdictError}</span>
+              </div>
+            )}
             {verdict&&(
               <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
                 <div style={{height:1,background:line,marginBottom:20}}/>
@@ -952,7 +1051,10 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
               transition:'all .15s'}}
               onClick={()=>{setSelectedProgram(u);setVerdict(null)}}>
               <div>
-                <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em',marginBottom:3}}>{u._n}</div>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                  <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em'}}>{u._n}</div>
+                  <VerifiedBadge verified={u.verified}/>
+                </div>
                 <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontFamily:mono,fontSize:9,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>
@@ -997,7 +1099,8 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                   </thead>
                   <tbody>
                     {[
-                      {l:'Match Score', fn:(u:any)=><span style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>},
+                      {l:'Примерная оценка', fn:(u:any)=><span style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>},
+                      {l:'Данные', fn:(u:any)=><VerifiedBadge verified={u.verified}/>},
                       {l:'Корзина',     fn:(u:any)=>BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].label},
                       {l:'Стоимость',   fn:(u:any)=>u._cost},
                       {l:'Рейтинг QS', fn:(u:any)=>u._rank},
@@ -1158,7 +1261,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
   </div>
 )}
 {tab==='timeline'&&(
-  <GanttTimeline profile={profile}/>
+  <GanttTimeline profile={profile} programs={timelinePrograms}/>
 )}
       </main>
       {isMobile&&(

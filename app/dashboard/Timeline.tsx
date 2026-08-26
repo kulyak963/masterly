@@ -20,11 +20,10 @@ interface Event {
   gcal?: boolean        // включать в экспорт
 }
 
-function buildEvents(profile: any): Event[] {
+function buildEvents(profile: any, programs: any[] = []): Event[] {
   const year = parseInt(profile.timeline) || 2026
   const sf = profile.budget === 'zero'
   const ni = profile.ielts < 6.5
-  const countries = profile.countries?.split(',').filter(Boolean) || []
 
   const events: Event[] = []
 
@@ -91,23 +90,16 @@ function buildEvents(profile: any): Event[] {
     type:'deadline', color:gold, gcal:true,
   })
 
-  /* ── UNIVERSITY DEADLINES ── */
-  const uniDls: Record<string,{n:string,date:string,sub:string}> = {
-    de:{n:'TU Munich',    date:`${year-1}-01-15`, sub:'Германия · TUMonline'},
-    fi:{n:'Aalto',        date:`${year-1}-01-20`, sub:'Финляндия · universityadmissions.fi'},
-    nl:{n:'TU Delft',     date:`${year-1}-02-01`, sub:'Нидерланды · Studielink'},
-    se:{n:'KTH Stockholm',date:`${year-1}-02-15`, sub:'Швеция · universityadmissions.se'},
-    ch:{n:'ETH Zurich',   date:`${year-1}-12-15`, sub:'Швейцария · mystudies.ethz.ch'},
-    fr:{n:'Sciences Po',  date:`${year-1}-01-09`, sub:'Франция'},
-    cz:{n:'CTU Prague',   date:`${year-1}-02-28`, sub:'Чехия'},
-    at:{n:'TU Wien',      date:`${year-1}-03-01`, sub:'Австрия'},
-  }
-  countries.forEach((c:string)=>{
-    const u = uniDls[c]
-    if(u) events.push({
-      id:`uni-${c}`, date:u.date,
-      label:`Дедлайн подачи — ${u.n}`,
-      sub:u.sub,
+  /* ── UNIVERSITY DEADLINES — реальные даты выбранных программ, не догадка по стране ── */
+  programs.forEach((p:any, i:number)=>{
+    const m = p.deadline_month || 1
+    const d = p.deadline_day || 15
+    const date = `${year-1}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const uniName = p.university?.name || p._n || '?'
+    events.push({
+      id:`uni-${p.id||i}`, date,
+      label:`Дедлайн подачи — ${uniName}`,
+      sub:`${p.name || p._p || ''} · ⚠ дата собрана ИИ — проверь на ${p.url || 'сайте вуза'}`,
       type:'deadline', color:blue, gcal:true,
     })
   })
@@ -252,7 +244,7 @@ const TYPE_ICON: Record<string,string> = {
   deadline:'◈', milestone:'◉', task:'◎', goal:'★',
 }
 
-export default function Timeline({profile}:{profile:any}) {
+export default function Timeline({profile,programs=[]}:{profile:any,programs?:any[]}) {
   const [exported, setExported] = useState(false)
   const [filter, setFilter] = useState<string>('all')
 
@@ -271,7 +263,7 @@ export default function Timeline({profile}:{profile:any}) {
     return()=>s.remove()
   },[])
 
-  const allEvents = buildEvents(profile)
+  const allEvents = buildEvents(profile, programs)
   const filtered = filter==='all'
     ? allEvents
     : allEvents.filter(e=>e.type===filter)
@@ -308,6 +300,16 @@ export default function Timeline({profile}:{profile:any}) {
         <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300,lineHeight:1.6}}>
           Все важные даты в хронологическом порядке — от регистрации до первого дня учёбы.
         </p>
+      </div>
+
+      {/* disclaimer — deadlines are AI-collected, not verified */}
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',
+        marginBottom:24,borderRadius:8,background:`${gold}12`,border:`1px solid ${gold}35`}}>
+        <span style={{fontFamily:mono,fontSize:12,color:gold,flexShrink:0}}>⚠</span>
+        <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>
+          Дедлайны собраны ИИ и могут быть неточными — обязательно проверь точную дату
+          на сайте вуза перед подачей (ссылка есть у каждого события).
+        </span>
       </div>
 
       {/* key stats */}
