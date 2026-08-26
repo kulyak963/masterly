@@ -95,6 +95,22 @@ export default function LoginPage() {
     return () => s.remove()
   }, [])
 
+  // Пока ждём подтверждения почты — пробуем войти паролем каждые 4с. Пароль
+  // уже известен этому устройству, а подтверждают обычно на телефоне — вход
+  // происходит сам там, где начали регистрацию, без лишних кликов.
+  useEffect(()=>{
+    if (!signupPending) return
+    const em = email.trim()
+    if (!em || !password) return
+    let cancelled = false
+    const tryLogin = async () => {
+      const { data } = await supabase.auth.signInWithPassword({ email: em, password })
+      if (!cancelled && data.session) window.location.href = '/dashboard'
+    }
+    const id = setInterval(tryLogin, 4000)
+    return () => { cancelled = true; clearInterval(id) }
+  },[signupPending])
+
   const captchaOpt = () => turnstile.enabled ? { captchaToken: turnstile.token || undefined } : {}
 
   const loginWithGoogle = async () => {
@@ -246,7 +262,7 @@ export default function LoginPage() {
               lineHeight:1.65, fontWeight:300 }}>
               Отправили письмо с подтверждением на<br/>
               <strong style={{ color:t1 }}>{email}</strong><br/>
-              Перейди по ссылке — и пароль будет готов к использованию.
+              Перейди по ссылке хоть с телефона — эта вкладка сама войдёт, когда подтвердишь. Не закрывай её.
             </p>
             <button onClick={() => { setSignupPending(false); setPwMode('signin') }} style={{
               marginTop:20, background:'none', border:'none', fontFamily:sans, fontSize:13,

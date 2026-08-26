@@ -346,6 +346,7 @@ function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string
 ══════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const [profile, setProfile] = useState<any>(null)
+  const [profileMissing, setProfileMissing] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('overview')
   const [taskDone, setTaskDone] = useState<Record<string,boolean>>({})
@@ -420,7 +421,11 @@ useEffect(() => {
       }
 
       if (error || !data) {
-        window.location.href = '/'
+        // Не редиректим автоматически на "/" — если там сессия есть, а анкеты
+        // нет, "/" тут же кидает обратно на "/dashboard" и получается
+        // бесконечная перезагрузка. Показываем экран с ручной кнопкой.
+        setLoading(false)
+        setProfileMissing(true)
         return
       }
       setProfile(data)
@@ -541,9 +546,20 @@ useEffect(()=>{
 
   if(!profile) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{textAlign:'center'}}>
-        <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:24,color:t1,marginBottom:12}}>Профиль не найден</div>
-        <a href="/" style={{fontFamily:sans,fontSize:13,color:t2,textDecoration:'none'}}>Пройти онбординг →</a>
+      <div style={{textAlign:'center',maxWidth:360,padding:'0 20px'}}>
+        <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:24,color:t1,marginBottom:12}}>Анкета не найдена</div>
+        <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:20}}>
+          {profileMissing
+            ? 'Вход подтверждён, но не нашли твою анкету на этом устройстве. Если ты заполнял её на компьютере — просто вернись туда, вход должен произойти сам.'
+            : 'Похоже, анкета ещё не заполнена.'}
+        </p>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          <a href="/" style={{fontFamily:sans,fontSize:13,color:t1,textDecoration:'underline'}}>Пройти опрос заново →</a>
+          <button onClick={async()=>{await supabase.auth.signOut();window.location.href='/login'}} style={{
+            background:'none',border:'none',fontFamily:sans,fontSize:12,color:t3,cursor:'pointer'}}>
+            Выйти
+          </button>
+        </div>
       </div>
     </div>
   )

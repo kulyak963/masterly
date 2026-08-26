@@ -299,6 +299,22 @@ export default function Home() {
     return () => { cancelled = true }
   },[])
 
+  // Пока ждём подтверждения почты — пробуем войти паролем каждые 4с. Пароль
+  // уже известен этому устройству (компьютеру), а подтверждают обычно на
+  // телефоне — так вход происходит сам там, где начали, без лишних кликов.
+  useEffect(()=>{
+    if (!signupPending) return
+    const email = a.email.trim()
+    if (!email || !password) return
+    let cancelled = false
+    const tryLogin = async () => {
+      const { data } = await supabase.auth.signInWithPassword({ email, password })
+      if (!cancelled && data.session) window.location.href = '/dashboard'
+    }
+    const id = setInterval(tryLogin, 4000)
+    return () => { cancelled = true; clearInterval(id) }
+  },[signupPending])
+
   const set = (k: string, v: unknown) => setA(x => ({...x,[k]:v}))
   const TOTAL = 8
 
@@ -952,7 +968,7 @@ setStep((s:any)=> s+1)
       </div>
       <div style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.6}}>
         Отправили письмо с подтверждением на <strong style={{color:t1}}>{a.email}</strong>.<br/>
-        Перейди по ссылке — и сможешь входить по email и паролю.
+        Перейди по ссылке хоть с телефона — эта вкладка сама войдёт, когда подтвердишь. Не закрывай её.
       </div>
       <button onClick={()=>setSignupPending(false)} style={{
         marginTop:10,background:'none',border:'none',fontFamily:sans,fontSize:12,
