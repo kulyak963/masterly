@@ -27,9 +27,61 @@ const CNAME: Record<string,string> = {
   ch:'Швейцария', fi:'Финляндия', fr:'Франция',
   cz:'Чехия', at:'Австрия'
 }
-function countryFlag(code?: string): string {
-  if (!code || code.length !== 2) return code?.toUpperCase() || ''
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 127397 + c.charCodeAt(0)))
+/* Флаги — SVG, не эмодзи: Windows/Chrome не рисует флаг-эмодзи цветной
+   картинкой, показывает буквы кода страны как текст (проверено на скрине
+   пользователя). Полосы/цвета упрощены — на бейдже 16-18px мелкие детали
+   вроде герба Португалии или треугольника Чехии всё равно неразличимы. */
+function Flag({ code, size=18 }: { code?: string; size?: number }) {
+  const w = size, h = Math.round(size*2/3)
+  const bands = (colors: string[], dir: 'h'|'v') => colors.map((c,i)=>{
+    const n = colors.length
+    return dir==='h'
+      ? <rect key={i} x={0} y={h*i/n} width={w} height={h/n} fill={c}/>
+      : <rect key={i} x={w*i/n} y={0} width={w/n} height={h} fill={c}/>
+  })
+  const nordicCross = (field: string, cross: string) => (
+    <>
+      <rect width={w} height={h} fill={field}/>
+      <rect x={w*0.32} width={w*0.16} height={h} fill={cross}/>
+      <rect y={h*0.4} width={w} height={h*0.2} fill={cross}/>
+    </>
+  )
+  let content: React.ReactNode
+  switch (code) {
+    case 'de': content = bands(['#000000','#DD0000','#FFCE00'],'h'); break
+    case 'nl': content = bands(['#AE1C28','#FFFFFF','#21468B'],'h'); break
+    case 'fr': content = bands(['#0055A4','#FFFFFF','#EF4135'],'v'); break
+    case 'at': content = bands(['#ED2939','#FFFFFF','#ED2939'],'h'); break
+    case 'be': content = bands(['#000000','#FAE042','#ED2939'],'v'); break
+    case 'ie': content = bands(['#169B62','#FFFFFF','#FF883E'],'v'); break
+    case 'it': content = bands(['#008C45','#F4F5F0','#CD212A'],'v'); break
+    case 'es': content = bands(['#AA151B','#F1BF00','#AA151B'],'h'); break
+    case 'pt': content = bands(['#046A38','#DA291C'],'v'); break
+    case 'pl': content = bands(['#FFFFFF','#DC143C'],'h'); break
+    case 'hu': content = bands(['#CE2939','#FFFFFF','#477050'],'h'); break
+    case 'cz': content = bands(['#FFFFFF','#D7141A'],'h'); break
+    case 'ee': content = bands(['#0072CE','#000000','#FFFFFF'],'h'); break
+    case 'lt': content = bands(['#FDB913','#006A44','#C1272D'],'h'); break
+    case 'lv': content = bands(['#9E3039','#FFFFFF','#9E3039'],'h'); break
+    case 'se': content = nordicCross('#005BAA','#FECC02'); break
+    case 'fi': content = nordicCross('#FFFFFF','#003580'); break
+    case 'no': content = nordicCross('#EF2B2D','#FFFFFF'); break
+    case 'dk': content = nordicCross('#C60C30','#FFFFFF'); break
+    case 'ch': content = (
+      <>
+        <rect width={w} height={h} fill="#D52B1E"/>
+        <rect x={w*0.42} y={h*0.2} width={w*0.16} height={h*0.6} fill="#FFFFFF"/>
+        <rect x={w*0.28} y={h*0.4} width={w*0.44} height={h*0.2} fill="#FFFFFF"/>
+      </>
+    ); break
+    default: return <span style={{fontFamily:mono,fontSize:size*0.55,color:t2}}>{code?.toUpperCase()}</span>
+  }
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}
+      style={{borderRadius:2,display:'block',flexShrink:0,outline:`1px solid ${line}`,outlineOffset:-0.5}}>
+      {content}
+    </svg>
+  )
 }
 const BUDGET_LIMIT: Record<string,number> = {
   zero:0, low:5000, mid:15000, high:999999
@@ -909,8 +961,8 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
   {favorites.has(u.id)?'♥':'♡'}
 </button>
                 </div>
-                <span style={{fontSize:16,textAlign:'center'}} title={CNAME[u._country]||u._country}>
-                  {countryFlag(u._country)}
+                <span style={{justifySelf:'center'}} title={CNAME[u._country]||u._country}>
+                  <Flag code={u._country}/>
                 </span>
                 <Mono style={{color:t2}}>{u._cost}</Mono>
                 <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{u._score}</div>
@@ -1117,8 +1169,8 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                   transition:'all .15s',justifySelf:'center'}}>
                 {compareList.includes(u.id)?'✓':'сравн'}
               </button>
-              <span style={{fontSize:16,textAlign:'center'}} title={CNAME[u._country]||u._country}>
-                {countryFlag(u._country)}
+              <span style={{justifySelf:'center'}} title={CNAME[u._country]||u._country}>
+                <Flag code={u._country}/>
               </span>
               <Mono style={{color:t2}}>{u._cost}</Mono>
               <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
@@ -1165,7 +1217,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                       {l:'Рейтинг QS', fn:(u:any)=>u._rank},
                       {l:'IELTS min',  fn:(u:any)=>u.ielts_min||'6.5'},
                       {l:'Дедлайн',    fn:(u:any)=><span style={{color:u._days<30?red:t2}}>{u._days} дн.</span>},
-                      {l:'Страна',     fn:(u:any)=>countryFlag(u._country)},
+                      {l:'Страна',     fn:(u:any)=><Flag code={u._country}/>},
                     ].map((row,ri)=>(
                       <tr key={ri}>
                         <td style={{padding:'12px 16px',fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em',borderBottom:`1px solid ${line}`}}>{row.l}</td>
@@ -1226,7 +1278,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                           </div>
                           <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:8}}>{u._p}</div>
                           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,flexWrap:'wrap'}}>
-                            <span style={{fontSize:14}} title={CNAME[u._country]||u._country}>{countryFlag(u._country)}</span>
+                            <span title={CNAME[u._country]||u._country}><Flag code={u._country} size={16}/></span>
                             <Mono style={{color:t2}}>{u._cost}</Mono>
                             <span style={{fontFamily:serif,fontStyle:'italic',fontSize:14,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>
                           </div>
