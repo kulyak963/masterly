@@ -38,6 +38,9 @@ export default function LoginPage() {
 
   const [sent, setSent] = useState(false)
   const [signupPending, setSignupPending] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpError, setOtpError] = useState('')
   const [resetSent, setResetSent] = useState(false)
 
   const [loading, setLoading] = useState(false)
@@ -109,6 +112,21 @@ export default function LoginPage() {
     turnstile.reset()
     if (error) { setError(error.message); setLoading(false) }
     else { setSent(true); setLoading(false) }
+  }
+
+  // Ссылку часто открывают на телефоне, а продолжить хотят на компьютере —
+  // ссылка «привязывается» к тому браузеру, где её открыли, поэтому вместо
+  // неё можно ввести 6-значный код из того же письма прямо здесь.
+  const verifyOtpCode = async () => {
+    const em = email.trim()
+    const token = otpCode.trim()
+    if (!em || !token || otpVerifying) return
+    setOtpVerifying(true)
+    setOtpError('')
+    const { data, error } = await supabase.auth.verifyOtp({ email: em, token, type: 'email' })
+    if (error) { setOtpError('Код не подошёл — проверь письмо или запроси ссылку заново'); setOtpVerifying(false); return }
+    if (data.session) window.location.href = '/dashboard'
+    else setOtpVerifying(false)
   }
 
   const signInWithPassword = async () => {
@@ -203,14 +221,31 @@ export default function LoginPage() {
               Проверь почту
             </h2>
             <p style={{ fontFamily:sans, fontSize:13, color:t2,
-              lineHeight:1.65, fontWeight:300, marginBottom:20 }}>
+              lineHeight:1.65, fontWeight:300, marginBottom:16 }}>
               Отправили ссылку для входа на<br/>
               <strong style={{ color:t1 }}>{email}</strong>
             </p>
-            <p style={{ fontFamily:mono, fontSize:10, color:t3, letterSpacing:'0.08em' }}>
+            <p style={{ fontFamily:sans, fontSize:12, color:t2, lineHeight:1.6, marginBottom:12 }}>
+              Письмо открыто на телефоне? Введи код из него здесь:
+            </p>
+            <div style={{ display:'flex', gap:8 }}>
+              <input type="text" inputMode="numeric" maxLength={6} placeholder="Код из письма"
+                value={otpCode} onChange={e=>{ setOtpCode(e.target.value.replace(/\D/g,'')); setOtpError('') }}
+                onKeyDown={e=>{ if (e.key==='Enter') verifyOtpCode() }}
+                style={{ flex:1, textAlign:'center', letterSpacing:'0.3em', fontFamily:mono }}/>
+              <button onClick={verifyOtpCode} disabled={otpCode.length<6||otpVerifying}
+                style={{ padding:'0 18px', borderRadius:8, border:'none',
+                background:otpCode.length>=6?grn:'rgba(255,255,255,.06)',
+                color:otpCode.length>=6?bg0:t3, fontFamily:sans, fontSize:13, fontWeight:600,
+                cursor:otpCode.length>=6&&!otpVerifying?'pointer':'not-allowed' }}>
+                {otpVerifying?'...':'OK'}
+              </button>
+            </div>
+            {otpError && <p style={{ fontFamily:sans, fontSize:11, color:red, marginTop:8 }}>{otpError}</p>}
+            <p style={{ fontFamily:mono, fontSize:10, color:t3, letterSpacing:'0.08em', marginTop:16 }}>
               ССЫЛКА ДЕЙСТВУЕТ 24 ЧАСА
             </p>
-            <button onClick={() => setSent(false)} style={{ marginTop:20, background:'none',
+            <button onClick={() => { setSent(false); setOtpCode(''); setOtpError('') }} style={{ marginTop:20, background:'none',
               border:'none', fontFamily:sans, fontSize:13, color:t2, cursor:'pointer',
               textDecoration:'underline' }}>
               Назад

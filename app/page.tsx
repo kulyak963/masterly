@@ -208,6 +208,9 @@ export default function Home() {
   const [emailSending, setEmailSending] = useState(false)
   const [password, setPassword] = useState('')
   const [signupPending, setSignupPending] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpError, setOtpError] = useState('')
   const turnstile = useTurnstile()
  const [a, setA] = useState({
   name:'', email:'', mode:'', pain:'',
@@ -345,6 +348,21 @@ setStep((s:any)=> s+1)
       alert(e?.message || 'Не получилось — попробуй ещё раз')
     }
     setEmailSending(false)
+  }
+
+  // Ссылку часто открывают на телефоне, а продолжить хотят на компьютере —
+  // ссылка «привязывается» к тому браузеру, где её открыли, поэтому вместо
+  // неё можно ввести 6-значный код из того же письма прямо здесь.
+  const verifyOtpCode = async () => {
+    const email = a.email.trim()
+    const token = otpCode.trim()
+    if (!email || !token || otpVerifying) return
+    setOtpVerifying(true)
+    setOtpError('')
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' })
+    if (error) { setOtpError('Код не подошёл — проверь письмо или запроси ссылку заново'); setOtpVerifying(false); return }
+    if (data.session) window.location.href = '/dashboard'
+    else setOtpVerifying(false)
   }
 
   const score = Math.min(97, Math.round(
@@ -935,9 +953,24 @@ setStep((s:any)=> s+1)
       </div>
       <div style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.6}}>
         Отправили ссылку на <strong style={{color:t1}}>{a.email}</strong>.<br/>
-        Открой её на любом устройстве — план сохранён и найдётся автоматически.
+        Открой её на этом устройстве — или, если письмо открыто на телефоне,
+        введи код из этого же письма прямо здесь.
       </div>
-      <button onClick={()=>setEmailSent(false)} style={{
+      <div style={{display:'flex',gap:8,marginTop:14}}>
+        <input type="text" inputMode="numeric" maxLength={6} placeholder="Код из письма"
+          value={otpCode} onChange={e=>{setOtpCode(e.target.value.replace(/\D/g,''));setOtpError('')}}
+          onKeyDown={e=>{ if(e.key==='Enter') verifyOtpCode() }}
+          style={{flex:1,textAlign:'center',letterSpacing:'0.3em',fontFamily:mono}}/>
+        <button onClick={verifyOtpCode} disabled={otpCode.length<6||otpVerifying}
+          className="btn" style={{padding:'0 18px',borderRadius:8,border:'none',
+          background:otpCode.length>=6?grn:'rgba(255,255,255,.06)',
+          color:otpCode.length>=6?bg0:t3,fontFamily:sans,fontSize:13,fontWeight:600,
+          cursor:otpCode.length>=6&&!otpVerifying?'pointer':'not-allowed'}}>
+          {otpVerifying?'...':'OK'}
+        </button>
+      </div>
+      {otpError && <div style={{fontFamily:sans,fontSize:11,color:red,marginTop:8}}>{otpError}</div>}
+      <button onClick={()=>{setEmailSent(false);setOtpCode('');setOtpError('')}} style={{
         marginTop:10,background:'none',border:'none',fontFamily:sans,fontSize:12,
         color:t2,cursor:'pointer',textDecoration:'underline'}}>
         Ввести другой email
