@@ -27,6 +27,10 @@ const CNAME: Record<string,string> = {
   ch:'Швейцария', fi:'Финляндия', fr:'Франция',
   cz:'Чехия', at:'Австрия'
 }
+function countryFlag(code?: string): string {
+  if (!code || code.length !== 2) return code?.toUpperCase() || ''
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 127397 + c.charCodeAt(0)))
+}
 const BUDGET_LIMIT: Record<string,number> = {
   zero:0, low:5000, mid:15000, high:999999
 }
@@ -905,8 +909,8 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
   {favorites.has(u.id)?'♥':'♡'}
 </button>
                 </div>
-                <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
-                  {u._country?.toUpperCase()}
+                <span style={{fontSize:16,textAlign:'center'}} title={CNAME[u._country]||u._country}>
+                  {countryFlag(u._country)}
                 </span>
                 <Mono style={{color:t2}}>{u._cost}</Mono>
                 <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{u._score}</div>
@@ -1113,8 +1117,8 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                   transition:'all .15s',justifySelf:'center'}}>
                 {compareList.includes(u.id)?'✓':'сравн'}
               </button>
-              <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3,textAlign:'center'}}>
-                {u._country?.toUpperCase()}
+              <span style={{fontSize:16,textAlign:'center'}} title={CNAME[u._country]||u._country}>
+                {countryFlag(u._country)}
               </span>
               <Mono style={{color:t2}}>{u._cost}</Mono>
               <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
@@ -1161,7 +1165,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                       {l:'Рейтинг QS', fn:(u:any)=>u._rank},
                       {l:'IELTS min',  fn:(u:any)=>u.ielts_min||'6.5'},
                       {l:'Дедлайн',    fn:(u:any)=><span style={{color:u._days<30?red:t2}}>{u._days} дн.</span>},
-                      {l:'Страна',     fn:(u:any)=>u._country?.toUpperCase()},
+                      {l:'Страна',     fn:(u:any)=>countryFlag(u._country)},
                     ].map((row,ri)=>(
                       <tr key={ri}>
                         <td style={{padding:'12px 16px',fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em',borderBottom:`1px solid ${line}`}}>{row.l}</td>
@@ -1222,7 +1226,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                           </div>
                           <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:8}}>{u._p}</div>
                           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,flexWrap:'wrap'}}>
-                            <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3}}>{u._country?.toUpperCase()}</span>
+                            <span style={{fontSize:14}} title={CNAME[u._country]||u._country}>{countryFlag(u._country)}</span>
                             <Mono style={{color:t2}}>{u._cost}</Mono>
                             <span style={{fontFamily:serif,fontStyle:'italic',fontSize:14,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>
                           </div>
