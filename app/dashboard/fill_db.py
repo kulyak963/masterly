@@ -1,6 +1,7 @@
 """
 Mastersly — заполнение базы данных вузов через Claude API
-Запуск: python fill_db.py
+Запуск: экспортировать NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ANTHROPIC_API_KEY (значения — из .env.local проекта), затем python fill_db.py
 """
  
 import os, json, time
@@ -8,9 +9,14 @@ from anthropic import Anthropic
 from supabase import create_client
  
 # ── настройки ──────────────────────────────────────────────
-SUPABASE_URL = "https://sffbsxwpnspwttofhdxd.supabase.co"
-SUPABASE_KEY = "sb_publishable_Ar_cfGVq4uNEW-dx-u87aw_Q9gYD3lJ"  # вставь свой anon key
-ANTHROPIC_KEY = "sk-cfebbee2344c14c0e646f3eca1e6d42a41bd56372561e4dc" # вставь свой API key с console.anthropic.com
+# Секреты берутся из переменных окружения — теми же именами, что и
+# в .env.local проекта, чтобы не заводить второй набор ключей.
+# Нужен SUPABASE_SERVICE_ROLE_KEY (не anon-ключ) — скрипт пишет в
+# universities/programs, а анону текущие RLS-политики разрешают только SELECT.
+SUPABASE_URL = os.environ["NEXT_PUBLIC_SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+ANTHROPIC_KEY = os.environ["ANTHROPIC_API_KEY"]
+ANTHROPIC_BASE_URL = os.environ.get("ANTHROPIC_BASE_URL", "https://api.vibecode-claude.online/v1")
  
 # ── 20 стран ──────────────────────────────────────────────
 COUNTRIES = [
@@ -154,7 +160,7 @@ def save_program(supabase, country_code: str, field: str, prog: dict) -> bool:
 def main():
     client = Anthropic(
         api_key=ANTHROPIC_KEY,
-        base_url="https://api.vibecode-claude.online/v1"
+        base_url=ANTHROPIC_BASE_URL
     )
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 

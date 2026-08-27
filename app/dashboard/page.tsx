@@ -62,6 +62,15 @@ const BUCKET_CFG = {
   target: { label:'Таргет',   sub:'Реальный шанс',          color:'#6B8CFF' },
   safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:'#3FB950' },
 }
+
+type ApplicationStatus = 'not_applied'|'applied'|'interview'|'offer'|'rejected'
+const STATUS_CFG: Record<ApplicationStatus,{label:string;color:string}> = {
+  not_applied: { label:'Не подано',      color:t3 },
+  applied:     { label:'Подано',         color:'#6B8CFF' },
+  interview:   { label:'Собеседование',  color:'#C8A256' },
+  offer:       { label:'Оффер',          color:'#3FB950' },
+  rejected:    { label:'Отказ',          color:'#E5534B' },
+}
 /* ── journey phases ── */
 function makePhases(profile: any) {
   const ni = profile.ielts < 6.5
@@ -356,7 +365,7 @@ const [selectedProgram, setSelectedProgram] = useState<any>(null)
 const [verdict, setVerdict] = useState<any>(null)
 const [verdictLoading, setVerdictLoading] = useState(false)
 const [verdictError, setVerdictError] = useState<string|null>(null)
-const [favorites, setFavorites] = useState<Set<string>>(new Set())
+const [favorites, setFavorites] = useState<Map<string,{status:ApplicationStatus;status_updated_at:string}>>(new Map())
 const [compareList, setCompareList] = useState<string[]>([])
 
 const [isMobile, setIsMobile] = useState(false)
@@ -470,10 +479,13 @@ const filtered = data.filter(p =>
 }, [profile])
 useEffect(() => {
   if (!profile) return
-  supabase.from('favorites').select('program_id')
+  supabase.from('favorites').select('program_id, status, status_updated_at')
     .eq('user_id', profile.user_id)
     .then(({ data }) => {
-      if (data) setFavorites(new Set(data.map((f:any) => f.program_id)))
+      if (data) setFavorites(new Map(data.map((f:any) => [f.program_id, {
+        status: (f.status ?? 'not_applied') as ApplicationStatus,
+        status_updated_at: f.status_updated_at,
+      }])))
     })
 }, [profile])
 
@@ -605,16 +617,26 @@ const haptic = (ms=8) => {
 const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
   e.stopPropagation()
   const isFav = favorites.has(programId)
-  const next = new Set(favorites)
+  const next = new Map(favorites)
   if (isFav) {
     next.delete(programId)
     await supabase.from('favorites').delete()
       .eq('user_id', profile.user_id).eq('program_id', programId)
   } else {
-    next.add(programId)
+    next.set(programId, { status:'not_applied', status_updated_at: new Date().toISOString() })
     await supabase.from('favorites').insert({ user_id: profile.user_id, program_id: programId })
   }
   setFavorites(next)
+}
+
+const updateApplicationStatus = async (programId: string, status: ApplicationStatus, e: React.SyntheticEvent) => {
+  e.stopPropagation()
+  const status_updated_at = new Date().toISOString()
+  const next = new Map(favorites)
+  next.set(programId, { status, status_updated_at })
+  setFavorites(next)
+  await supabase.from('favorites').update({ status, status_updated_at })
+    .eq('user_id', profile.user_id).eq('program_id', programId)
 }
 
 const toggleCompare = (programId: string, e: React.MouseEvent) => {
@@ -671,6 +693,7 @@ const getVerdict = async (p: any) => {
   {id:'journey',  l:'Journey'},
   {id:'unis',     l:'Программы'},
   {id:'saved',    l:'Избранное'},
+  {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
   {id:'settings', l:'Настройки'},
 ]
@@ -1065,7 +1088,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
         <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden',marginBottom:24}}>
           {unis.filter((u:any)=>favorites.has(u.id)).map((u:any,i:number,arr:any[])=>(
             <div key={u.id}
-              style={{display:'grid',gridTemplateColumns:'1fr 40px 60px 110px 60px 70px',
+              style={{display:'grid',gridTemplateColumns:'1fr 40px 60px 110px 60px 140px 70px',
               padding:'16px 20px',alignItems:'center',cursor:'pointer',
               borderBottom:i<arr.length-1?`1px solid ${line}`:'none',
               background:compareList.includes(u.id)?'rgba(255,255,255,.04)':'transparent',
@@ -1095,6 +1118,17 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
               </span>
               <Mono style={{color:t2}}>{u._cost}</Mono>
               <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
+              <select
+                value={favorites.get(u.id)?.status ?? 'not_applied'}
+                onClick={(e)=>e.stopPropagation()}
+                onChange={(e)=>updateApplicationStatus(u.id, e.target.value as ApplicationStatus, e)}
+                style={{background:bg1,border:`1px solid ${line}`,borderRadius:4,cursor:'pointer',
+                  padding:'4px 6px',fontSize:10,fontFamily:mono,justifySelf:'center',width:'100%',
+                  color:STATUS_CFG[favorites.get(u.id)?.status ?? 'not_applied'].color}}>
+                {(Object.keys(STATUS_CFG) as ApplicationStatus[]).map(s=>(
+                  <option key={s} value={s} style={{color:t1,background:bg1}}>{STATUS_CFG[s].label}</option>
+                ))}
+              </select>
               <button onClick={(e)=>toggleFavorite(u.id,e)}
                 style={{background:'none',border:'none',cursor:'pointer',color:gold,fontSize:16,padding:'4px'}}>♥</button>
             </div>
@@ -1148,6 +1182,76 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
     )}
   </div>
 )}
+{tab==='applications'&&(()=>{
+  const APP_COLUMNS: ApplicationStatus[] = ['applied','interview','offer','rejected']
+  const appliedUnis = unis.filter((u:any)=>{
+    const s = favorites.get(u.id)?.status
+    return s && s!=='not_applied'
+  })
+  return (
+    <div style={{padding:'36px 40px'}}>
+      <Mono style={{display:'block',marginBottom:12}}>{appliedUnis.length} АКТИВНЫХ ЗАЯВОК</Mono>
+      <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:24}}>Заявки</h1>
+
+      {appliedUnis.length===0?(
+        <div style={{padding:'40px 0',textAlign:'center'}}>
+          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t3,marginBottom:8}}>Пока пусто</div>
+          <div style={{fontFamily:sans,fontSize:13,color:t3}}>Смени статус программы на «Подано» во вкладке «Избранное», когда отправишь заявку</div>
+        </div>
+      ):(
+        <div style={{overflowX:'auto'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(220px,1fr))',gap:16,alignItems:'start',minWidth:900}}>
+            {APP_COLUMNS.map(col=>{
+              const items = unis.filter((u:any)=>favorites.get(u.id)?.status===col)
+              return (
+                <div key={col}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,paddingBottom:8,borderBottom:`2px solid ${STATUS_CFG[col].color}`}}>
+                    <span style={{fontFamily:mono,fontSize:10,letterSpacing:'.06em',color:STATUS_CFG[col].color}}>{STATUS_CFG[col].label.toUpperCase()}</span>
+                    <span style={{fontFamily:mono,fontSize:10,color:t3}}>{items.length}</span>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                    {items.map((u:any)=>{
+                      const fav = favorites.get(u.id)!
+                      const days = Math.floor((Date.now()-new Date(fav.status_updated_at).getTime())/86400000)
+                      return (
+                        <div key={u.id} onClick={()=>{setSelectedProgram(u);setVerdict(null)}}
+                          style={{border:`1px solid ${line}`,borderRadius:8,padding:'12px 14px',cursor:'pointer',background:bg1}}>
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                            <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:t1,letterSpacing:'-.01em'}}>{u._n}</div>
+                            <VerifiedBadge verified={u.verified}/>
+                          </div>
+                          <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:8}}>{u._p}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,flexWrap:'wrap'}}>
+                            <span style={{fontFamily:mono,fontSize:9,color:t2,padding:'2px 6px',border:`1px solid ${line}`,borderRadius:3}}>{u._country?.toUpperCase()}</span>
+                            <Mono style={{color:t2}}>{u._cost}</Mono>
+                            <span style={{fontFamily:serif,fontStyle:'italic',fontSize:14,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>
+                          </div>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                            <span style={{fontFamily:mono,fontSize:9,color:t3}}>{days<=0?'сегодня':`${days} дн. в статусе`}</span>
+                            <select
+                              value={col}
+                              onClick={(e)=>e.stopPropagation()}
+                              onChange={(e)=>updateApplicationStatus(u.id, e.target.value as ApplicationStatus, e)}
+                              style={{background:bg0,border:`1px solid ${line}`,borderRadius:4,cursor:'pointer',
+                                padding:'3px 5px',fontSize:9,fontFamily:mono,color:STATUS_CFG[col].color}}>
+                              {(Object.keys(STATUS_CFG) as ApplicationStatus[]).map(s=>(
+                                <option key={s} value={s} style={{color:t1,background:bg0}}>{STATUS_CFG[s].label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+})()}
 {tab==='settings'&&(
   <div style={{padding:'36px 40px',maxWidth:560}}>
     <Mono style={{display:'block',marginBottom:12}}>НАСТРОЙКИ</Mono>
