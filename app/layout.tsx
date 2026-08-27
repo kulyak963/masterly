@@ -1,29 +1,23 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope, Space_Mono } from "next/font/google";
+import { Overpass, Overpass_Mono } from "next/font/google";
 import "./globals.css";
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
-});
-
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
-  weight: ["400", "700"],
-  subsets: ["latin"],
-});
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
+const overpass = Overpass({
+  variable: "--font-overpass",
+  weight: ["400", "500", "600", "700", "800", "900"],
   style: ["normal", "italic"],
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+});
+
+const overpassMono = Overpass_Mono({
+  variable: "--font-overpass-mono",
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin", "cyrillic"],
   display: "swap",
 });
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 }
 export const metadata: Metadata = {
   metadataBase: new URL("https://mastersly.ru"),
@@ -39,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
-      className={`${manrope.variable} ${spaceMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${overpass.variable} ${overpassMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

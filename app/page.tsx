@@ -2,10 +2,16 @@
 import { supabase } from '../lib/supabase'
 import { useTurnstile } from '../lib/useTurnstile'
 import { useState, useEffect } from 'react'
+import { Unbounded } from 'next/font/google'
+import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
+import PhotoCycler, { CITY_SHOTS, CITY_LARGE, CYCLER_KEYFRAMES_CSS } from '@/components/PhotoCycler'
+
+// огромный заголовок hero — отдельный шрифт, крупнее и увереннее, чем Overpass
+const displayFont = Unbounded({ subsets: ['latin', 'cyrillic'], weight: ['700', '800', '900'], display: 'swap' })
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
+html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:2px}
 @keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
@@ -14,9 +20,7 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes kenburns{from{transform:scale(1.02) translateY(0)}to{transform:scale(1.11) translateY(-1.5%)}}
 @keyframes heroUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
-@keyframes cycleFade{0%{opacity:0}3%{opacity:1}17%{opacity:1}20%{opacity:0}100%{opacity:0}}
-@keyframes cycleZoom{0%{transform:scale(1.02)}20%{transform:scale(1.08)}100%{transform:scale(1.08)}}
-.cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
+${CYCLER_KEYFRAMES_CSS}
 .up{animation:up .5s cubic-bezier(.22,.68,0,1.1) both}
 .in{animation:in .4s ease both}
 .hero-kb{animation:kenburns 22s ease-out forwards}
@@ -37,25 +41,11 @@ html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
 .btn:hover{opacity:.88}
 .btn:active{transform:scale(.98)}
 input[type=range]{-webkit-appearance:none;width:100%;height:2px;background:rgba(255,255,255,.1);border-radius:1px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#F2EFE9;border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(242,239,233,.15)}
-input[type=text],input[type=email],input[type=password]{font-family:'Manrope',sans-serif;font-size:15px;color:#F2EFE9;caret-color:#F2EFE9;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:${t1};border-radius:50%;cursor:pointer;box-shadow:0 0 0 3px rgba(236,234,226,.15)}
+input[type=text],input[type=email],input[type=password]{font-family:${sans};font-size:15px;color:${t1};caret-color:${t1};background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:13px 16px;width:100%;outline:none;transition:border-color .2s;letter-spacing:-.01em}
 input:focus{border-color:rgba(255,255,255,.3)}
 input::placeholder{color:rgba(242,239,233,.2)}
 `
-
-const bg0 = '#0A0A0C'
-const bg1 = '#111115'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#8A8780'
-const t3 = '#4A4845'
-const gold = '#D4A853'
-const blue = '#6B8CFF'
-const red = '#E5534B'
-const grn = '#3FB950'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
 
 const COUNTRIES_MAIN = [
   {c:'de',f:'DE',n:'Германия',   tag:'Бесплатно · DAAD'},
@@ -125,44 +115,7 @@ const PAINS = [
   {id:'worth',  l:'Не уверен что оно того стоит',s:'Сомневаюсь в правильности выбора'},
 ]
 
-// маленькие превью — филмстрип и карточки стран (лёгкие, ~15-25кб каждая)
-const CITY_SHOTS = [
-  {c:'fr',city:'Париж',    img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=440&q=65'},
-  {c:'de',city:'Берлин',   img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=440&q=65'},
-  {c:'cz',city:'Прага',    img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=440&q=65'},
-  {c:'nl',city:'Амстердам',img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=440&q=65'},
-  {c:'at',city:'Вена',     img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=440&q=65'},
-  {c:'se',city:'Стокгольм',img:'https://images.unsplash.com/photo-1630772063386-f363836989cc?auto=format&fit=crop&w=440&q=65'},
-  {c:'ch',city:'Цюрих',    img:'https://images.unsplash.com/photo-1731879787307-99c435ac06de?auto=format&fit=crop&w=440&q=65'},
-  {c:'fi',city:'Хельсинки',img:'https://images.unsplash.com/photo-1538332576228-eb5b4c4de6f5?auto=format&fit=crop&w=440&q=65'},
-]
-
-// крупные фоны для hero/баннеров — 2200px, чтобы не мылило на десктопе и после зума
-const CITY_LARGE = [
-  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=2200&q=58'},
-]
-
 const tog = (a: string[], v: string) => a.includes(v) ? a.filter(x => x !== v) : [...a, v]
-
-const CYCLE_SLOT = 6 // секунд на фото
-function PhotoCycler({images,offset=0}: {images:{img:string,city?:string}[],offset?:number}) {
-  const total = images.length * CYCLE_SLOT
-  return (
-    <div style={{position:'absolute',inset:0,overflow:'hidden'}}>
-      {images.map((im,i)=>(
-        <div key={i} className="cycle-layer" style={{
-          backgroundImage:`url(${im.img})`,
-          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-out infinite`,
-          animationDelay:`${-((i+offset)%images.length)*CYCLE_SLOT}s`,
-        }}/>
-      ))}
-    </div>
-  )
-}
 
 function Divider() {
   return <div style={{height:1,background:line,margin:'24px 0'}}/>
@@ -396,87 +349,112 @@ setStep((s:any)=> s+1)
     <div style={{minHeight:'100vh',background:bg0}}/>
   )
 
-  // STEP 0 — WELCOME (photo hero)
-  if(step===0) return (
+  // STEP 0 — WELCOME
+  if(step===0) {
+    const BOARD_ROWS = [
+      {code:'DE', name:'Германия',   tag:'Бесплатно · DAAD',      status:'ПРИЁМ ОТКРЫТ',   color:gold},
+      {code:'NL', name:'Нидерланды', tag:'Holland Scholarship',   status:'ПРИЁМ ОТКРЫТ',   color:gold},
+      {code:'SE', name:'Швеция',     tag:'SI Grant · Free',       status:'СКОРО ЗАКРЫТИЕ', color:red},
+      {code:'CH', name:'Швейцария',  tag:'ETH · EPFL',            status:'ВЫСОКИЙ ШАНС',   color:blue},
+    ]
+    return (
     <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',background:bg0}}>
-
-      {/* hero photo — cycles through European capitals */}
-      <div style={{position:'absolute',inset:0,zIndex:0}}>
-        <PhotoCycler images={CITY_LARGE}/>
-      </div>
-
-      {/* scrims for legibility */}
-      <div style={{position:'absolute',inset:0,zIndex:1,
-        background:'linear-gradient(180deg, rgba(6,6,8,.62) 0%, rgba(6,6,8,.12) 32%, rgba(6,6,8,.55) 68%, #0A0A0C 97%)'}}/>
-      <div style={{position:'absolute',inset:0,zIndex:1,
-        background:'linear-gradient(100deg, rgba(6,6,8,.55) 0%, transparent 46%)'}}/>
-
-      {/* content */}
       <div style={{position:'relative',zIndex:2,minHeight:'100vh',
-        display:'flex',flexDirection:'column'}}>
+        display:'flex',flexDirection:'column',width:'100%'}}>
 
         {/* top bar */}
-        <div className="hero-up" style={{padding:'26px 28px',display:'flex',
-          alignItems:'center',justifyContent:'space-between'}}>
-          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:19,
-            color:t1,letterSpacing:'-.01em'}}>Mastersly</div>
-          <a href="/login" style={{fontFamily:mono,fontSize:10,fontWeight:700,
-            color:'rgba(242,239,233,.85)',letterSpacing:'0.1em',textDecoration:'none',
-            padding:'7px 14px',borderRadius:100,border:'1px solid rgba(255,255,255,.25)'}}>
+        <div className="hero-up" style={{padding:'24px 32px',display:'flex',
+          alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${line}`}}>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <div style={{fontFamily:sans,fontWeight:800,fontSize:17,
+              color:t1,letterSpacing:'-.01em'}}>MASTERSLY</div>
+            <span style={{fontFamily:mono,fontSize:10,color:gold,letterSpacing:'0.1em'}}>● ONLINE</span>
+          </div>
+          <a href="/login" style={{fontFamily:mono,fontSize:10,fontWeight:600,
+            color:t2,letterSpacing:'0.1em',textDecoration:'none',
+            padding:'7px 14px',borderRadius:4,border:`1px solid ${line}`}}>
             ВОЙТИ →
           </a>
         </div>
 
-        {/* headline block */}
-        <div className="hero-up" style={{flex:1,display:'flex',flexDirection:'column',
-          justifyContent:'flex-end',padding:'0 28px 36px',maxWidth:760,
-          animationDelay:'.1s'}}>
-          <h1 style={{fontFamily:serif,fontStyle:'normal',
-            fontSize:'clamp(42px,7.5vw,92px)',color:t1,fontWeight:800,
-            letterSpacing:'-.04em',lineHeight:.94,marginBottom:20,
-            textShadow:'0 6px 40px rgba(0,0,0,.45)'}}>
-            Твоя магистратура<br/>в <span style={{color:gold,fontStyle:'italic',fontWeight:500}}>Европе</span> начинается здесь
-          </h1>
-          <p style={{fontFamily:sans,fontSize:15,color:'rgba(242,239,233,.82)',
-            lineHeight:1.65,maxWidth:420,marginBottom:28,fontWeight:300}}>
-            Персональный roadmap, дедлайны стипендий и список вузов —
-            от Берлина до Стокгольма. Без гугления по 20 вкладкам.
-          </p>
-          <div style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
-            <button onClick={goNext} className="hero-cta" style={{
-              padding:'15px 28px',borderRadius:100,border:'none',
-              background:t1,color:bg0,fontFamily:sans,fontSize:14,
-              fontWeight:600,letterSpacing:'-.01em',cursor:'pointer',
-              boxShadow:'0 8px 30px rgba(0,0,0,.35)'}}>
-              Начать — это бесплатно
-            </button>
-            <span style={{fontFamily:mono,fontSize:9,fontWeight:700,color:'rgba(242,239,233,.6)',
-              letterSpacing:'0.08em'}}>БЕЗ РЕГИСТРАЦИИ · 8 ВОПРОСОВ</span>
+        {/* methodology / stats strip */}
+        <div className="hero-up" style={{display:'grid',
+          gridTemplateColumns:'minmax(160px,1fr) repeat(3,minmax(0,1fr))',
+          borderBottom:`1px solid ${line}`,animationDelay:'.1s'}}>
+          <div style={{padding:'22px 24px',borderRight:`1px solid ${line}`}}>
+            <div style={{fontFamily:mono,fontSize:9,fontWeight:600,color:t3,
+              letterSpacing:'0.12em',marginBottom:10}}>ГИД ПОСТУПЛЕНИЯ</div>
+            <div style={{fontFamily:sans,fontSize:15,fontWeight:600,color:t1,lineHeight:1.3}}>
+              Собрано<br/>в одном месте
+            </div>
           </div>
-        </div>
-
-        {/* destination filmstrip */}
-        <div className="filmstrip hero-up" style={{display:'flex',gap:10,
-          padding:'0 28px 28px',overflowX:'auto',animationDelay:'.2s'}}>
-          {CITY_SHOTS.map(c=>(
-            <div key={c.c} className="film-card" style={{position:'relative',
-              width:92,height:118,flexShrink:0,borderRadius:10,overflow:'hidden',
-              border:'1px solid rgba(255,255,255,.16)',cursor:'default'}}>
-              <img src={c.img} alt={c.city} style={{width:'100%',height:'100%',
-                objectFit:'cover',display:'block'}}/>
-              <div style={{position:'absolute',inset:0,
-                background:'linear-gradient(180deg,transparent 45%,rgba(0,0,0,.8) 100%)'}}/>
-              <span style={{position:'absolute',bottom:8,left:9,right:9,
-                fontFamily:serif,fontStyle:'italic',fontWeight:500,fontSize:14,
-                color:'#F2EFE9',letterSpacing:'-.01em'}}>
-                {c.city}
-              </span>
+          {[
+            {n:'280+',l:'программ в базе'},
+            {n:'20',l:'стран Европы'},
+            {n:'€0',l:'от — есть бесплатные'},
+          ].map((s,i)=>(
+            <div key={i} style={{padding:'22px 24px',
+              borderRight:i<2?`1px solid ${line}`:'none'}}>
+              <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:'clamp(26px,3vw,40px)',
+                color:t1,letterSpacing:'-.02em',lineHeight:1}}>{s.n}</div>
+              <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.06em',marginTop:8}}>{s.l}</div>
             </div>
           ))}
         </div>
+
+        {/* giant headline */}
+        <div className="hero-up" style={{padding:'56px 24px 40px',animationDelay:'.2s'}}>
+          <h1 style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,
+            fontSize:'clamp(44px,9vw,128px)',color:t1,
+            letterSpacing:'-.04em',lineHeight:.96,margin:0}}>
+            Твоя магистратура<br/>в Европе
+          </h1>
+        </div>
+
+        {/* CTA row */}
+        <div className="hero-up" style={{padding:'0 24px 48px',display:'flex',
+          alignItems:'center',gap:20,flexWrap:'wrap',animationDelay:'.3s'}}>
+          <button onClick={goNext} className="hero-cta" style={{
+            padding:'16px 30px',borderRadius:4,border:'none',
+            background:gold,color:bg0,fontFamily:sans,fontSize:14,
+            fontWeight:700,letterSpacing:'-.01em',cursor:'pointer'}}>
+            Начать — это бесплатно
+          </button>
+          <p style={{fontFamily:sans,fontSize:14,color:t2,lineHeight:1.6,maxWidth:380,fontWeight:400,margin:0}}>
+            Персональный roadmap, дедлайны стипендий и список вузов — без регистрации, 8 вопросов.
+          </p>
+        </div>
+
+        {/* live schedule preview */}
+        <div className="hero-up" style={{padding:'0 24px 40px',maxWidth:1080,margin:'0 auto',width:'100%',animationDelay:'.4s'}}>
+          <div style={{fontFamily:mono,fontSize:10,fontWeight:600,color:t3,
+            letterSpacing:'0.1em',marginBottom:10}}>ТАБЛО ПОСТУПЛЕНИЯ · ПРИМЕР</div>
+          <div style={{border:`1px solid ${line}`,borderRadius:4,overflow:'hidden'}}>
+            <div style={{display:'grid',gridTemplateColumns:'44px minmax(0,1fr) minmax(0,1fr) 118px',
+              padding:'10px 16px',borderBottom:`1px solid ${line}`,background:bg1}}>
+              {['','НАПРАВЛЕНИЕ','УСЛОВИЯ','СТАТУС'].map((h,i)=>(
+                <span key={i} style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3}}>{h}</span>
+              ))}
+            </div>
+            {BOARD_ROWS.map((r,i)=>(
+              <div key={r.code} style={{display:'grid',gridTemplateColumns:'44px minmax(0,1fr) minmax(0,1fr) 118px',
+                alignItems:'center',padding:'13px 16px',
+                borderBottom:i<BOARD_ROWS.length-1?`1px solid ${line}`:'none'}}>
+                <span style={{fontFamily:mono,fontSize:12,fontWeight:700,color:t2,
+                  border:`1px solid ${line}`,borderRadius:3,padding:'2px 6px',width:'fit-content'}}>{r.code}</span>
+                <span style={{fontFamily:sans,fontSize:13,fontWeight:600,color:t1}}>{r.name}</span>
+                <span style={{fontFamily:sans,fontSize:12,color:t2}}>{r.tag}</span>
+                <span style={{fontFamily:mono,fontSize:9,fontWeight:600,letterSpacing:'0.06em',
+                  color:r.color,background:`${r.color}18`,border:`1px solid ${r.color}40`,
+                  borderRadius:3,padding:'4px 8px',width:'fit-content'}}>{r.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
-  )
+    )
+  }
 
   // STEP 1 — MODE
   if(step===1) return (
@@ -683,7 +661,7 @@ setStep((s:any)=> s+1)
     </button>
   </div>
 )}
-<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
+<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(100px,1fr))',gap:8,marginBottom:8}}>
   {COUNTRIES_MAIN.map(c=>{
     const sel=a.countries.includes(c.c)
     const shot = CITY_SHOTS.find(s=>s.c===c.c)
@@ -733,7 +711,7 @@ setStep((s:any)=> s+1)
 
 {/* дополнительные страны */}
 {showMoreCountries&&(
-  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginBottom:8}}
+  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(90px,1fr))',gap:6,marginBottom:8}}
     className="in">
     {COUNTRIES_MORE.map(c=>{
       const sel=a.countries.includes(c.c)
@@ -908,8 +886,8 @@ setStep((s:any)=> s+1)
   {[
     {icon:'◈', text:'Персональный Journey Map — все шаги до оффера', color:blue},
     {icon:'◉', text:'Дедлайны вузов и стипендий в одном месте', color:gold},
-    {icon:'*', text:'Программы подобраны под твои страны и бюджет', color:'#A78BFA'},
-    {icon:'◎', text:'Таймлайн от сегодня до переезда с экспортом в календарь', color:'#3FB950'},
+    {icon:'*', text:'Программы подобраны под твои страны и бюджет', color:purp},
+    {icon:'◎', text:'Таймлайн от сегодня до переезда с экспортом в календарь', color:grn},
   ].map((f,i,arr)=>(
     <div key={i} style={{display:'flex',alignItems:'center',gap:12,
       padding:'12px 16px',
@@ -1010,7 +988,7 @@ setStep((s:any)=> s+1)
     )
   }
 if(step === 99) return (
-  <div style={{position:'fixed',inset:0,background:'#0A0A0C',
+  <div style={{position:'fixed',inset:0,background:bg0,
     display:'flex',alignItems:'center',justifyContent:'center',
     zIndex:999,overflow:'hidden'}}>
     <style>{`
@@ -1054,8 +1032,8 @@ if(step === 99) return (
           left:'50%',top:'50%',
           width:size,height:size,
           borderRadius:'50%',
-          background: i%3===0?'#C8A256':i%3===1?'#F2EFE9':'#6B8CFF',
-          boxShadow:`0 0 ${size*4}px ${i%3===0?'#C8A256':i%3===1?'rgba(242,239,233,0.8)':'#6B8CFF'}`,
+          background: i%3===0?gold:i%3===1?t1:blue,
+          boxShadow:`0 0 ${size*4}px ${i%3===0?gold:i%3===1?'rgba(242,239,233,0.8)':blue}`,
           animation:`particle ${dur}s cubic-bezier(.2,.6,.4,1) forwards`,
           animationDelay:`${delay}s`,
           '--x':`${x}px`,
@@ -1068,17 +1046,17 @@ if(step === 99) return (
     <div style={{textAlign:'center',position:'relative',zIndex:10,
       animation:'logoIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}
       onAnimationEnd={()=>setStep(8)}>
-      <div style={{fontFamily:"'Fraunces',serif",fontStyle:'italic',
-        fontSize:52,color:'#F2EFE9',letterSpacing:'-.025em',
+      <div style={{fontFamily:serif,fontStyle:'italic',
+        fontSize:52,color:t1,letterSpacing:'-.025em',
         lineHeight:1,marginBottom:20}}>
         Mastersly
       </div>
       <div style={{height:1,
-        background:'linear-gradient(90deg,transparent,#C8A256,transparent)',
+        background:`linear-gradient(90deg,transparent,${gold},transparent)`,
         margin:'0 auto',marginBottom:18,
         animation:'lineIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}/>
-      <div style={{fontFamily:"'Space Mono',monospace",fontSize:10,
-        color:'#4A4845',letterSpacing:'.16em',
+      <div style={{fontFamily:mono,fontSize:10,
+        color:t3,letterSpacing:'.16em',
         animation:'tagIn 3.5s ease forwards'}}>
         СТРОИМ ТВОЙ ПЛАН
       </div>

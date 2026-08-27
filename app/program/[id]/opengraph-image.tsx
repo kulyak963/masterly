@@ -29,20 +29,20 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     (
       <div style={{
         width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-        background: '#0A0A0C', padding: '70px', fontFamily: 'sans-serif',
+        background: '#0D0D0F', padding: '70px', fontFamily: 'sans-serif',
         position: 'relative',
       }}>
-        <div style={{ display: 'flex', fontSize: 30, fontStyle: 'italic', color: '#F2EFE9', fontWeight: 700, marginBottom: 40 }}>
+        <div style={{ display: 'flex', fontSize: 30, color: '#ECEAE2', fontWeight: 700, marginBottom: 40 }}>
           Mastersly
         </div>
-        <div style={{ display: 'flex', fontSize: 22, letterSpacing: 4, color: '#C8A256', marginBottom: 24, textTransform: 'uppercase' }}>
+        <div style={{ display: 'flex', fontSize: 22, letterSpacing: 4, color: '#F2A93B', marginBottom: 24, textTransform: 'uppercase' }}>
           {uniName}{country ? ` · ${country}` : ''}
         </div>
-        <div style={{ display: 'flex', fontSize: 56, color: '#F2EFE9', fontWeight: 800, lineHeight: 1.15, maxWidth: 950 }}>
+        <div style={{ display: 'flex', fontSize: 56, color: '#ECEAE2', fontWeight: 800, lineHeight: 1.15, maxWidth: 950 }}>
           {program?.name || 'Программа магистратуры'}
         </div>
         {cost && (
-          <div style={{ display: 'flex', marginTop: 'auto', fontSize: 26, color: '#7A7670' }}>
+          <div style={{ display: 'flex', marginTop: 'auto', fontSize: 26, color: '#8C94A0' }}>
             {cost}
           </div>
         )}

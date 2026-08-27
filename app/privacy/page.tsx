@@ -1,20 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { useEffect } from 'react'
-
-const bg0 = '#0A0A0C'
-const bg1 = '#111115'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#9A968E'
-const t3 = '#5A564F'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
+import { bg0, line, t1, t2, t3, gold, sans, serif, mono } from '@/lib/theme'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box}
-html,body{background:#0A0A0C;-webkit-font-smoothing:antialiased}
+html,body{background:${bg0};-webkit-font-smoothing:antialiased}
 `
 
 function Section({n, title, children}: {n:string, title:string, children:React.ReactNode}) {
@@ -55,7 +46,7 @@ export default function PrivacyPage() {
 
         <div style={{padding:'14px 18px', marginBottom:36, borderRadius:8,
           background:'rgba(200,162,86,0.08)', border:'1px solid rgba(200,162,86,0.3)'}}>
-          <span style={{fontFamily:sans, fontSize:13, color:'#D4A853', lineHeight:1.6}}>
+          <span style={{fontFamily:sans, fontSize:13, color:gold, lineHeight:1.6}}>
             Это честное и понятное описание того, как устроен сервис — но не юридический
             документ, составленный юристом. Если вы хотите использовать Mastersly в
             коммерческих масштабах, до реального запуска стоит показать эту страницу юристу,

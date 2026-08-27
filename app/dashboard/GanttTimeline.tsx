@@ -1,14 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import CalendarExportModal, { CalEvent } from './CalendarExportModal'
-
-const bg0='#0A0A0C', bg1='#111115'
-const line='rgba(255,255,255,0.07)'
-const t1='#F2EFE9', t2='#7A7670', t3='#3D3B38'
-const gold='#C8A256', blue='#6B8CFF', red='#E5534B', grn='#3FB950', purp='#A78BFA', amb='#D4843A'
-const sans="'Manrope',sans-serif"
-const serif="'Fraunces',serif"
-const mono="'Space Mono',monospace"
+import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 
 const NOW = new Date(); NOW.setHours(0,0,0,0)
 
@@ -156,7 +149,7 @@ export default function GanttTimeline({profile,programs=[]}:{profile:any,program
   useEffect(()=>{
     const s=document.createElement('style')
     s.textContent=`
-      @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Overpass+Mono:wght@400;500;600;700&display=swap');
       @keyframes barIn{from{clip-path:inset(0 100% 0 0);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}

@@ -1,21 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-
-const bg0 = '#0A0A0C'
-const bg1 = '#111115'
-const bg2 = '#17171C'
-const line = 'rgba(255,255,255,0.07)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const gold = '#C8A256'
-const blue = '#6B8CFF'
-const red = '#E5534B'
-const grn = '#3FB950'
-const purp = '#A78BFA'
-const sans = "'Manrope',sans-serif"
-const serif = "'Fraunces',serif"
-const mono = "'Space Mono',monospace"
+import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
 
 interface Task { t: string; done?: boolean; urgent?: boolean }
 interface Node {

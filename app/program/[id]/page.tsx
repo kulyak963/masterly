@@ -2,21 +2,10 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { supabase } from '../../../lib/supabase'
+import { bg0, line, t1, t2, t3, gold, sans, serif, mono } from '@/lib/theme'
+import VerifiedBadge from '@/components/VerifiedBadge'
 
 export const revalidate = 3600
-
-const bg0 = '#0A0A0C'
-const bg1 = '#111115'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const gold = '#C8A256'
-const blue = '#6B8CFF'
-const grn = '#3FB950'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
 
 const CNAME: Record<string, string> = {
   de: 'Германия', nl: 'Нидерланды', se: 'Швеция', ch: 'Швейцария',
@@ -101,13 +90,7 @@ export default async function ProgramPage({ params }: Props) {
         </Link>
 
         <div style={{ marginTop: 32, marginBottom: 8 }}>
-          <span style={{ fontFamily: mono, fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 3,
-            letterSpacing: '0.08em',
-            background: program.verified ? `${grn}18` : `${gold}15`,
-            border: `1px solid ${program.verified ? grn : gold}40`,
-            color: program.verified ? grn : gold }}>
-            {program.verified ? '✓ ПРОВЕРЕНО' : '⚠ ОЦЕНКА ИИ'}
-          </span>
+          <VerifiedBadge verified={program.verified} />
         </div>
 
         <h1 style={{ fontFamily: serif, fontStyle: 'normal', fontWeight: 800, fontSize: 34,

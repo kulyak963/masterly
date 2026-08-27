@@ -4,22 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import Timeline from './Timeline'
 import GanttTimeline from './GanttTimeline'
-
-/* ── tokens ── */
-const bg0 = '#0A0A0C'
-const bg1 = '#111115'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const gold = '#C8A256'
-const blue = '#6B8CFF'
-const red = '#E5534B'
-const grn = '#3FB950'
-const purp = '#A78BFA'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
+import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
+import VerifiedBadge from '@/components/VerifiedBadge'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -237,21 +223,6 @@ function StatusPill({status,color}:{status:string,color:string}) {
   )
 }
 
-function VerifiedBadge({verified}:{verified?:boolean}) {
-  return verified ? (
-    <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.06em',
-      padding:'2px 6px',borderRadius:3,flexShrink:0,
-      background:`${grn}18`,border:`1px solid ${grn}40`,color:grn}}>
-      ✓ ПРОВЕРЕНО
-    </span>
-  ) : (
-    <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.06em',
-      padding:'2px 6px',borderRadius:3,flexShrink:0,
-      background:`${gold}15`,border:`1px solid ${gold}35`,color:gold}}>
-      ⚠ ОЦЕНКА ИИ
-    </span>
-  )
-}
 
 /* ── Journey component ── */
 function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string,boolean>,onToggle:(k:string)=>void}) {
@@ -549,7 +520,7 @@ useEffect(()=>{
   const style = document.createElement('style')
   style.textContent = `
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+    html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
     button,a{-webkit-tap-highlight-color:transparent}
     ::-webkit-scrollbar{width:4px}
     ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.07);border-radius:2px}
@@ -566,8 +537,8 @@ useEffect(()=>{
 
     .nb{transition:color .15s,background .15s;cursor:pointer}
     .nb:hover{color:#F2EFE9!important}
-    .hr{transition:background .12s;cursor:pointer}
     .hc{transition:all .2s}
+    .hc:hover{background:rgba(255,255,255,.04)!important}
 
     .fu{animation:fadeUp .35s cubic-bezier(.22,.68,0,1.1) both}
     .spring-in{animation:spring .5s cubic-bezier(.34,1.56,.64,1) both}
@@ -1143,7 +1114,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
       <>
         <div style={{border:`1px solid ${line}`,borderRadius:8,overflow:'hidden',marginBottom:24}}>
           {unis.filter((u:any)=>favorites.has(u.id)).map((u:any,i:number,arr:any[])=>(
-            <div key={u.id}
+            <div key={u.id} className="hc"
               style={{display:'grid',gridTemplateColumns:'1fr 40px 60px 110px 60px 140px 70px',
               padding:'16px 20px',alignItems:'center',cursor:'pointer',
               borderBottom:i<arr.length-1?`1px solid ${line}`:'none',
@@ -1271,6 +1242,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                       const days = Math.floor((Date.now()-new Date(fav.status_updated_at).getTime())/86400000)
                       return (
                         <div key={u.id} onClick={()=>{setSelectedProgram(u);setVerdict(null)}}
+                          className="hc"
                           style={{border:`1px solid ${line}`,borderRadius:8,padding:'12px 14px',cursor:'pointer',background:bg1}}>
                           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                             <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:t1,letterSpacing:'-.01em'}}>{u._n}</div>

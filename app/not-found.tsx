@@ -1,14 +1,5 @@
 import Link from 'next/link'
-
-const bg0 = '#0A0A0C'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const gold = '#C8A256'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
+import { bg0, line, t1, t2, gold, sans, serif, mono } from '@/lib/theme'
 
 export default function NotFound() {
   return (

@@ -1,23 +1,12 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-
-const bg0 = '#0A0A0C'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const red = '#E5534B'
-const grn = '#3FB950'
-const gold = '#C8A256'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
+import { bg0, line, t1, t2, t3, red, grn, gold, sans, serif, mono } from '@/lib/theme'
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Overpass+Mono:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
+html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 .up{animation:fadeUp .5s cubic-bezier(.22,.68,0,1.1) both}
 .btn{transition:all .18s;cursor:pointer}

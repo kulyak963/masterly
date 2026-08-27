@@ -2,51 +2,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTurnstile } from '../../lib/useTurnstile'
-
-const bg0 = '#0A0A0C'
-const line = 'rgba(255,255,255,0.08)'
-const t1 = '#F2EFE9'
-const t2 = '#7A7670'
-const t3 = '#3D3B38'
-const blue = '#6B8CFF'
-const grn = '#3FB950'
-const gold = '#C8A256'
-const red = '#E5534B'
-const sans = "'Manrope', sans-serif"
-const serif = "'Fraunces', serif"
-const mono = "'Space Mono', monospace"
-
-const CITY_SHOTS = [
-  {img:'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1564511287568-54483b52a35e?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1584003564911-a7a321c84e1c?auto=format&fit=crop&w=2200&q=58'},
-  {img:'https://images.unsplash.com/photo-1573599852326-2d4da0bbe613?auto=format&fit=crop&w=2200&q=58'},
-]
-const CYCLE_SLOT = 6
-function PhotoCycler() {
-  const total = CITY_SHOTS.length * CYCLE_SLOT
-  return (
-    <div style={{position:'fixed',inset:0,zIndex:0,overflow:'hidden'}}>
-      {CITY_SHOTS.map((im,i)=>(
-        <div key={i} className="cycle-layer" style={{
-          backgroundImage:`url(${im.img})`,
-          animation:`cycleFade ${total}s ease-in-out infinite, cycleZoom ${total}s ease-out infinite`,
-          animationDelay:`${-i*CYCLE_SLOT}s`,
-        }}/>
-      ))}
-    </div>
-  )
-}
+import { bg0, line, t1, t2, t3, grn, gold, red, sans, serif, mono } from '@/lib/theme'
+import PhotoCycler, { CYCLER_KEYFRAMES_CSS } from '@/components/PhotoCycler'
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Manrope:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Overpass+Mono:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{background:#0A0A0C;height:100%;-webkit-font-smoothing:antialiased}
+html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-@keyframes cycleFade{0%{opacity:0}3%{opacity:1}17%{opacity:1}20%{opacity:0}100%{opacity:0}}
-@keyframes cycleZoom{0%{transform:scale(1.02)}20%{transform:scale(1.08)}100%{transform:scale(1.08)}}
-.cycle-layer{position:absolute;inset:0;background-size:cover;background-position:center;will-change:opacity,transform}
+${CYCLER_KEYFRAMES_CSS}
 .up{animation:fadeUp .5s cubic-bezier(.22,.68,0,1.1) both}
 .btn{transition:all .18s;cursor:pointer}
 .btn:hover{opacity:.85;transform:translateY(-1px)}
@@ -199,12 +163,9 @@ export default function LoginPage() {
       padding:'40px 20px', position:'relative', overflow:'hidden',
       fontFamily:sans,
     }}>
-      <PhotoCycler/>
+      <PhotoCycler position="fixed"/>
       <div style={{ position:'fixed', inset:0, zIndex:0,
-        background:'linear-gradient(180deg, rgba(6,6,8,.55) 0%, rgba(6,6,8,.72) 55%, #0A0A0C 100%)' }}/>
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', zIndex:0,
-        backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
-        backgroundRepeat:'repeat', backgroundSize:'128px', opacity:.5 }}/>
+        background:`linear-gradient(180deg, rgba(6,8,11,.6) 0%, rgba(6,8,11,.78) 55%, ${bg0} 100%)` }}/>
 
       <div style={{ width:'100%', maxWidth:400, zIndex:1 }} className="up">
 
