@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { bg0, line, t1, t2, t3, red, grn, gold, sans, serif, mono } from '@/lib/theme'
+import { bg0, bg1, line, t1, t2, t3, red, grn, gold, sans, serif, mono } from '@/lib/theme'
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Overpass+Mono:wght@400;500;600;700&display=swap');
@@ -13,15 +13,15 @@ html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 .btn:hover{opacity:.85;transform:translateY(-1px)}
 .btn:active{transform:scale(.97)}
 input[type=password]{
-  font-family:'Manrope',sans-serif;font-size:15px;
-  color:#F2EFE9;caret-color:#F2EFE9;
+  font-family:${sans};font-size:15px;
+  color:${t1};caret-color:${t1};
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.14);
-  border-radius:8px;padding:13px 16px;width:100%;
+  border-radius:4px;padding:13px 16px;width:100%;
   outline:none;transition:border-color .2s;letter-spacing:-.01em;
 }
 input:focus{border-color:rgba(255,255,255,.35)}
-input::placeholder{color:rgba(242,239,233,.25)}
+input::placeholder{color:rgba(236,234,226,.25)}
 `
 
 export default function ResetPasswordPage() {
@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
             color:t1, letterSpacing:'-.02em' }}>Mastersly</div>
         </div>
 
-        <div style={{ background:'#111115', border:`1px solid ${line}`, borderRadius:12,
+        <div style={{ background:bg1, border:`1px solid ${line}`, borderRadius:12,
           padding:'28px', textAlign: done || !ready || !validLink ? 'center' : 'left' }}>
 
           {!ready ? (

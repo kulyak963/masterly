@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
+import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 
 interface Task { t: string; done?: boolean; urgent?: boolean }
 interface Node {
@@ -62,7 +62,7 @@ function buildNodes(p: any): Node[] {
     },
     {
       id:'docs', label:'Документы', sub:'SoP + рекомендации',
-      color:'#D4843A', status:'upcoming', zone:2, row:2, parallel:true,
+      color:amb, status:'upcoming', zone:2, row:2, parallel:true,
       blockedBy:['profile'],
       insight:'SoP пишется отдельно для каждого вуза — нельзя копировать. Рекомендации нужно запросить за 2+ месяца до дедлайна.',
       tasks:[
@@ -453,7 +453,7 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
                     className="task-r"
                     style={{display:'flex',alignItems:'flex-start',gap:12,
                       padding:'12px 14px',borderRadius:8,
-                      background:done?'rgba(63,185,80,.05)':'rgba(255,255,255,.025)',
+                      background:done?`${grn}0D`:'rgba(255,255,255,.025)',
                       border:`1px solid ${done?`${grn}25`:task.urgent?`${red}28`:line}`,
                       borderLeft:`2px solid ${done?grn:task.urgent?red:'transparent'}`,
                       cursor:task.done?'default':'pointer',transition:'all .15s'}}>

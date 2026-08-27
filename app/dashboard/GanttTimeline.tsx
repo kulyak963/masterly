@@ -153,7 +153,7 @@ export default function GanttTimeline({profile,programs=[]}:{profile:any,program
       @keyframes barIn{from{clip-path:inset(0 100% 0 0);opacity:0}to{clip-path:inset(0 0 0 0);opacity:1}}
       @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-      @keyframes todayPulse{0%,100%{opacity:.8;box-shadow:0 0 10px #6B8CFF60}50%{opacity:.3;box-shadow:0 0 4px #6B8CFF30}}
+      @keyframes todayPulse{0%,100%{opacity:.8;box-shadow:0 0 10px ${blue}60}50%{opacity:.3;box-shadow:0 0 4px ${blue}30}}
       @keyframes diamondIn{0%{transform:rotate(45deg)scale(0)}70%{transform:rotate(45deg)scale(1.4)}100%{transform:rotate(45deg)scale(1)}}
       .g-bar{animation:barIn .9s cubic-bezier(.4,0,.2,1) both}
       .g-lane{transition:background .18s}

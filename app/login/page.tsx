@@ -2,29 +2,28 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useTurnstile } from '../../lib/useTurnstile'
-import { bg0, line, t1, t2, t3, grn, gold, red, sans, serif, mono } from '@/lib/theme'
-import PhotoCycler, { CYCLER_KEYFRAMES_CSS } from '@/components/PhotoCycler'
+import { bg0, bg1, line, t1, t2, t3, grn, gold, red, sans, serif, mono } from '@/lib/theme'
+import { displayFont } from '@/lib/fonts'
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Overpass:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Overpass+Mono:wght@400;500;600;700&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-${CYCLER_KEYFRAMES_CSS}
 .up{animation:fadeUp .5s cubic-bezier(.22,.68,0,1.1) both}
 .btn{transition:all .18s;cursor:pointer}
 .btn:hover{opacity:.85;transform:translateY(-1px)}
 .btn:active{transform:scale(.97)}
 input[type=email],input[type=password]{
-  font-family:'Manrope',sans-serif;font-size:15px;
-  color:#F2EFE9;caret-color:#F2EFE9;
+  font-family:${sans};font-size:15px;
+  color:${t1};caret-color:${t1};
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.14);
-  border-radius:8px;padding:13px 16px;width:100%;
+  border-radius:4px;padding:13px 16px;width:100%;
   outline:none;transition:border-color .2s;letter-spacing:-.01em;
 }
 input:focus{border-color:rgba(255,255,255,.35)}
-input::placeholder{color:rgba(242,239,233,.25)}
+input::placeholder{color:rgba(236,234,226,.25)}
 `
 
 type PwMode = 'signin'|'signup'|'forgot'
@@ -53,7 +52,16 @@ export default function LoginPage() {
 
     // если уже залогинен — редирект на дашборд
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) window.location.href = '/dashboard'
+      if (data.session) { window.location.href = '/dashboard'; return }
+      // Восстанавливаем экран «подтверди почту» после обновления страницы —
+      // без этого рефреш терял signupPending/password (обычный useState).
+      const pending = sessionStorage.getItem('masterly_pending_signup')
+      if (pending) {
+        try {
+          const { email: pe, password: pw } = JSON.parse(pending)
+          if (pe && pw) { setEmail(pe); setPassword(pw); setTab('password'); setPwMode('signup'); setSignupPending(true) }
+        } catch {}
+      }
     })
 
     return () => s.remove()
@@ -69,7 +77,10 @@ export default function LoginPage() {
     let cancelled = false
     const tryLogin = async () => {
       const { data } = await supabase.auth.signInWithPassword({ email: em, password })
-      if (!cancelled && data.session) window.location.href = '/dashboard'
+      if (!cancelled && data.session) {
+        sessionStorage.removeItem('masterly_pending_signup')
+        window.location.href = '/dashboard'
+      }
     }
     const id = setInterval(tryLogin, 4000)
     return () => { cancelled = true; clearInterval(id) }
@@ -128,7 +139,11 @@ export default function LoginPage() {
     if (error) { setError(error.message); setLoading(false); return }
     setLoading(false)
     if (data.session) window.location.href = '/dashboard'
-    else setSignupPending(true)
+    else {
+      // Переживает обновление страницы — см. восстановление в useEffect выше.
+      sessionStorage.setItem('masterly_pending_signup', JSON.stringify({ email: email.trim(), password }))
+      setSignupPending(true)
+    }
   }
 
   const sendResetLink = async () => {
@@ -149,9 +164,8 @@ export default function LoginPage() {
   const showTurnstile = turnstile.enabled && (tab === 'password' || tab === 'magic') && !sent && !signupPending && !resetSent
 
   const card = (children: React.ReactNode) => (
-    <div style={{ background:'rgba(17,17,21,.72)', backdropFilter:'blur(20px)',
-      WebkitBackdropFilter:'blur(20px)', border:`1px solid rgba(255,255,255,.12)`,
-      borderRadius:14, overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,.5)' }}>
+    <div style={{ background:bg1, border:`1px solid ${line}`,
+      borderRadius:4, overflow:'hidden' }}>
       {children}
     </div>
   )
@@ -163,20 +177,15 @@ export default function LoginPage() {
       padding:'40px 20px', position:'relative', overflow:'hidden',
       fontFamily:sans,
     }}>
-      <PhotoCycler position="fixed"/>
-      <div style={{ position:'fixed', inset:0, zIndex:0,
-        background:`linear-gradient(180deg, rgba(6,8,11,.6) 0%, rgba(6,8,11,.78) 55%, ${bg0} 100%)` }}/>
-
       <div style={{ width:'100%', maxWidth:400, zIndex:1 }} className="up">
 
         <div style={{ textAlign:'center', marginBottom:40 }}>
-          <div style={{ fontFamily:serif, fontStyle:'normal', fontWeight:800, fontSize:34,
-            color:t1, letterSpacing:'-.03em', marginBottom:8,
-            textShadow:'0 4px 24px rgba(0,0,0,.4)' }}>
-            Mastersly
+          <div style={{ fontFamily:displayFont.style.fontFamily, fontWeight:800, fontSize:32,
+            color:t1, letterSpacing:'-.02em', marginBottom:8 }}>
+            MASTERSLY
           </div>
-          <p style={{ fontFamily:sans, fontSize:14, color:'rgba(242,239,233,.8)',
-            fontWeight:300, lineHeight:1.6 }}>
+          <p style={{ fontFamily:sans, fontSize:14, color:t2,
+            fontWeight:400, lineHeight:1.6 }}>
             Персональный план поступления<br/>в европейскую магистратуру
           </p>
         </div>
@@ -225,7 +234,7 @@ export default function LoginPage() {
               <strong style={{ color:t1 }}>{email}</strong><br/>
               Перейди по ссылке хоть с телефона — эта вкладка сама войдёт, когда подтвердишь. Не закрывай её.
             </p>
-            <button onClick={() => { setSignupPending(false); setPwMode('signin') }} style={{
+            <button onClick={() => { sessionStorage.removeItem('masterly_pending_signup'); setSignupPending(false); setPwMode('signin') }} style={{
               marginTop:20, background:'none', border:'none', fontFamily:sans, fontSize:13,
               color:t2, cursor:'pointer', textDecoration:'underline' }}>
               Назад

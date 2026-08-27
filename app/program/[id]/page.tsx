@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { supabase } from '../../../lib/supabase'
-import { bg0, line, t1, t2, t3, gold, sans, serif, mono } from '@/lib/theme'
+import { bg0, line, t1, t2, t3, gold, sans, mono } from '@/lib/theme'
+import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 
 export const revalidate = 3600
@@ -85,15 +86,15 @@ export default async function ProgramPage({ params }: Props) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <div style={{ maxWidth: 680, margin: '0 auto', paddingTop: 40 }}>
-        <Link href="/" style={{ fontFamily: serif, fontWeight: 800, fontSize: 18, color: t1, textDecoration: 'none' }}>
-          ← Mastersly
+        <Link href="/" style={{ fontFamily: sans, fontWeight: 800, fontSize: 15, color: t1, textDecoration: 'none' }}>
+          ← MASTERSLY
         </Link>
 
         <div style={{ marginTop: 32, marginBottom: 8 }}>
           <VerifiedBadge verified={program.verified} />
         </div>
 
-        <h1 style={{ fontFamily: serif, fontStyle: 'normal', fontWeight: 800, fontSize: 34,
+        <h1 style={{ fontFamily: displayFont.style.fontFamily, fontWeight: 800, fontSize: 32,
           color: t1, letterSpacing: '-.02em', lineHeight: 1.08, marginBottom: 10 }}>
           {program.name}
         </h1>
@@ -181,8 +182,8 @@ export default async function ProgramPage({ params }: Props) {
               Страница программы на сайте вуза →
             </a>
           )}
-          <Link href="/" style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: 8,
-            border: 'none', background: t1, color: bg0, fontFamily: sans, fontSize: 14, fontWeight: 600,
+          <Link href="/" style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: 4,
+            border: 'none', background: gold, color: bg0, fontFamily: sans, fontSize: 14, fontWeight: 700,
             textDecoration: 'none', letterSpacing: '-.01em' }}>
             Построить свой план поступления →
           </Link>

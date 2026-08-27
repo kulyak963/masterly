@@ -2,12 +2,9 @@
 import { supabase } from '../lib/supabase'
 import { useTurnstile } from '../lib/useTurnstile'
 import { useState, useEffect } from 'react'
-import { Unbounded } from 'next/font/google'
-import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
-import PhotoCycler, { CITY_SHOTS, CITY_LARGE, CYCLER_KEYFRAMES_CSS } from '@/components/PhotoCycler'
-
-// огромный заголовок hero — отдельный шрифт, крупнее и увереннее, чем Overpass
-const displayFont = Unbounded({ subsets: ['latin', 'cyrillic'], weight: ['700', '800', '900'], display: 'swap' })
+import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, mono } from '@/lib/theme'
+import { displayFont } from '@/lib/fonts'
+import { CITY_SHOTS } from '@/components/PhotoCycler'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -20,7 +17,6 @@ html,body{background:${bg0};height:100%;-webkit-font-smoothing:antialiased}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes kenburns{from{transform:scale(1.02) translateY(0)}to{transform:scale(1.11) translateY(-1.5%)}}
 @keyframes heroUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:translateY(0)}}
-${CYCLER_KEYFRAMES_CSS}
 .up{animation:up .5s cubic-bezier(.22,.68,0,1.1) both}
 .in{animation:in .4s ease both}
 .hero-kb{animation:kenburns 22s ease-out forwards}
@@ -183,7 +179,7 @@ function SH({n,total,title,sub}: {n:number,total:number,title:string,sub?:string
       <div style={{fontFamily:mono,fontSize:10,fontWeight:700,letterSpacing:'0.14em',color:gold,marginBottom:16}}>
         {String(n).padStart(2,'0')} / {String(total).padStart(2,'0')}
       </div>
-      <h2 style={{fontFamily:serif,fontSize:32,color:t1,fontWeight:700,lineHeight:1.08,letterSpacing:'-.02em',marginBottom:10,fontStyle:'normal'}}>
+      <h2 style={{fontFamily:displayFont.style.fontFamily,fontSize:30,color:t1,fontWeight:800,lineHeight:1.08,letterSpacing:'-.02em',marginBottom:10}}>
         {title}
       </h2>
       {sub&&<p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.55}}>{sub}</p>}
@@ -193,15 +189,9 @@ function SH({n,total,title,sub}: {n:number,total:number,title:string,sub?:string
 
 function Shell({children,step,total}: {children:React.ReactNode,step:number,total:number}) {
   return (
-    <div style={{minHeight:'100vh',background:bg0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',padding:'80px 20px 40px',position:'relative',overflow:'auto'}}>
-      <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,backgroundRepeat:'repeat',backgroundSize:'128px',opacity:.6}}/>
-      <div style={{position:'fixed',top:0,left:0,right:0,height:280,zIndex:0,pointerEvents:'none',
-        opacity:.18,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
-        WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
-        <PhotoCycler images={CITY_LARGE}/>
-      </div>
-      <div style={{position:'absolute',top:28,left:'50%',transform:'translateX(-50%)',fontFamily:serif,fontWeight:700,fontSize:17,color:t1,zIndex:1,letterSpacing:'-.01em'}}>
-        Mastersly
+    <div style={{minHeight:'100vh',background:bg0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',padding:'64px 20px 40px',position:'relative',overflow:'auto'}}>
+      <div style={{position:'absolute',top:28,left:'50%',transform:'translateX(-50%)',fontFamily:sans,fontWeight:800,fontSize:14,color:t1,zIndex:1,letterSpacing:'-.01em'}}>
+        MASTERSLY
       </div>
       <div style={{width:'100%',maxWidth:460,zIndex:1}} className="up">
         {children}
@@ -245,9 +235,24 @@ export default function Home() {
       if (cancelled) return
       if (data.session) {
         window.location.href = '/dashboard'
-      } else {
-        setCheckingSession(false)
+        return
       }
+      // Восстанавливаем экран «подтверди почту» после обновления страницы —
+      // без этого рефреш терял signupPending/password (обычный useState) и
+      // человека сбрасывало на step 0, будто он ничего не проходил.
+      const pending = sessionStorage.getItem('masterly_pending_signup')
+      if (pending) {
+        try {
+          const { email, password: pw } = JSON.parse(pending)
+          if (email && pw) {
+            set('email', email)
+            setPassword(pw)
+            setSignupPending(true)
+            setStep(8)
+          }
+        } catch {}
+      }
+      setCheckingSession(false)
     })
     return () => { cancelled = true }
   },[])
@@ -262,7 +267,10 @@ export default function Home() {
     let cancelled = false
     const tryLogin = async () => {
       const { data } = await supabase.auth.signInWithPassword({ email, password })
-      if (!cancelled && data.session) window.location.href = '/dashboard'
+      if (!cancelled && data.session) {
+        sessionStorage.removeItem('masterly_pending_signup')
+        window.location.href = '/dashboard'
+      }
     }
     const id = setInterval(tryLogin, 4000)
     return () => { cancelled = true; clearInterval(id) }
@@ -319,6 +327,9 @@ setStep((s:any)=> s+1)
         if (error) throw error
         turnstile.reset()
         if (data.session) { window.location.href = '/dashboard'; return }
+        // Переживает обновление страницы (см. восстановление в useEffect ниже) —
+        // без этого рефреш на экране «подтверди почту» сбрасывал на step 0.
+        sessionStorage.setItem('masterly_pending_signup', JSON.stringify({ email, password }))
         setSignupPending(true)
       } else {
         const { error } = await supabase.auth.signInWithOtp({
@@ -566,11 +577,11 @@ setStep((s:any)=> s+1)
   <div onClick={()=>setQuizMode(true)}
     style={{display:'flex',alignItems:'center',gap:14,
       padding:'16px 18px',marginBottom:16,borderRadius:8,
-      background:`rgba(200,162,86,0.08)`,
-      border:`1px solid rgba(200,162,86,0.3)`,
+      background:`rgba(242,169,59,0.08)`,
+      border:`1px solid rgba(242,169,59,0.3)`,
       cursor:'pointer',transition:'all .15s'}}
-    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(200,162,86,0.6)'}
-    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(200,162,86,0.3)'}>
+    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(242,169,59,0.6)'}
+    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(242,169,59,0.3)'}>
     <div style={{flex:1}}>
       <div style={{fontFamily:sans,fontSize:14,color:gold,
         fontWeight:500,letterSpacing:'-.01em',marginBottom:3}}>
@@ -648,7 +659,7 @@ setStep((s:any)=> s+1)
         </div>
       )
     })}
-    <div style={{padding:'10px 12px',background:`rgba(200,162,86,.08)`,
+    <div style={{padding:'10px 12px',background:`rgba(242,169,59,.08)`,
       borderLeft:`2px solid ${gold}`,borderRadius:'0 4px 4px 0',marginTop:8}}>
       <span style={{fontFamily:sans,fontSize:12,color:gold}}>
         После ответов мы подберём 3 лучших страны под твои приоритеты
@@ -684,7 +695,7 @@ setStep((s:any)=> s+1)
           <span style={{color:bg0,fontSize:10,fontWeight:700}}>✓</span>
         </div>}
         <div style={{position:'absolute',bottom:7,left:8,right:8}}>
-          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:15,fontWeight:600,
+          <div style={{fontFamily:sans,fontSize:14,fontWeight:700,
             color:'#fff',letterSpacing:'-.01em',marginBottom:1}}>{c.n}</div>
           <div style={{fontFamily:mono,fontSize:7,fontWeight:700,color:sel?gold:'rgba(255,255,255,.6)',
             letterSpacing:'0.04em'}}>{c.tag}</div>
@@ -832,20 +843,14 @@ setStep((s:any)=> s+1)
 
     return (
       <div style={{minHeight:'100vh',background:bg0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 20px',position:'relative'}}>
-        <div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:0,backgroundImage:`url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,backgroundRepeat:'repeat',backgroundSize:'128px',opacity:.6}}/>
-        <div style={{position:'fixed',top:0,left:0,right:0,height:340,zIndex:0,pointerEvents:'none',
-          opacity:.22,maskImage:'linear-gradient(180deg,#000 0%,transparent 100%)',
-          WebkitMaskImage:'linear-gradient(180deg,#000 0%,transparent 100%)'}}>
-          <PhotoCycler images={CITY_LARGE} offset={3}/>
-        </div>
         <div style={{width:'100%',maxWidth:460,zIndex:1}} className="up">
 
           <div style={{marginBottom:28,textAlign:'center'}}>
             <div style={{fontFamily:mono,fontSize:10,fontWeight:700,color:gold,letterSpacing:'0.14em',marginBottom:14}}>ПРОФИЛЬ ГОТОВ</div>
-            <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:76,color:t1,fontWeight:800,letterSpacing:'-.04em',lineHeight:1,marginBottom:4}}>
-              {score}<span style={{fontSize:28,opacity:.4}}>%</span>
+            <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:88,color:t1,fontWeight:800,letterSpacing:'-.04em',lineHeight:1,marginBottom:8}}>
+              {score}<span style={{fontSize:32,opacity:.4}}>%</span>
             </h1>
-            <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t2,marginBottom:14}}>готовности к поступлению</div>
+            <div style={{fontFamily:sans,fontSize:15,color:t2,marginBottom:14,fontWeight:400}}>готовности к поступлению</div>
             <div style={{height:2,background:'rgba(255,255,255,.08)',borderRadius:1,overflow:'hidden',marginBottom:10}}>
               <div style={{height:'100%',width:`${score}%`,background:t1,animation:'bar .9s ease both',transformOrigin:'left'}}/>
             </div>
@@ -948,7 +953,7 @@ setStep((s:any)=> s+1)
         Отправили письмо с подтверждением на <strong style={{color:t1}}>{a.email}</strong>.<br/>
         Перейди по ссылке хоть с телефона — эта вкладка сама войдёт, когда подтвердишь. Не закрывай её.
       </div>
-      <button onClick={()=>setSignupPending(false)} style={{
+      <button onClick={()=>{sessionStorage.removeItem('masterly_pending_signup');setSignupPending(false)}} style={{
         marginTop:10,background:'none',border:'none',fontFamily:sans,fontSize:12,
         color:t2,cursor:'pointer',textDecoration:'underline'}}>
         Назад
@@ -1033,7 +1038,7 @@ if(step === 99) return (
           width:size,height:size,
           borderRadius:'50%',
           background: i%3===0?gold:i%3===1?t1:blue,
-          boxShadow:`0 0 ${size*4}px ${i%3===0?gold:i%3===1?'rgba(242,239,233,0.8)':blue}`,
+          boxShadow:`0 0 ${size*4}px ${i%3===0?gold:i%3===1?'rgba(236,234,226,0.8)':blue}`,
           animation:`particle ${dur}s cubic-bezier(.2,.6,.4,1) forwards`,
           animationDelay:`${delay}s`,
           '--x':`${x}px`,
@@ -1046,10 +1051,10 @@ if(step === 99) return (
     <div style={{textAlign:'center',position:'relative',zIndex:10,
       animation:'logoIn 3.5s cubic-bezier(.22,.68,0,1.1) forwards'}}
       onAnimationEnd={()=>setStep(8)}>
-      <div style={{fontFamily:serif,fontStyle:'italic',
-        fontSize:52,color:t1,letterSpacing:'-.025em',
+      <div style={{fontFamily:displayFont.style.fontFamily,
+        fontSize:40,fontWeight:800,color:t1,letterSpacing:'-.03em',
         lineHeight:1,marginBottom:20}}>
-        Mastersly
+        MASTERSLY
       </div>
       <div style={{height:1,
         background:`linear-gradient(90deg,transparent,${gold},transparent)`,

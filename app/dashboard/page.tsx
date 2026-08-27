@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import Timeline from './Timeline'
 import GanttTimeline from './GanttTimeline'
-import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, serif, mono } from '@/lib/theme'
+import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
+import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 
 /* ── country names ── */
@@ -100,18 +101,18 @@ function getBucket(score: number) {
 }
 
 const BUCKET_CFG = {
-  reach:  { label:'Амбиция',  sub:'Сложно, но мечта',      color:'#A78BFA' },
-  target: { label:'Таргет',   sub:'Реальный шанс',          color:'#6B8CFF' },
-  safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:'#3FB950' },
+  reach:  { label:'Амбиция',  sub:'Сложно, но мечта',      color:purp },
+  target: { label:'Таргет',   sub:'Реальный шанс',          color:blue },
+  safety: { label:'Запасная', sub:'Высокий шанс оффера',    color:grn },
 }
 
 type ApplicationStatus = 'not_applied'|'applied'|'interview'|'offer'|'rejected'
 const STATUS_CFG: Record<ApplicationStatus,{label:string;color:string}> = {
   not_applied: { label:'Не подано',      color:t3 },
-  applied:     { label:'Подано',         color:'#6B8CFF' },
-  interview:   { label:'Собеседование',  color:'#C8A256' },
-  offer:       { label:'Оффер',          color:'#3FB950' },
-  rejected:    { label:'Отказ',          color:'#E5534B' },
+  applied:     { label:'Подано',         color:blue },
+  interview:   { label:'Собеседование',  color:gold },
+  offer:       { label:'Оффер',          color:grn },
+  rejected:    { label:'Отказ',          color:red },
 }
 /* ── journey phases ── */
 function makePhases(profile: any) {
@@ -160,7 +161,7 @@ function makePhases(profile: any) {
       ],
     },
     {
-      id:'docs', n:4, color:'#D4843A',
+      id:'docs', n:4, color:amb,
       title:'Собрать документы', when:'2–4 месяца',
       status:'upcoming',
       why:'SoP пишется отдельно для каждого вуза. Рекомендации нужно запросить за 2+ месяца до дедлайна.',
@@ -325,7 +326,7 @@ function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string
                   return (
                     <div key={ti} onClick={()=>!task.done&&onToggle(key)}
                       style={{display:'flex',alignItems:'flex-start',gap:14,padding:'13px 16px',borderRadius:8,
-                        background:done?'rgba(63,185,80,.05)':'rgba(255,255,255,.02)',
+                        background:done?`${grn}0D`:'rgba(255,255,255,.02)',
                         border:`1px solid ${done?`${grn}25`:task.urgent?`${red}28`:line}`,
                         borderLeft:`2px solid ${done?grn:task.urgent?red:'transparent'}`,
                         cursor:task.done?'default':'pointer',transition:'all .15s'}}>
@@ -536,7 +537,7 @@ useEffect(()=>{
     @keyframes glow{0%,100%{box-shadow:0 0 0 rgba(255,255,255,0)}50%{box-shadow:0 0 24px rgba(255,255,255,.06)}}
 
     .nb{transition:color .15s,background .15s;cursor:pointer}
-    .nb:hover{color:#F2EFE9!important}
+    .nb:hover{color:${t1}!important}
     .hc{transition:all .2s}
     .hc:hover{background:rgba(255,255,255,.04)!important}
 
@@ -558,18 +559,18 @@ useEffect(()=>{
     .stagger-7{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .28s both}
     .stagger-8{animation:spring .5s cubic-bezier(.34,1.56,.64,1) .32s both}
 
-    .hero-num{background:linear-gradient(180deg,#F2EFE9 0%,#A8A39B 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-num{background:linear-gradient(180deg,${t1} 0%,#A8A39B 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 
     input[type="range"]::-webkit-slider-thumb{
       appearance:none;width:22px;height:22px;border-radius:50%;
-      background:#F2EFE9;cursor:pointer;
-      box-shadow:0 4px 12px rgba(0,0,0,.5),0 0 0 4px rgba(242,239,233,.08);
+      background:${t1};cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,0,0,.5),0 0 0 4px rgba(236,234,226,.08);
       transition:transform .15s
     }
     input[type="range"]::-webkit-slider-thumb:active{transform:scale(1.15)}
     input[type="range"]::-moz-range-thumb{
       width:22px;height:22px;border-radius:50%;border:none;
-      background:#F2EFE9;cursor:pointer;
+      background:${t1};cursor:pointer;
       box-shadow:0 4px 12px rgba(0,0,0,.5)
     }
   `
@@ -586,7 +587,7 @@ useEffect(()=>{
   if(!profile) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',maxWidth:360,padding:'0 20px'}}>
-        <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:700,fontSize:24,color:t1,marginBottom:12}}>Анкета не найдена</div>
+        <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:22,color:t1,marginBottom:12}}>Анкета не найдена</div>
         <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:20}}>
           {profileMissing
             ? 'Вход подтверждён, но не нашли твою анкету на этом устройстве. Если ты заполнял её на компьютере — просто вернись туда, вход должен произойти сам.'
@@ -789,7 +790,7 @@ const getVerdict = async (p: any) => {
         {tab==='overview'&&(
           <div style={{padding:'36px 40px'}}>
             <div style={{marginBottom:28}}>
-              <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:36,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:6}}>
+              <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:6}}>
                 Привет, {name}
               </h1>
               <Mono style={{color:t2}}>
@@ -807,7 +808,7 @@ const getVerdict = async (p: any) => {
               ].map((s,i)=>(
                 <div key={i} style={{padding:'18px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                   <Mono style={{display:'block',marginBottom:8}}>{s.l}</Mono>
-                  <div style={{fontFamily:serif,fontStyle:'normal',fontSize:28,color:s.warn?red:t1,fontWeight:800,letterSpacing:'-.02em'}}>
+                  <div style={{fontFamily:displayFont.style.fontFamily,fontSize:26,color:s.warn?red:t1,fontWeight:800,letterSpacing:'-.01em'}}>
                     {s.v}
                   </div>
                 </div>
@@ -881,7 +882,7 @@ const getVerdict = async (p: any) => {
 {tab==='unis'&&(
   <div style={{padding:'36px 40px'}}>
     <Mono style={{display:'block',marginBottom:12}}>{unis.length} ПРОГРАММ · ПОДОБРАНО ПОД ТВОЙ ПРОФИЛЬ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:28}}>Программы</h1>
+    <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:28}}>Программы</h1>
     {unis.length===0&&(
       <div style={{padding:'32px',textAlign:'center',border:`1px solid ${line}`,borderRadius:8}}>
         <div style={{fontFamily:serif,fontSize:18,color:t2,marginBottom:8}}>
@@ -936,7 +937,7 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                   <Flag code={u._country}/>
                 </span>
                 <Mono style={{color:t2}}>{u._cost}</Mono>
-                <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:cfg.color}}>{u._score}</div>
+                <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:18,color:cfg.color}}>{u._score}</div>
                 <Mono style={{color:u._days<30?red:t2}}>{u._days} дн.</Mono>
               </div>
             ))}
@@ -965,7 +966,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                   {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · ПРИМЕРНАЯ ОЦЕНКА {selectedProgram._score}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-                  <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:24,color:t1,fontWeight:700,letterSpacing:'-.02em',lineHeight:1.2}}>
+                  <h2 style={{fontFamily:displayFont.style.fontFamily,fontSize:22,color:t1,fontWeight:800,letterSpacing:'-.01em',lineHeight:1.2}}>
                     {selectedProgram._p}
                   </h2>
                   <VerifiedBadge verified={selectedProgram.verified}/>
@@ -1072,7 +1073,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
               <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
                 <div style={{height:1,background:line,marginBottom:20}}/>
                 <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЕРСОНАЛЬНЫЙ АНАЛИЗ</div>
-                <p style={{fontFamily:serif,fontStyle:'italic',fontSize:15,color:t1,lineHeight:1.6,marginBottom:16}}>"{verdict.verdict}"</p>
+                <p style={{fontFamily:sans,fontSize:15,color:t1,lineHeight:1.6,marginBottom:16,fontWeight:400}}>«{verdict.verdict}»</p>
                 {verdict.fit?.map((f:string,i:number)=>(
                   <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
                     <span style={{color:t3,flexShrink:0}}>—</span>
@@ -1090,7 +1091,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 {tab==='saved'&&(
   <div style={{padding:'36px 40px'}}>
     <Mono style={{display:'block',marginBottom:12}}>{favorites.size} ПРОГРАММ В ИЗБРАННОМ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:8}}>Избранное</h1>
+    <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:8}}>Избранное</h1>
 
     {compareList.length>=2&&(
       <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24,
@@ -1107,7 +1108,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 
     {favorites.size===0?(
       <div style={{padding:'40px 0',textAlign:'center'}}>
-        <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t3,marginBottom:8}}>Пусто</div>
+        <div style={{fontFamily:sans,fontWeight:600,fontSize:18,color:t3,marginBottom:8}}>Пусто</div>
         <div style={{fontFamily:sans,fontSize:13,color:t3}}>Добавляй программы через ♡ в списке</div>
       </div>
     ):(
@@ -1144,7 +1145,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                 <Flag code={u._country}/>
               </span>
               <Mono style={{color:t2}}>{u._cost}</Mono>
-              <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
+              <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:18,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</div>
               <select
                 value={favorites.get(u.id)?.status ?? 'not_applied'}
                 onClick={(e)=>e.stopPropagation()}
@@ -1181,7 +1182,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                   </thead>
                   <tbody>
                     {[
-                      {l:'Примерная оценка', fn:(u:any)=><span style={{fontFamily:serif,fontStyle:'italic',fontSize:18,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>},
+                      {l:'Примерная оценка', fn:(u:any)=><span style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:16,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>},
                       {l:'Данные', fn:(u:any)=><VerifiedBadge verified={u.verified}/>},
                       {l:'Корзина',     fn:(u:any)=>BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].label},
                       {l:'Стоимость',   fn:(u:any)=>u._cost},
@@ -1218,11 +1219,11 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
   return (
     <div style={{padding:'36px 40px'}}>
       <Mono style={{display:'block',marginBottom:12}}>{appliedUnis.length} АКТИВНЫХ ЗАЯВОК</Mono>
-      <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:24}}>Заявки</h1>
+      <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:24}}>Заявки</h1>
 
       {appliedUnis.length===0?(
         <div style={{padding:'40px 0',textAlign:'center'}}>
-          <div style={{fontFamily:serif,fontStyle:'italic',fontSize:20,color:t3,marginBottom:8}}>Пока пусто</div>
+          <div style={{fontFamily:sans,fontWeight:600,fontSize:18,color:t3,marginBottom:8}}>Пока пусто</div>
           <div style={{fontFamily:sans,fontSize:13,color:t3}}>Смени статус программы на «Подано» во вкладке «Избранное», когда отправишь заявку</div>
         </div>
       ):(
@@ -1252,7 +1253,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,flexWrap:'wrap'}}>
                             <span title={CNAME[u._country]||u._country}><Flag code={u._country} size={16}/></span>
                             <Mono style={{color:t2}}>{u._cost}</Mono>
-                            <span style={{fontFamily:serif,fontStyle:'italic',fontSize:14,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>
+                            <span style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:14,color:BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].color}}>{u._score}</span>
                           </div>
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                             <span style={{fontFamily:mono,fontSize:9,color:t3}}>{days<=0?'сегодня':`${days} дн. в статусе`}</span>
@@ -1283,7 +1284,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 {tab==='settings'&&(
   <div style={{padding:'36px 40px',maxWidth:560}}>
     <Mono style={{display:'block',marginBottom:12}}>НАСТРОЙКИ</Mono>
-    <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:34,color:t1,fontWeight:800,letterSpacing:'-.03em',marginBottom:32}}>Профиль</h1>
+    <h1 style={{fontFamily:displayFont.style.fontFamily,fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:32}}>Профиль</h1>
 
     {/* GPA */}
     <div style={{marginBottom:28}}>
@@ -1419,9 +1420,9 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
       </main>
       {isMobile&&(
   <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,
-    background:'rgba(10,10,12,0.92)',backdropFilter:'blur(24px)',
+    background:'rgba(13,13,15,0.92)',backdropFilter:'blur(24px)',
     WebkitBackdropFilter:'blur(24px)',
-    borderTop:'1px solid rgba(255,255,255,0.07)',
+    borderTop:`1px solid ${line}`,
     display:'flex',alignItems:'center',justifyContent:'space-around',
     padding:'10px 0 calc(12px + env(safe-area-inset-bottom))',
     boxShadow:'0 -1px 0 rgba(255,255,255,.04),0 -20px 40px rgba(0,0,0,.6)'}}>
@@ -1429,7 +1430,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
       {id:'overview', label:'Обзор',    icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>},
       {id:'unis',     label:'Программы',icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3L2 9l10 6 10-6-10-6z"/><path d="M2 17l10 6 10-6"/><path d="M2 13l10 6 10-6"/></svg>},
       {id:'journey',  label:'Journey',  icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
-      {id:'saved',    label:'Избранное',icon:<svg width="22" height="22" viewBox="0 0 24 24" fill={tab==='saved'||favorites.size>0?"#C8A256":"none"} stroke={favorites.size>0?"#C8A256":"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>},
+      {id:'saved',    label:'Избранное',icon:<svg width="22" height="22" viewBox="0 0 24 24" fill={tab==='saved'||favorites.size>0?gold:"none"} stroke={favorites.size>0?gold:"currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>},
       {id:'settings', label:'Профиль',  icon:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>},
     ].map((n,idx)=>{
       const isActive = tab===n.id
