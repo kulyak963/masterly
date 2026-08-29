@@ -7,12 +7,13 @@ import GanttTimeline from './GanttTimeline'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import HungaryGuide from './HungaryGuide'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
   de:'Германия', nl:'Нидерланды', se:'Швеция',
   ch:'Швейцария', fi:'Финляндия', fr:'Франция',
-  cz:'Чехия', at:'Австрия'
+  cz:'Чехия', at:'Австрия', hu:'Венгрия'
 }
 /* Флаги — SVG, не эмодзи: Windows/Chrome не рисует флаг-эмодзи цветной
    картинкой, показывает буквы кода страны как текст (проверено на скрине
@@ -716,6 +717,8 @@ const getVerdict = async (p: any) => {
   setSaving(false)
 }
 
+  const selectedCountries = profile.countries?.split(',').filter(Boolean) || []
+
   const NAV = [
   {id:'overview', l:'Обзор'},
   {id:'journey',  l:'Journey'},
@@ -723,6 +726,7 @@ const getVerdict = async (p: any) => {
   {id:'saved',    l:'Избранное'},
   {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
+  ...(selectedCountries.includes('hu') ? [{id:'hu-guide', l:'Венгрия · PRO'}] : []),
   {id:'settings', l:'Настройки'},
 ]
 
@@ -1379,6 +1383,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
           {c:'at',l:'Австрия'},{c:'cz',l:'Чехия'},{c:'dk',l:'Дания'},
           {c:'be',l:'Бельгия'},{c:'ie',l:'Ирландия'},{c:'it',l:'Италия'},
           {c:'es',l:'Испания'},{c:'no',l:'Норвегия'},{c:'pl',l:'Польша'},
+          {c:'hu',l:'Венгрия'},
         ].map(({c,l})=>{
           const sel = (profile.countries||'').split(',').includes(c)
           return (
@@ -1416,6 +1421,9 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 )}
 {tab==='timeline'&&(
   <GanttTimeline profile={profile} programs={timelinePrograms}/>
+)}
+{tab==='hu-guide'&&(
+  <HungaryGuide programs={programs}/>
 )}
       </main>
       {isMobile&&(

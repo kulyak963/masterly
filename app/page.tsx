@@ -849,8 +849,8 @@ setStep((s:any)=> s+1)
 
   // STEP 8 — RESULT
   if(step>=8 && step !== 99) {
-    const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT'}
-    const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия'}
+    const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT',hu:'HU'}
+    const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия',hu:'Венгрия'}
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
     const firstSteps = [
       a.ielts<6.5  && {t:'Записаться на IELTS — это первый шаг', c:red},

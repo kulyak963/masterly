@@ -7,12 +7,12 @@ const client = new Anthropic({
 
 export async function askAI(prompt: string, opts?: { model?: string; maxTokens?: number }): Promise<string> {
   const msg = await client.messages.create({
-    model: opts?.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4.6',
+    model: opts?.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5',
     max_tokens: opts?.maxTokens ?? 800,
     messages: [{ role: 'user', content: prompt }],
   })
-  const block = msg.content[0]
-  if (block.type !== 'text') throw new Error('Unexpected AI response type')
+  const block = msg.content.find((b) => b.type === 'text')
+  if (!block || block.type !== 'text') throw new Error('Unexpected AI response type')
   return block.text.trim()
 }
 
