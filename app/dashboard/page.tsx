@@ -717,8 +717,6 @@ const getVerdict = async (p: any) => {
   setSaving(false)
 }
 
-  const selectedCountries = profile.countries?.split(',').filter(Boolean) || []
-
   const NAV = [
   {id:'overview', l:'Обзор'},
   {id:'journey',  l:'Journey'},
@@ -726,7 +724,7 @@ const getVerdict = async (p: any) => {
   {id:'saved',    l:'Избранное'},
   {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
-  ...(selectedCountries.includes('hu') ? [{id:'hu-guide', l:'Венгрия · PRO'}] : []),
+  ...(countries.includes('hu') ? [{id:'hu-guide', l:'Венгрия · PRO'}] : []),
   {id:'settings', l:'Настройки'},
 ]
 
@@ -871,6 +869,24 @@ const getVerdict = async (p: any) => {
                 ))}
               </div>
             </div>
+
+            {/* баннер Венгрии — единственный вход в гайд на мобиле, т.к. в нижнем
+                нав-баре мобилы всего 5 иконок и своей вкладки там нет */}
+            {countries.includes('hu')&&(
+              <button onClick={()=>setTab('hu-guide')} style={{
+                display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
+                width:'100%',marginTop:16,padding:'16px 18px',borderRadius:8,
+                border:`1px solid ${gold}40`,background:`${gold}0D`,cursor:'pointer',
+                textAlign:'left',fontFamily:'inherit'}}>
+                <div>
+                  <Mono style={{display:'block',color:gold,marginBottom:4}}>ВЕНГРИЯ · PRO</Mono>
+                  <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
+                    Полный гайд по Stipendium Hungaricum
+                  </div>
+                </div>
+                <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
+              </button>
+            )}
           </div>
         )}
 
