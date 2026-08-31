@@ -215,7 +215,7 @@ const SOURCES = [
   { n: 'uniduna.hu — правила во время обучения', u: 'https://www.uniduna.hu/en/scholarships/stipendium-hungaricum/rules-to-keep-in-mind' },
 ]
 
-export default function HungaryGuide({ programs = [] }: { programs?: any[] }) {
+export default function HungaryGuide({ programs = [], isPro = false }: { programs?: any[]; isPro?: boolean }) {
   const huPrograms = programs.filter(p => p.university?.country === 'hu')
   const shPrograms = huPrograms.filter(p => (p.scholarships || []).some((s: string) => s.includes('Stipendium')))
 
@@ -258,7 +258,7 @@ export default function HungaryGuide({ programs = [] }: { programs?: any[] }) {
         </div>
       </Card>
 
-      <ScholarshipLock>
+      <ScholarshipLock isPro={isPro}>
         <Card>
           <SectionTitle>Требования к кандидату</SectionTitle>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

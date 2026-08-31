@@ -30,6 +30,7 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const countries: string[] = profile.countries?.split(',').filter(Boolean) || []
   const wantsHu = countries.includes('hu')
   const wantsIt = countries.includes('it')
+  const isPro = !!profile.is_pro
 
   const D = (y:number, m:number, d=15) => toIdx(new Date(y,m-1,d))
   const dateStr = (y:number,m:number,d=15) => {
@@ -56,14 +57,21 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   // платный контент гайда просто виден бесплатно через Таймлайн/календарь.
   // Название и подробности намеренно не попадают в label/desc — только
   // "важный дедлайн" + призыв разблокировать. Дата (для позиции на шкале)
-  // остаётся настоящей.
+  // остаётся настоящей. isPro (profiles.is_pro, ручной флаг) снимает
+  // заглушку и показывает реальный текст — см. ScholarshipLock.tsx.
   const scholEvents = [
     ...(wantsHu ? [
-      {date:dateStr(dy,1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
+      isPro
+        ? {date:dateStr(dy,1,15), label:'Дедлайн — Stipendium Hungaricum (Tempus/DreamApply)', desc:'Не забыть параллельный трек Минобрнауки — дедлайн обычно раньше', urgent:true}
+        : {date:dateStr(dy,1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
     ] : []),
     ...(wantsIt ? [
-      {date:dateStr(dy,3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
-      {date:dateStr(admYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+      isPro
+        ? {date:dateStr(dy,3,26), label:'Дедлайн — MAECI (стипендия Правительства Италии)', desc:'€10 800, подача на studyinitaly.esteri.it'}
+        : {date:dateStr(dy,3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+      isPro
+        ? {date:dateStr(admYear,9,1), label:'Дедлайн подачи на DSU (регион)', desc:'Подаётся уже после зачисления; точная дата различается по региону'}
+        : {date:dateStr(admYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
     ] : []),
   ]
 
@@ -130,10 +138,10 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
         {idx:D(dy,1,9),  label:'Eiffel 9 янв', urgent:true},
         {idx:D(dy,1,14), label:'DAAD 14 янв',  urgent:sf},
         {idx:D(dy,2,15), label:'SI 15 фев'},
-        ...(wantsHu ? [{idx:D(dy,1,15), label:'Важный дедлайн', urgent:true, locked:true}] : []),
+        ...(wantsHu ? [{idx:D(dy,1,15), label: isPro?'SH 15 янв':'Важный дедлайн', urgent:true, locked:!isPro}] : []),
         ...(wantsIt ? [
-          {idx:D(dy,3,26), label:'Важный дедлайн', locked:true},
-          {idx:D(admYear,9,1), label:'Важный дедлайн', locked:true},
+          {idx:D(dy,3,26), label: isPro?'MAECI 26 мар':'Важный дедлайн', locked:!isPro},
+          {idx:D(admYear,9,1), label: isPro?'DSU сент':'Важный дедлайн', locked:!isPro},
         ] : []),
       ].filter(m=>m.idx>-0.3),
     },

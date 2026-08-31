@@ -187,7 +187,7 @@ const SOURCES = [
   { n: 'polimi.it — No-Tax Area', u: 'https://www.polimi.it/en/students/tuition-fees-scholarships-and-financial-aid/tuition-fees/no-tax-area' },
 ]
 
-export default function ItalyGuide({ programs = [] }: { programs?: any[] }) {
+export default function ItalyGuide({ programs = [], isPro = false }: { programs?: any[]; isPro?: boolean }) {
   const itPrograms = programs.filter(p => p.university?.country === 'it')
 
   return (
@@ -228,7 +228,7 @@ export default function ItalyGuide({ programs = [] }: { programs?: any[] }) {
         </div>
       </Card>
 
-      <ScholarshipLock>
+      <ScholarshipLock isPro={isPro}>
         <Card>
           <SectionTitle>Что такое ISEE — ключ ко всей системе</SectionTitle>
           <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: 12 }}>

@@ -8,9 +8,15 @@ import { bg0, bg2, line, t1, t2, gold, sans, mono } from '@/lib/theme'
  * дублировать одну и ту же разметку блюра/кнопки в каждом новом гайде.
  * Платежа в проекте всё ещё нет — кнопка честно говорит об этом, не
  * делает вид, что что-то происходит.
+ *
+ * `isPro` (2026-08-31) — читается из `profiles.is_pro`, ручной/админский
+ * флаг (см. sql/2026-08-31-add-is-pro-column.sql и scripts/set-pro.mjs) —
+ * включается вручную через Supabase, никакого платежа за ним пока нет.
+ * Когда isPro=true — рендерим детей как есть, без блюра и кнопки.
  */
-export default function ScholarshipLock({ children }: { children: React.ReactNode }) {
+export default function ScholarshipLock({ children, isPro = false }: { children: React.ReactNode; isPro?: boolean }) {
   const [unlockMsg, setUnlockMsg] = useState(false)
+  if (isPro) return <>{children}</>
   return (
     <div style={{ position: 'relative' }}>
       <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none', maxHeight: 620, overflow: 'hidden' }}>

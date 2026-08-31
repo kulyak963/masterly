@@ -16,6 +16,7 @@ function buildNodes(p: any): Node[] {
   const countries: string[] = p.countries?.split(',').filter(Boolean) || []
   const wantsHu = countries.includes('hu')
   const wantsIt = countries.includes('it')
+  const isPro = !!p.is_pro
   return [
     {
       id:'ielts', label:'IELTS', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
@@ -53,10 +54,13 @@ function buildNodes(p: any): Node[] {
       ],
     },
     {
-      id:'schol', label:'Стипендии', sub: sf ? 'СРОЧНО — 14 янв' : wantsHu ? '🔒 Важный дедлайн' : 'Параллельно',
+      id:'schol', label:'Стипендии',
+      sub: sf ? 'СРОЧНО — 14 янв' : wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
       color: gold, status: (sf||wantsHu) ? 'active' : 'parallel', zone:2, row:1, parallel:true,
       insight: sf ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.'
-        : wantsHu ? 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.'
+        : wantsHu ? (isPro
+            ? 'Stipendium Hungaricum закрывается 15 января — и это ДВЕ отдельные подачи (Tempus + Минобрнауки РФ), не одна.'
+            : 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.')
         : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
       tasks:[
         {t:'Motivation Letter для DAAD — отдельный документ, не SoP!', urgent:sf},
@@ -66,8 +70,15 @@ function buildNodes(p: any): Node[] {
         // 2026-08-31, по просьбе Дениса: без оплаты гайда — ни названий
         // программ, ни дат, ни процесса. Только факт "есть дедлайн" +
         // призыв разблокировать (см. тот же принцип в GanttTimeline.tsx).
-        ...(wantsHu ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Венгрия · PRO', urgent:true, locked:true}] : []),
-        ...(wantsIt ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}] : []),
+        // isPro (profiles.is_pro) снимает заглушку — реальные задачи.
+        ...(wantsHu ? (isPro ? [
+          {t:'Stipendium Hungaricum — подать в Tempus (DreamApply), дедлайн 15 января', urgent:true},
+          {t:'Stipendium Hungaricum — параллельно отправить пакет в Минобрнауки РФ', urgent:true},
+        ] : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Венгрия · PRO', urgent:true, locked:true}]) : []),
+        ...(wantsIt ? (isPro ? [
+          {t:'Италия — начать оформление ISEE Parificato через CAF (уходит 1–2 месяца)'},
+          {t:'MAECI (Италия) — подать на studyinitaly.esteri.it, дедлайн 26 марта'},
+        ] : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
       ],
     },
     {
@@ -107,7 +118,9 @@ function buildNodes(p: any): Node[] {
         // податься, пока не зачислен(а), заявка идёт уже после оффера,
         // в августе-сентябре начала учёбы (см. тот же фикс в GanttTimeline.tsx).
         // Без оплаты гайда — детали процесса не показываем (см. schol выше).
-        ...(wantsIt ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}] : []),
+        ...(wantsIt ? (isPro
+          ? [{t:'DSU (Италия) — подать заявку в региональное агентство, август–сентябрь (нужно уже быть зачисленным)'}]
+          : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
         {t:`Начало учёбы — сентябрь ${p.timeline}`},
       ],
     },

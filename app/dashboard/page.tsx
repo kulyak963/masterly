@@ -1444,11 +1444,11 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 )}
 {tab==='scholarship-guide'&&(
   <div style={{padding:'36px 40px'}}>
-    {countries.includes('hu')&&<HungaryGuide programs={programs}/>}
+    {countries.includes('hu')&&<HungaryGuide programs={programs} isPro={!!profile.is_pro}/>}
     {countries.includes('hu')&&countries.includes('it')&&(
       <div style={{height:1,background:line,margin:'40px 0'}}/>
     )}
-    {countries.includes('it')&&<ItalyGuide programs={programs}/>}
+    {countries.includes('it')&&<ItalyGuide programs={programs} isPro={!!profile.is_pro}/>}
   </div>
 )}
       </main>
