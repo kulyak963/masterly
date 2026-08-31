@@ -124,6 +124,16 @@ const MODEL = args.model ?? 'claude-sonnet-5'
 const MAX_USES = Number(args['max-uses'] ?? 6)
 const SLEEP_MS = Number(args.sleep ?? 2000)
 
+// --from-file <path>: пропустить шаги 1 (перечислить) и 2 (классифицировать)
+// целиком — вместо ИИ-перечисления, которое на больших многофакультетных
+// вузах (Болонья и т.п.) систематически недосчитывает программы даже при
+// успешном ответе (см. CLAUDE.md, 2026-08-30), список уже готов заранее
+// (например, собран через MastersPortal + тот же классификатор ключевых
+// слов офлайн). Формат файла: { "Имя вуза как в БД": [{name,url,field}] }.
+// Шаг 3 (детали по каждой программе через web_search) выполняется как
+// обычно — MastersPortal не даёт официальный источник для tuition/deadline.
+const FROM_FILE = args['from-file']
+
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, baseURL: env.ANTHROPIC_BASE_URL })
 const supabase = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
@@ -208,7 +218,16 @@ async function callWithSearchExpectArray(prompt, { maxTokens = 32000, maxUses = 
       tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: maxUses }],
       messages,
     })
-    response = await stream.finalMessage()
+    // 2026-08-30: прокси иногда просто виснет — соединение открыто, но
+    // ни данных, ни ошибки не приходит бесконечно (реальный случай на
+    // Италии: фоновый процесс завис на много часов на одном вызове).
+    // Штатный таймаут SDK/прокси тут не срабатывает, поэтому свой жёсткий
+    // потолок + stream.abort(), чтобы withRetry вообще получил шанс
+    // повторить попытку, а не ждал вечно.
+    response = await Promise.race([
+      stream.finalMessage(),
+      new Promise((_, reject) => setTimeout(() => { stream.abort(); reject(new Error('timeout: прокси не ответил за 90с')) }, 90000)),
+    ])
     totalUsage.input_tokens += response.usage?.input_tokens ?? 0
     totalUsage.output_tokens += response.usage?.output_tokens ?? 0
     if (response.stop_reason !== 'pause_turn') break
@@ -310,24 +329,57 @@ async function researchField(field, existingPrograms) {
 // =====================================================================
 
 // ---- Шаг 1: просто перечислить программы, без классификации/деталей ----
-function buildEnumeratePrompt(uni) {
-  const hostname = uni.website ? new URL(uni.website).hostname : uni.name
-  return `List EVERY master's (MSc/MA or equivalent) program taught in English at ${uni.name} (${uni.city}${uni.website ? `, official site: ${uni.website}` : ''}).
+//
+// 2026-08-29, второй проход (по факту с Италией — Болонья вернула всего 6
+// программ ВСЕГО, хотя реально их там около 40): один широкий запрос "на
+// всё сразу" по факту недосчитывает крупные/многофакультетные вузы — весь
+// поисковый бюджет (10 uses) размазывается по десятку факультетов сразу,
+// и на платформе, где второй раунд поиска молча теряет ответ, модель не
+// может добрать недостающее повторным поиском. Решение — то же самое, что
+// уже сработало для сравнения программ ("расфасовать по кластерам, не
+// один большой запрос"): бьём перечисление на 3 узких захода по кластерам
+// факультетов, каждый — свой собственный "один раунд поиска", и объединяем
+// результаты по URL. Дороже по токенам (3 вызова вместо 1), но не ловит
+// баг с повторным раундом и даёт заметно более полный список.
+const ENUMERATE_CLUSTERS = [
+  { key: 'business', hint: 'Business, Management, Economics, Finance, Marketing, Accounting, Entrepreneurship, HR, Innovation Management' },
+  { key: 'tech', hint: 'Engineering (all kinds), Computer Science, Data Science, AI, Cybersecurity, Robotics' },
+  { key: 'other', hint: 'Science, Design, Architecture, Social Sciences, and any other schools/faculties not covered by Business or Engineering/CS' },
+]
 
-Do NOT filter by subject area at this stage — list every program you find, including business, medicine, law, arts, everything. We will classify by subject in a separate step. Universities like this typically offer 15-40 master's programs in total — be thorough.
+function buildEnumeratePrompt(uni, cluster) {
+  const hostname = uni.website ? new URL(uni.website).hostname : uni.name
+  return `List EVERY master's (MSc/MA or equivalent) program taught in English at ${uni.name} (${uni.city}${uni.website ? `, official site: ${uni.website}` : ''}), specifically in these fields: ${cluster.hint}.
+
+This is one focused slice of a larger sweep — don't worry about programs outside this field list, another pass covers those. Within this slice, be exhaustive: large universities often have 8-15 programs per cluster like this — don't stop after finding just a couple.
 
 ## How to search — ONE round only, hard platform limit
-Issue several PARALLEL search queries in a SINGLE turn: one general "site:${hostname} master's programs list" query, plus one per school/faculty you'd expect (business, engineering, IT, science, law, medicine, arts — whatever this university likely has), plus a query against the Stipendium Hungaricum course catalog if this is a Hungarian university. Do NOT search again after seeing results — a second round silently discards the whole response on this platform.
+Issue several PARALLEL search queries in a SINGLE turn: one general "site:${hostname} master's programs ${cluster.key}" query, plus one per specific school/department within this slice you'd expect this university to have, plus a query against the Stipendium Hungaricum course catalog if this is a Hungarian university. Do NOT search again after seeing results — a second round silently discards the whole response on this platform.
 
 ## URLs must be real
 Only use a URL that literally appeared in your search results — never invent one.
 
-## Output — ONLY this JSON array, nothing else (literal "[]" if you truly found nothing, never explain in prose instead):
+## Output — ONLY this JSON array, nothing else (literal "[]" if you truly found nothing in this slice, never explain in prose instead):
 [{"name": "Official program name", "url": "https://..."}]`
 }
 
 async function enumerateUniversityPrograms(uni) {
-  return withRetry(() => callWithSearchExpectArray(buildEnumeratePrompt(uni), { maxTokens: 24000, maxUses: 10 }), 4)
+  const totalUsage = { input_tokens: 0, output_tokens: 0 }
+  const byUrl = new Map()
+  for (const cluster of ENUMERATE_CLUSTERS) {
+    try {
+      const { programs, usage } = await withRetry(() => callWithSearchExpectArray(buildEnumeratePrompt(uni, cluster), { maxTokens: 16000, maxUses: 8 }), 3)
+      totalUsage.input_tokens += usage.input_tokens ?? 0
+      totalUsage.output_tokens += usage.output_tokens ?? 0
+      for (const p of programs) {
+        if (p?.name && p?.url && !byUrl.has(p.url)) byUrl.set(p.url, p)
+      }
+    } catch (e) {
+      // Одна не удавшаяся полоска не должна валить весь вуз — остальные
+      // кластеры всё равно дают частичный, но полезный результат.
+    }
+  }
+  return { programs: [...byUrl.values()], usage: totalUsage }
 }
 
 // ---- Шаг 2: классификация ПРАВИЛАМИ ПО КЛЮЧЕВЫМ СЛОВАМ, без обращения
@@ -353,8 +405,13 @@ const FIELD_KEYWORD_RULES = [
   { field: 'Human-Computer Interaction', re: /\b(human.computer interaction|\bhci\b|ux|user experience|interaction design|digital media design)\b/i },
   { field: 'Computer Science', re: /\b(computer science|software engineering|information technology|information systems(?! management)|it engineering)\b/i },
   {
+    // 2026-08-30: добавлены aerospace/automotive/electronic(s)/nuclear/
+    // nanotechnology/control engineering — найдено при разборе списка
+    // MastersPortal для Италии, где "Aerospace Engineering" (Bologna,
+    // Padua) и "Automotive Engineering" (Torino) не матчились вообще ни
+    // под одно поле и терялись как неклассифицированные.
     field: 'Computational Engineering',
-    re: /\b(electrical engineering|mechanical engineering|civil engineering|environmental engineering|energy engineering|materials engineering|telecommunications?|structural engineering|infrastructural engineering|transportation engineering|vehicle engineering|construction|chemical engineering|biomedical engineering|quantum engineering)\b/i,
+    re: /\b(electrical engineering|mechanical engineering|civil engineering|environmental engineering|energy engineering|materials engineering|telecommunications?|structural engineering|infrastructural engineering|transportation engineering|vehicle engineering|construction|chemical engineering|biomedical engineering|quantum engineering|aerospace engineering|automotive engineering|electronic(s)? engineering|nuclear engineering|nanotechnology engineering|control (systems? )?engineering)\b/i,
   },
   {
     field: 'Business Analytics',
@@ -572,7 +629,31 @@ async function main() {
     }
   }
 
-  if (COMPREHENSIVE) {
+  if (FROM_FILE) {
+    const preClassified = JSON.parse(readFileSync(new URL(FROM_FILE, `file://${process.cwd()}/`), 'utf8'))
+    for (const [uniName, classified] of Object.entries(preClassified)) {
+      const uni = universities.find((u) => u.name === uniName)
+      if (!uni) {
+        console.log(`  ПРОПУЩЕНО: вуз "${uniName}" не найден в базе для страны ${COUNTRY_CODE}`)
+        continue
+      }
+      console.log(`  ${uni.name} (из файла, ${classified.length} кандидатов)`)
+      for (const item of classified) {
+        process.stdout.write(`    детали "${item.name}"... `)
+        try {
+          const { programs, usage } = await fetchProgramDetails(uni, item)
+          totalUsage.input_tokens += usage.input_tokens ?? 0
+          totalUsage.output_tokens += usage.output_tokens ?? 0
+          console.log('получено')
+          await ingestPrograms(programs, uni.name, uni.city, uni.website, uni.ranking_qs, item.field)
+        } catch (e) {
+          console.log(`ОШИБКА: ${e.message}`)
+          errors.push(`${uni.name} / "${item.name}": ${e.message}`)
+        }
+        await sleep(SLEEP_MS)
+      }
+    }
+  } else if (COMPREHENSIVE) {
     const onlyNames = args['only-university'] ? args['only-university'].split(',').map((s) => s.trim().toLowerCase()) : null
     const targetUnis = onlyNames
       ? universities.filter((u) => onlyNames.some((n) => u.name.toLowerCase().includes(n)))
