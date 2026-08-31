@@ -105,7 +105,7 @@ const BUDGETS = [
 const PAINS = [
   {id:'lost',   l:'Не знаю с чего начать',     s:'Слишком много информации, теряюсь'},
   {id:'country',l:'Не знаю куда хочу ехать',   s:'Не понимаю чем страны отличаются'},
-  {id:'profile',l:'Боюсь что профиль слабый',  s:'GPA / IELTS / опыт недостаточны'},
+  {id:'profile',l:'Боюсь что профиль слабый',  s:'GPA / язык / опыт недостаточны'},
   {id:'money',  l:'Не понимаю про стипендии',  s:'Реально ли учиться бесплатно'},
   {id:'docs',   l:'Документы пугают',           s:'SoP, рекомендации — это сложно'},
   {id:'worth',  l:'Не уверен что оно того стоит',s:'Сомневаюсь в правильности выбора'},
@@ -818,12 +818,12 @@ setStep((s:any)=> s+1)
 
       <Divider/>
 
-      <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>IELTS / TOEFL</div>
+      <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>ЯЗЫКОВОЙ ЭКЗАМЕН</div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
         <span style={{fontFamily:sans,fontSize:13,color:a.ielts>=6.5?grn:a.ielts>=6.0?gold:red}}>
           {a.ielts>=7.0?'Отлично — подходит для ETH':a.ielts>=6.5?'Достаточно для всех программ':a.ielts>=6.0?'Чуть не хватает до 6.5':'Блокер — сдать в первую очередь'}
         </span>
-        <span style={{fontFamily:mono,fontSize:22,color:a.ielts>=6.5?grn:red}}>{a.ielts.toFixed(1)}<span style={{fontSize:12,color:t3}}> IELTS</span></span>
+        <span style={{fontFamily:mono,fontSize:22,color:a.ielts>=6.5?grn:red}}>{a.ielts.toFixed(1)}<span style={{fontSize:12,color:t3}}> балл</span></span>
       </div>
       <input type="range" min="4.0" max="9.0" step="0.5" value={a.ielts} onChange={e=>set('ielts',parseFloat(e.target.value))}/>
       <div style={{display:'flex',justifyContent:'space-between',fontFamily:mono,fontSize:10,color:t3,marginTop:6,marginBottom:6}}>
@@ -853,7 +853,7 @@ setStep((s:any)=> s+1)
     const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия',hu:'Венгрия',it:'Италия'}
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
     const firstSteps = [
-      a.ielts<6.5  && {t:'Записаться на IELTS — это первый шаг', c:red},
+      a.ielts<6.5  && {t:'Записаться на языковой экзамен — это первый шаг', c:red},
       a.budget==='zero' && {t:'DAAD дедлайн 14 января — начни Motivation Letter сегодня', c:gold},
       {t:`Изучить программы в ${a.countries.map(c=>countryNames[c]).slice(0,2).join(' и ')||'выбранных странах'}`, c:t1},
       {t:'Составить Academic CV в Europass формате', c:t2},
@@ -883,7 +883,7 @@ setStep((s:any)=> s+1)
             {[
               {l:'СТРАНЫ',v:selectedFlags||'—',c:t1},
               {l:'GPA',   v:`${a.gpa.toFixed(1)} / 5`,c:a.gpa>=4.0?blue:t1},
-              {l:'IELTS', v:a.ielts.toFixed(1),c:a.ielts>=6.5?grn:red},
+              {l:'ЯЗЫК', v:a.ielts.toFixed(1),c:a.ielts>=6.5?grn:red},
             ].map((s,i)=>(
               <div key={i} style={{padding:'14px',textAlign:'center',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                 <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>{s.l}</div>

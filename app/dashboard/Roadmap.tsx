@@ -19,17 +19,17 @@ function buildNodes(p: any): Node[] {
   const isPro = !!p.is_pro
   return [
     {
-      id:'ielts', label:'IELTS', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
+      id:'ielts', label:'Язык', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
       color: ni ? red : grn,
       status: ni ? 'blocker' : 'done',
       zone:1, row:1, parallel:false,
-      insight: ni ? `Текущий балл ${p.ielts} — ниже минимума 6.5. Это единственный жёсткий блокер. Без него ни один вуз не примет заявку.` : `IELTS ${p.ielts} принят всеми вузами шортлиста. Для ETH нужно 7.0+.`,
+      insight: ni ? `Текущий балл ${p.ielts} — ниже минимума 6.5. Это единственный жёсткий блокер. Без него ни один вуз не примет заявку.` : `Языковой балл ${p.ielts} принят всеми вузами шортлиста. Для ETH нужно 7.0+.`,
       tasks: ni ? [
-        {t:'Записаться на IELTS Academic — British Council или IDP', urgent:true},
+        {t:'Выбрать экзамен: TOEFL/Duolingo (сдаются из России онлайн) или другой языковой экзамен — уточни в требованиях программы', urgent:true},
         {t:'Пройти бесплатный mock test на Cambridge One'},
-        {t:'Подготовка по Cambridge IELTS 14–17, минимум 8 недель'},
+        {t:'Подготовка по официальным сборникам заданий, минимум 8 недель'},
         {t:'Целевой балл 7.0 — запас на всякий случай'},
-      ] : [{t:`IELTS ${p.ielts} — зачтено`, done:true}],
+      ] : [{t:`Языковой балл ${p.ielts} — зачтено`, done:true}],
     },
     {
       id:'profile', label:'Профиль', sub:'CV + GitHub',

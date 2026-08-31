@@ -106,7 +106,7 @@ export default async function ProgramPage({ params }: Props) {
           border: `1px solid ${line}`, borderRadius: 8, overflow: 'hidden', marginBottom: 28 }}>
           {[
             { l: 'СТОИМОСТЬ', v: cost },
-            { l: 'IELTS МИНИМУМ', v: program.ielts_min ?? '—' },
+            { l: 'ЯЗЫК, МИНИМУМ', v: program.ielts_min ?? '—' },
             { l: 'РЕЙТИНГ QS', v: uni?.ranking_qs ? `#${uni.ranking_qs}` : '—' },
             { l: 'ДЕДЛАЙН ПОДАЧИ', v: deadline ?? '—' },
             { l: 'ДЛИТЕЛЬНОСТЬ', v: program.duration_months ? `${program.duration_months} мес` : '—' },

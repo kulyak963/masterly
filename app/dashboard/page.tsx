@@ -123,18 +123,18 @@ function makePhases(profile: any) {
   return [
     {
       id:'ielts', n:1, color: ni ? red : grn,
-      title: ni ? 'Сдать IELTS' : 'IELTS готов',
+      title: ni ? 'Сдать языковой экзамен' : 'Язык готов',
       when: 'Прямо сейчас',
       status: ni ? 'blocker' : 'done',
       why: ni
-        ? `Текущий балл ${profile.ielts} — ниже минимума 6.5. Без IELTS ни один вуз не примет заявку.`
-        : `IELTS ${profile.ielts} принят всеми вузами шортлиста.`,
+        ? `Текущий балл ${profile.ielts} — ниже минимума 6.5. Без языкового сертификата ни один вуз не примет заявку.`
+        : `Балл ${profile.ielts} принят всеми вузами шортлиста.`,
       tasks: ni ? [
-        {t:'Зарегистрироваться на IELTS Academic — British Council или IDP', urgent:true},
+        {t:'Выбрать экзамен: TOEFL/Duolingo (сдаются из России онлайн) или другой языковой экзамен — уточни в требованиях программы', urgent:true},
         {t:'Пройти бесплатный mock test на Cambridge One'},
-        {t:'Готовиться по Cambridge IELTS 14–17, минимум 8 недель'},
+        {t:'Готовиться по официальным сборникам заданий, минимум 8 недель'},
         {t:'Целевой балл 7.0 — запас на всякий случай'},
-      ] : [{t:`IELTS ${profile.ielts} — зачтено`, done:true}],
+      ] : [{t:`Языковой балл ${profile.ielts} — зачтено`, done:true}],
     },
     {
       id:'profile', n:2, color:purp,
@@ -807,7 +807,7 @@ const getVerdict = async (p: any) => {
                 {l:'ГОТОВНОСТЬ',       v:`${score}%`},
                 {l:'ПРОГРАММ',         v:`${unis.length}`},
                 {l:'GPA',              v:`${profile.gpa} / 5`},
-                {l:'IELTS',            v:`${profile.ielts}`, warn:profile.ielts<6.5},
+                {l:'ЯЗЫК',             v:`${profile.ielts}`, warn:profile.ielts<6.5},
               ].map((s,i)=>(
                 <div key={i} style={{padding:'18px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                   <Mono style={{display:'block',marginBottom:8}}>{s.l}</Mono>
@@ -823,7 +823,7 @@ const getVerdict = async (p: any) => {
               <div style={{padding:'14px 18px',marginBottom:24,borderRadius:8,background:`${red}0D`,borderLeft:`3px solid ${red}`}}>
                 <Mono style={{display:'block',color:red,marginBottom:6,animation:'pulse 2s infinite'}}>БЛОКЕР</Mono>
                 <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.65,fontWeight:300}}>
-                  IELTS {profile.ielts} — ниже минимума 6.5. Без этого ни один вуз не примет заявку. Запись: British Council, ≈ $215.
+                  Языковой балл {profile.ielts} — ниже минимума 6.5. Без этого ни один вуз не примет заявку. TOEFL/Duolingo сдаются онлайн из России, если программа их принимает — уточни в требованиях; другие языковые экзамены обычно доступны только за пределами РФ, от ~$200.
                 </p>
               </div>
             )}
@@ -850,7 +850,7 @@ const getVerdict = async (p: any) => {
               <div style={{padding:'22px'}}>
                 <Mono style={{display:'block',marginBottom:18}}>БЛИЖАЙШИЕ ЗАДАЧИ</Mono>
                 {[
-                  {done:profile.ielts>=6.5,t:'Сдать IELTS 6.5+',u:profile.ielts<6.5},
+                  {done:profile.ielts>=6.5,t:'Сдать языковой экзамен на 6.5+',u:profile.ielts<6.5},
                   {done:false,t:'Academic CV',u:false},
                   {done:false,t:'Statement of Purpose',u:false},
                   {done:false,t:'Рекомендательные письма',u:false},
@@ -997,7 +997,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                 </div>
                 <div style={{fontFamily:sans,fontSize:13,color:t2,marginBottom:4}}>{selectedProgram._n}</div>
                 <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.5}}>
-                  Оценка — грубая прикидка по IELTS/бюджету/рейтингу, не гарантия поступления.
+                  Оценка — грубая прикидка по языковому баллу/бюджету/рейтингу, не гарантия поступления.
                 </p>
               </div>
               <button onClick={()=>setSelectedProgram(null)}
@@ -1211,7 +1211,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                       {l:'Корзина',     fn:(u:any)=>BUCKET_CFG[u._bucket as keyof typeof BUCKET_CFG].label},
                       {l:'Стоимость',   fn:(u:any)=>u._cost},
                       {l:'Рейтинг QS', fn:(u:any)=>u._rank},
-                      {l:'IELTS min',  fn:(u:any)=>u.ielts_min||'6.5'},
+                      {l:'Язык, мин.', fn:(u:any)=>u.ielts_min||'6.5'},
                       {l:'Дедлайн',    fn:(u:any)=><span style={{color:u._days<30?red:t2}}>{u._days} дн.</span>},
                       {l:'Страна',     fn:(u:any)=><Flag code={u._country}/>},
                     ].map((row,ri)=>(
@@ -1324,10 +1324,10 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 
     <div style={{height:1,background:line,marginBottom:28}}/>
 
-    {/* IELTS */}
+    {/* языковой балл */}
     <div style={{marginBottom:28}}>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
-        <Mono>IELTS</Mono>
+        <Mono>ЯЗЫКОВОЙ ЭКЗАМЕН</Mono>
         <Mono style={{color:profile.ielts>=6.5?grn:red}}>{profile.ielts?.toFixed(1)}</Mono>
       </div>
       <input type="range" min="4.0" max="9.0" step="0.5"

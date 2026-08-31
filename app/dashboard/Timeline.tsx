@@ -36,17 +36,17 @@ function buildEvents(profile: any, programs: any[] = []): Event[] {
     type:'milestone', color:blue,
   })
 
-  /* ── IELTS ── */
+  /* ── языковой экзамен ── */
   if(ni) {
     events.push({
       id:'ielts-reg', date:addDays(today,3),
-      label:'Записаться на IELTS Academic',
-      sub:'British Council или IDP — запись за 2–3 месяца',
+      label:'Выбрать и записаться на языковой экзамен',
+      sub:'TOEFL/Duolingo (онлайн из России) или другой экзамен — за 2–3 месяца',
       type:'task', color:red, urgent:true, gcal:true,
     })
     events.push({
       id:'ielts-exam', date:addDays(today,90),
-      label:'Сдать IELTS — цель 7.0+',
+      label:'Сдать языковой экзамен — цель 7.0+',
       sub:'Результаты через 3–5 дней',
       type:'deadline', color:red, gcal:true,
     })
