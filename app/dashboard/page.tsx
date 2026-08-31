@@ -8,6 +8,7 @@ import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, seri
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import HungaryGuide from './HungaryGuide'
+import ItalyGuide from './ItalyGuide'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -724,7 +725,7 @@ const getVerdict = async (p: any) => {
   {id:'saved',    l:'Избранное'},
   {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
-  ...(countries.includes('hu') ? [{id:'hu-guide', l:'Венгрия · PRO'}] : []),
+  ...((countries.includes('hu')||countries.includes('it')) ? [{id:'scholarship-guide', l:'Стипендии · PRO'}] : []),
   {id:'settings', l:'Настройки'},
 ]
 
@@ -870,18 +871,21 @@ const getVerdict = async (p: any) => {
               </div>
             </div>
 
-            {/* баннер Венгрии — единственный вход в гайд на мобиле, т.к. в нижнем
-                нав-баре мобилы всего 5 иконок и своей вкладки там нет */}
-            {countries.includes('hu')&&(
-              <button onClick={()=>setTab('hu-guide')} style={{
+            {/* баннер гайда по стипендиям — единственный вход на мобиле, т.к. в
+                нижнем нав-баре мобилы всего 5 иконок и своей вкладки там нет */}
+            {(countries.includes('hu')||countries.includes('it'))&&(
+              <button onClick={()=>setTab('scholarship-guide')} style={{
                 display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
                 width:'100%',marginTop:16,padding:'16px 18px',borderRadius:8,
                 border:`1px solid ${gold}40`,background:`${gold}0D`,cursor:'pointer',
                 textAlign:'left',fontFamily:'inherit'}}>
                 <div>
-                  <Mono style={{display:'block',color:gold,marginBottom:4}}>ВЕНГРИЯ · PRO</Mono>
+                  <Mono style={{display:'block',color:gold,marginBottom:4}}>СТИПЕНДИИ · PRO</Mono>
                   <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
-                    Полный гайд по Stipendium Hungaricum
+                    {countries.includes('hu')&&countries.includes('it')
+                      ? 'Гайды по Stipendium Hungaricum и льготам в Италии'
+                      : countries.includes('hu') ? 'Полный гайд по Stipendium Hungaricum'
+                      : 'Полный гайд по стипендиям и льготам в Италии'}
                   </div>
                 </div>
                 <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
@@ -1438,8 +1442,14 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 {tab==='timeline'&&(
   <GanttTimeline profile={profile} programs={timelinePrograms}/>
 )}
-{tab==='hu-guide'&&(
-  <HungaryGuide programs={programs}/>
+{tab==='scholarship-guide'&&(
+  <div style={{padding:'36px 40px'}}>
+    {countries.includes('hu')&&<HungaryGuide programs={programs}/>}
+    {countries.includes('hu')&&countries.includes('it')&&(
+      <div style={{height:1,background:line,margin:'40px 0'}}/>
+    )}
+    {countries.includes('it')&&<ItalyGuide programs={programs}/>}
+  </div>
 )}
       </main>
       {isMobile&&(

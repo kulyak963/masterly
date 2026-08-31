@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 
-interface Task { t: string; done?: boolean; urgent?: boolean }
+interface Task { t: string; done?: boolean; urgent?: boolean; locked?: boolean }
 interface Node {
   id: string; label: string; sub: string; color: string
   status: 'blocker'|'done'|'active'|'parallel'|'upcoming'|'locked'
@@ -13,6 +13,9 @@ interface Node {
 function buildNodes(p: any): Node[] {
   const ni = p.ielts < 6.5
   const sf = p.budget === 'zero'
+  const countries: string[] = p.countries?.split(',').filter(Boolean) || []
+  const wantsHu = countries.includes('hu')
+  const wantsIt = countries.includes('it')
   return [
     {
       id:'ielts', label:'IELTS', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
@@ -50,14 +53,21 @@ function buildNodes(p: any): Node[] {
       ],
     },
     {
-      id:'schol', label:'Стипендии', sub: sf ? 'СРОЧНО — 14 янв' : 'Параллельно',
-      color: gold, status: sf ? 'active' : 'parallel', zone:2, row:1, parallel:true,
-      insight: sf ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.' : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
+      id:'schol', label:'Стипендии', sub: sf ? 'СРОЧНО — 14 янв' : wantsHu ? '🔒 Важный дедлайн' : 'Параллельно',
+      color: gold, status: (sf||wantsHu) ? 'active' : 'parallel', zone:2, row:1, parallel:true,
+      insight: sf ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.'
+        : wantsHu ? 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.'
+        : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
       tasks:[
         {t:'Motivation Letter для DAAD — отдельный документ, не SoP!', urgent:sf},
         {t:'Подать на DAAD через portal.daad.de — дедлайн 14 января', urgent:sf},
         {t:'SI Scholarship (Швеция) — дедлайн 15 февраля'},
         {t:'Проверить Erasmus Mundus и Holland Scholarship'},
+        // 2026-08-31, по просьбе Дениса: без оплаты гайда — ни названий
+        // программ, ни дат, ни процесса. Только факт "есть дедлайн" +
+        // призыв разблокировать (см. тот же принцип в GanttTimeline.tsx).
+        ...(wantsHu ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Венгрия · PRO', urgent:true, locked:true}] : []),
+        ...(wantsIt ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}] : []),
       ],
     },
     {
@@ -93,6 +103,11 @@ function buildNodes(p: any): Node[] {
         {t:'Принять оффер (4–6 недель на решение)'},
         {t:'Подать на студенческую визу сразу после оффера'},
         {t:'Найти жильё — Wohnungssuche / Kamernet / Spotahome'},
+        // DSU (Италия) — сюда, а не в узел "Стипендии": на неё нельзя
+        // податься, пока не зачислен(а), заявка идёт уже после оффера,
+        // в августе-сентябре начала учёбы (см. тот же фикс в GanttTimeline.tsx).
+        // Без оплаты гайда — детали процесса не показываем (см. schol выше).
+        ...(wantsIt ? [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}] : []),
         {t:`Начало учёбы — сентябрь ${p.timeline}`},
       ],
     },
@@ -325,9 +340,11 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
                               return (
                                 <div key={ti} style={{display:'flex',gap:8,alignItems:'center',
                                   marginBottom:4,opacity:done?.5:1}}>
-                                  <div style={{width:5,height:5,borderRadius:'50%',flexShrink:0,
-                                    background:done?grn:task.urgent?red:node.color,opacity:.7}}/>
-                                  <span style={{fontFamily:sans,fontSize:11,color:done?t3:t2,
+                                  {task.locked
+                                    ?<span style={{fontSize:8,flexShrink:0}}>🔒</span>
+                                    :<div style={{width:5,height:5,borderRadius:'50%',flexShrink:0,
+                                      background:done?grn:task.urgent?red:node.color,opacity:.7}}/>}
+                                  <span style={{fontFamily:sans,fontSize:11,color:task.locked?gold:done?t3:t2,
                                     textDecoration:done?'line-through':'none',
                                     letterSpacing:'-.01em',
                                     overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
@@ -448,6 +465,21 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
               {activeNode.tasks.map((task,ti)=>{
                 const key=`${activeNode.id}-${ti}`
                 const done=task.done||!!taskDone[key]
+                if(task.locked) return (
+                  <div key={ti} style={{display:'flex',alignItems:'flex-start',gap:12,
+                    padding:'12px 14px',borderRadius:8,
+                    background:`${gold}0D`,border:`1px dashed ${gold}40`,
+                    borderLeft:`2px dashed ${gold}70`}}>
+                    <div style={{width:16,height:16,flexShrink:0,marginTop:1,
+                      display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>🔒</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:gold,
+                        letterSpacing:'-.01em',lineHeight:1.4}}>
+                        {task.t}
+                      </div>
+                    </div>
+                  </div>
+                )
                 return (
                   <div key={ti} onClick={()=>!task.done&&onToggle(`${activeNode.id}-${ti}`)}
                     className="task-r"

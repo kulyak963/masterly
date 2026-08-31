@@ -1,16 +1,18 @@
 'use client'
-import { useState } from 'react'
-import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, sans, mono } from '@/lib/theme'
+import { bg1, line, t1, t2, t3, gold, blue, red, grn, sans, mono } from '@/lib/theme'
+import ScholarshipLock from './ScholarshipLock'
 
 /**
- * Платная фича «Гайд: Stipendium Hungaricum» — появляется в NAV дашборда,
- * только если у пользователя в profile.countries есть 'hu' (см.
- * app/dashboard/page.tsx). В проекте пока нет платёжного процессора и флага
- * pro/free (см. CLAUDE.md, «Бизнес-модель») — поэтому весь платный контент
- * ниже свободного тизера показан заблюренным с кнопкой-заглушкой:
- * реальной оплаты не подключено, просто честное сообщение об этом.
- * Когда появится процессор — здесь нужно будет принять проп isPro и убрать
- * блюр для pro-пользователей.
+ * Платная фича «Гайд: Stipendium Hungaricum» — появляется во вкладке
+ * «Стипендии · PRO», если у пользователя в profile.countries есть 'hu'
+ * (см. app/dashboard/page.tsx). Общий замок/блюр — в ScholarshipLock.tsx,
+ * общий с ItalyGuide.tsx.
+ *
+ * Написано максимально просто (по просьбе Дениса, 2026-08-31) — как для
+ * человека, который вообще первый раз в жизни собирает документы для
+ * подачи за границу: у каждого документа явно расписано, ЧТО это, ГДЕ
+ * получить в России и ЧТО делать дальше (перевод/апостиль), а не только
+ * официальное название.
  *
  * Фактура и источники — see docs/stipendium-hungaricum.md (полный
  * ресёрч, собран 2026-08-29 вручную через WebSearch/WebFetch).
@@ -32,6 +34,36 @@ function Card({ children, style = {} }: { children: React.ReactNode; style?: Rea
   return (
     <div style={{ background: bg1, border: `1px solid ${line}`, borderRadius: 8, padding: 20, marginBottom: 16, ...style }}>
       {children}
+    </div>
+  )
+}
+
+interface DocStep { name: string; what: string; where: string; next?: string; cost?: string }
+
+function DocCard({ step, n }: { step: DocStep; n: number }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, marginBottom: 18, paddingBottom: 18, borderBottom: `1px solid ${line}` }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: '50%', background: `${gold}18`, border: `1px solid ${gold}40`,
+        color: gold, fontFamily: mono, fontSize: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>{n}</div>
+      <div>
+        <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 5 }}>{step.name}</div>
+        <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: 6 }}>{step.what}</div>
+        <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: step.next ? 4 : 0 }}>
+          <span style={{ color: blue, fontWeight: 600 }}>Где получить: </span>{step.where}
+        </div>
+        {step.next && (
+          <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: step.cost ? 4 : 0 }}>
+            <span style={{ color: gold, fontWeight: 600 }}>Что дальше: </span>{step.next}
+          </div>
+        )}
+        {step.cost && (
+          <div style={{ fontFamily: sans, fontSize: 12, color: t3, lineHeight: 1.6 }}>
+            <span style={{ color: grn, fontWeight: 600 }}>Сколько стоит и ждать: </span>{step.cost}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -59,19 +91,90 @@ const REQUIREMENTS = [
   { t: 'Статус на момент подачи', d: 'Не в академическом отпуске. Спорный момент — см. «Частые ошибки» ниже.' },
 ]
 
-const DOCS_TRACK_A = [
-  { d: 'Диплом/аттестат с апостилем и переводом', where: 'апостиль — Минюст РФ или орган, выдавший документ; перевод — сертифицированный переводчик + нотариальное заверение' },
-  { d: 'Транскрипт оценок', where: 'деканат / учебная часть вуза' },
-  { d: 'Языковой сертификат', where: 'IELTS (British Council / IDP), TOEFL, Duolingo — сдавать заранее, результаты идут 2–5 дней' },
-  { d: 'Мотивационное письмо и CV', where: 'пишется самостоятельно, формат Europass' },
-  { d: 'Рекомендательные письма (обычно 2)', where: 'от преподавателей — запрашивать за 2+ месяца до дедлайна' },
-  { d: 'Медицинская справка', where: 'по форме, публикуемой Tempus при открытии цикла — срок действия ограничен' },
-  { d: 'Фото и копия загранпаспорта', where: 'паспортного формата, требования по пикселям — на портале DreamApply' },
+// Максимально подробно — не просто "что за документ", а зачем он вообще
+// нужен, где именно его взять в России (конкретные организации/порталы),
+// что делать с ним дальше и сколько это стоит/ждать. По просьбе Дениса
+// (2026-08-31): "разжевывать каждую фигню максимально понятным языком" —
+// расчёт на то, что читатель вообще первый раз в жизни собирает документы
+// для подачи за границу и не знает базовых слов вроде "апостиль".
+const DOCS_TRACK_A: DocStep[] = [
+  {
+    name: '1. Загранпаспорт',
+    what: 'Обычный загранпаспорт — тот, с которым летаешь за границу (не путать с обычным российским паспортом, он не подойдёт). Нужен, чтобы во всех документах указать один и тот же номер, по которому тебя потом идентифицируют в венгерской системе.',
+    where: 'скорее всего, уже есть. Если нет — оформляется через Госуслуги или любой МФЦ, занимает от 1 месяца.',
+    next: 'для подачи нужна не сам паспорт, а просто копия (скан или фото) главной страницы с фото — переводить её не нужно, латиница там уже есть.',
+  },
+  {
+    name: '2. Диплом бакалавра (или школьный аттестат, если поступаешь сразу после школы)',
+    what: 'Официальный документ о том, что ты закончил(а) предыдущий уровень образования. Венгерский вуз должен убедиться, что у тебя есть база для поступления именно в магистратуру (или бакалавриат).',
+    where: 'выдаёт тот вуз (или школа), который закончил(а) — обычно можно получить в деканате при выпуске, либо позже заказать дубликат там же.',
+    next: 'сам по себе российский диплом за границей ничего не доказывает — на него сначала нужно поставить апостиль (см. пункт 3), а потом сделать заверенный перевод (пункт 5).',
+  },
+  {
+    name: '3. Апостиль на диплом',
+    what: 'Апостиль — это специальный международный штамп на документе. Простыми словами: это способ для одной страны сказать другой стране «мы подтверждаем, что этот документ настоящий и его выдал реальный государственный орган». Без апостиля венгерский вуз физически не может проверить, что твой диплом — не подделка, и просто откажет в рассмотрении заявки.',
+    where: 'на дипломы российского гособразца апостиль ставит Рособрнадзор. Подать документы можно через портал Госуслуги (раздел «Проставление апостиля на документы об образовании») — не нужно ехать в Москву лично, всё делается онлайн, готовый документ присылают по почте или можно забрать самому.',
+    next: 'после апостиля документ идёт к переводчику (пункт 5) — апостиль тоже нужно перевести вместе с самим дипломом, отдельно его не пропустишь.',
+    cost: 'госпошлина небольшая (несколько сотен рублей), сам процесс занимает обычно 3–5 рабочих дней с момента подачи через Госуслуги.',
+  },
+  {
+    name: '4. Транскрипт (приложение к диплому со списком всех оценок)',
+    what: 'Это не то же самое, что сам диплом — диплом просто подтверждает факт окончания, а транскрипт (по-русски — «приложение к диплому») перечисляет ВСЕ предметы, которые ты изучал(а), и оценки по каждому. Вуз в Венгрии смотрит именно сюда, чтобы понять, что ты реально изучал(а) и насколько твой профиль подходит под их программу.',
+    where: 'деканат или учебная часть твоего вуза — обычно нужно написать письменное заявление на выдачу, иногда можно через личный кабинет студента.',
+    next: 'апостилируется одновременно с дипломом (тот же поход в Рособрнадзор через Госуслуги, пункт 3), а потом тоже переводится (пункт 5).',
+  },
+  {
+    name: '5. Нотариально заверенный перевод диплома, транскрипта и апостиля на английский',
+    what: 'Просто перевести документ на английский самому или через любого знакомого — недостаточно: иностранный вуз должен быть уверен, что перевод точный и его сделал не абы кто. Для этого нужен «нотариально заверенный перевод» — либо сам переводчик имеет специальную квалификацию и нотариус заверяет его подпись, либо перевод делает сам нотариус (в паре с переводчиком). Такой перевод юридически приравнивается к оригиналу.',
+    where: 'ищи бюро переводов в своём городе и прямо спрашивай: «нужен нотариально заверенный перевод диплома и приложения для подачи документов за границу» — это стандартная услуга, такие бюро есть в любом крупном городе.',
+    next: 'после перевода у тебя на руках должен быть полный комплект: оригинал (или заверенная копия) + апостиль + нотариальный перевод, скреплённые вместе — именно так его и загружают в DreamApply.',
+    cost: 'обычно 1 500–3 000 ₽ за один документ (диплом отдельно, транскрипт отдельно) — закладывай в бюджет на весь пакет документов (перевод + апостиль + нотариус) примерно 50 000 ₽ и 2–3 недели на весь процесс, лучше начинать за 2 месяца до дедлайна.',
+  },
+  {
+    name: '6. Языковой сертификат (IELTS, TOEFL или Duolingo English Test)',
+    what: 'Подтверждение того, что ты владеешь английским на уровне, достаточном для учёбы — программы Stipendium Hungaricum идут на английском, и вуз должен быть уверен, что ты понимаешь лекции и можешь писать работы.',
+    where: 'IELTS Academic — сдаётся в аккредитованных центрах British Council или IDP (есть в Москве, Санкт-Петербурге и других крупных городах; также есть формат IELTS Online, сдаётся из дома через компьютер с камерой). TOEFL и Duolingo тоже принимаются, но IELTS — самый распространённый вариант.',
+    next: 'записаться и сдать нужно заранее — результаты официально готовы через 2–5 дней после экзамена (по IELTS Online чуть быстрее), а тебе нужно успеть загрузить их до дедлайна подачи заявки.',
+    cost: 'IELTS стоит примерно 200–250 $ (уточнять на сайте British Council/IDP на момент записи); мест на популярные даты в крупных городах может не быть за месяц-два вперёд, поэтому записываться лучше сильно заранее.',
+  },
+  {
+    name: '7. Мотивационное письмо (Motivation Letter) и CV (резюме)',
+    what: 'Мотивационное письмо — это короткий текст (обычно 1 страница), где ты объясняешь, почему хочешь учиться именно на этой программе и именно в этом вузе, и как это связано с твоими планами на будущее. CV — формальное резюме: образование, опыт, навыки, языки. Это НЕ то же самое, что просто «расскажи о себе» — от письма ждут конкретики (почему эта программа, а не любая другая похожая).',
+    where: 'пишешь полностью сам(а) — никто другой это не сделает за тебя. Для CV удобно использовать бесплатный готовый шаблон формата Europass на сайте europass.eu — это общеевропейский стандартный формат резюме, который узнают все вузы.',
+    next: 'стоит попросить преподавателя английского или знакомого с хорошим английским проверить текст перед отправкой — грамматические ошибки в мотивационном письме создают плохое первое впечатление.',
+  },
+  {
+    name: '8. Два рекомендательных письма от преподавателей',
+    what: 'Письма от людей, которые тебя учили (обычно преподаватели вуза), где они пишут о твоих academic-качествах — способностях к учёбе, дисциплине, участии в проектах. Это не письмо от начальника с работы — вузу важно именно академическое мнение.',
+    where: 'нужно лично попросить 2 преподавателей своего текущего или предыдущего вуза — тех, кто хорошо тебя знает и может написать что-то конкретное, а не общие фразы.',
+    next: 'просить нужно заранее — минимум за 2 месяца до дедлайна подачи. Преподаватели часто заняты, и если попросить за неделю до дедлайна, письмо может просто не успеть или получиться формальным. Часто письмо загружается самим преподавателем напрямую в систему по отдельной ссылке, а не передаётся студенту на руки — это нормально, так задумано.',
+  },
+  {
+    name: '9. Медицинская справка',
+    what: 'Подтверждение того, что у тебя нет медицинских противопоказаний для обучения за границей — стандартное требование почти для всех программ такого рода.',
+    where: 'точная форма справки (что именно должно быть в ней написано) публикуется Tempus заново каждый учебный цикл — форма может немного меняться год от года, поэтому нужно смотреть актуальную версию на stipendiumhungaricum.hu ближе к открытию цикла (обычно в ноябре).',
+    next: 'справку обычно можно получить в обычной поликлинике по месту жительства — но лучше сначала посмотреть точный список того, что должно быть отражено в справке, а потом уже идти к врачу, чтобы не пришлось переделывать.',
+  },
+  {
+    name: '10. Фотография',
+    what: 'Обычное фото на документы — как на паспорт, только требования по размеру и формату свои, отдельные от паспортных.',
+    where: 'любая фотостудия с услугой «фото на документы» — в любом городе таких много, стоит недорого и делается за 10–15 минут.',
+    next: 'точные требования (размер файла, разрешение, формат — jpg/png) смотри прямо в личном кабинете DreamApply в момент загрузки фото, там обычно есть подсказка.',
+  },
 ]
 
-const DOCS_TRACK_B = [
-  { d: 'Отдельная форма заявления для Минобрнауки РФ', where: 'публикуется на сайте Минобрнауки при открытии цикла' },
-  { d: 'Комплект документов, частично пересекающийся с треком А', where: 'отправляется на email mobility@ined.ru с темой «Stipendium Hungaricum program»' },
+const DOCS_TRACK_B: DocStep[] = [
+  {
+    name: '1. Форма заявления для Минобрнауки РФ',
+    what: 'Отдельная российская анкета — важно понимать, что это НЕ то же самое, что заявка в DreamApply (трек А). Ты подаёшь документы дважды, в две разные организации, и обе части обязательны — без одобрения Минобрнауки заявка в Tempus просто не будет рассмотрена, даже если она идеально заполнена.',
+    where: 'бланк формы публикуется на официальном сайте Минобрнауки России при открытии нового цикла (обычно осенью, ближе к ноябрю-декабрю) — нужно следить за новостями министерства в этот период.',
+  },
+  {
+    name: '2. Копии того же пакета документов, что и для трека А',
+    what: 'Минобрнауки просит фактически те же самые документы, которые ты уже собрал(а) для DreamApply (пункты 1–9 слева) — просто в виде копий, а не оригиналов.',
+    where: 'у тебя уже всё есть на руках после сбора документов для трека А — дополнительно ничего искать не нужно, только сделать копии/сканы.',
+    next: 'весь пакет отправляется одним письмом на электронную почту mobility@ined.ru — в теме письма обязательно написать «Stipendium Hungaricum program», иначе письмо может потеряться среди прочей почты министерства.',
+  },
 ]
 
 const TIMELINE = [
@@ -113,12 +216,11 @@ const SOURCES = [
 ]
 
 export default function HungaryGuide({ programs = [] }: { programs?: any[] }) {
-  const [unlockMsg, setUnlockMsg] = useState(false)
   const huPrograms = programs.filter(p => p.university?.country === 'hu')
   const shPrograms = huPrograms.filter(p => (p.scholarships || []).some((s: string) => s.includes('Stipendium')))
 
   return (
-    <div style={{ padding: '36px 40px', maxWidth: 880 }}>
+    <div style={{ maxWidth: 880 }}>
       {/* hero */}
       <div style={{ marginBottom: 24 }}>
         <Mono style={{ display: 'block', marginBottom: 10 }}>ГАЙД · ВЕНГРИЯ</Mono>
@@ -156,137 +258,95 @@ export default function HungaryGuide({ programs = [] }: { programs?: any[] }) {
         </div>
       </Card>
 
-      {/* locked content */}
-      <div style={{ position: 'relative' }}>
-        <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none', maxHeight: 620, overflow: 'hidden' }}>
-          <Card>
-            <SectionTitle>Требования к кандидату</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {REQUIREMENTS.map(r => (
-                <div key={r.t}>
-                  <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 3 }}>{r.t}</div>
-                  <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{r.d}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Два трека подачи — для России отдельно</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <Mono style={{ display: 'block', marginBottom: 8, color: blue }}>ТРЕК А · TEMPUS</Mono>
-                {DOCS_TRACK_A.map(d => (
-                  <div key={d.d} style={{ marginBottom: 10 }}>
-                    <div style={{ fontFamily: sans, fontSize: 12, color: t1, marginBottom: 2 }}>{d.d}</div>
-                    <div style={{ fontFamily: sans, fontSize: 11, color: t3, lineHeight: 1.4 }}>{d.where}</div>
-                  </div>
-                ))}
+      <ScholarshipLock>
+        <Card>
+          <SectionTitle>Требования к кандидату</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {REQUIREMENTS.map(r => (
+              <div key={r.t}>
+                <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 3 }}>{r.t}</div>
+                <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{r.d}</div>
               </div>
-              <div>
-                <Mono style={{ display: 'block', marginBottom: 8, color: gold }}>ТРЕК Б · МИНОБРНАУКИ РФ</Mono>
-                {DOCS_TRACK_B.map(d => (
-                  <div key={d.d} style={{ marginBottom: 10 }}>
-                    <div style={{ fontFamily: sans, fontSize: 12, color: t1, marginBottom: 2 }}>{d.d}</div>
-                    <div style={{ fontFamily: sans, fontSize: 11, color: t3, lineHeight: 1.4 }}>{d.where}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Таймлайн подачи</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {TIMELINE.map((row, i) => (
-                <div key={row.m} style={{ display: 'flex', gap: 14, padding: '10px 0', borderBottom: i < TIMELINE.length - 1 ? `1px solid ${line}` : 'none' }}>
-                  <div style={{ fontFamily: mono, fontSize: 11, color: gold, width: 140, flexShrink: 0 }}>{row.m}</div>
-                  <div style={{ fontFamily: sans, fontSize: 12, color: t2 }}>{row.t}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Частые ошибки</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {MISTAKES.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10 }}>
-                  <div style={{ color: red, fontFamily: mono, fontSize: 11, flexShrink: 0 }}>✕</div>
-                  <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{m}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Правила во время обучения</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {STUDY_RULES.map((m, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10 }}>
-                  <div style={{ color: grn, fontFamily: mono, fontSize: 11, flexShrink: 0 }}>→</div>
-                  <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{m}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <SectionTitle>Работа во время учёбы</SectionTitle>
-            <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6 }}>
-              До 30 часов в неделю в учебный период; полный рабочий день — до 90 дней в году вне
-              семестра. Нужен венгерский налоговый номер (adóazonosító jel), работодатель обязан
-              зарегистрировать трудоустройство в NAV.
-            </p>
-          </Card>
-
-          <Card style={{ marginBottom: 0 }}>
-            <SectionTitle>Источники</SectionTitle>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {SOURCES.map(s => (
-                <a key={s.u} href={s.u} target="_blank" rel="noopener noreferrer"
-                  style={{ fontFamily: sans, fontSize: 12, color: blue, textDecoration: 'none' }}>
-                  {s.n}
-                </a>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* fade + lock */}
-        <div style={{
-          position: 'absolute', inset: 0, top: 40,
-          background: `linear-gradient(180deg, transparent 0%, ${bg0} 70%)`,
-          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 20,
-        }}>
-          <div style={{
-            background: bg2, border: `1px solid ${line}`, borderRadius: 10, padding: '24px 28px',
-            textAlign: 'center', maxWidth: 380, boxShadow: '0 20px 48px rgba(0,0,0,.55)',
-          }}>
-            <div style={{ fontFamily: mono, fontSize: 20, marginBottom: 10 }}>🔒</div>
-            <div style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: t1, marginBottom: 6 }}>
-              Полный гайд — платная фича
-            </div>
-            <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5, marginBottom: 16 }}>
-              Требования, документы по обоим трекам, таймлайн, частые ошибки и правила во время
-              учёбы — разово, без подписки.
-            </p>
-            <button onClick={() => setUnlockMsg(true)} style={{
-              width: '100%', padding: '11px', borderRadius: 8, border: 'none',
-              background: gold, color: bg0, fontFamily: sans, fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', letterSpacing: '-.01em', marginBottom: unlockMsg ? 10 : 0,
-            }}>
-              Разблокировать
-            </button>
-            {unlockMsg && (
-              <p style={{ fontFamily: sans, fontSize: 11, color: t3, lineHeight: 1.5 }}>
-                Оплата пока не подключена — эта часть продукта в разработке. Скоро можно будет
-                разблокировать гайд разовым платежом.
-              </p>
-            )}
+            ))}
           </div>
-        </div>
-      </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Документы: что нужно и где получить</SectionTitle>
+          <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: 18 }}>
+            Нужно собрать документы для <b style={{ color: t1 }}>двух</b> независимых треков подачи
+            — это не ошибка и не дублирование, а особенность именно для России: одни и те же (в основном)
+            документы отправляются в две разные организации, обе части обязательны.
+          </p>
+          <Mono style={{ display: 'block', marginBottom: 4, color: blue }}>ТРЕК А · TEMPUS (DREAMAPPLY)</Mono>
+          <p style={{ fontFamily: sans, fontSize: 11, color: t3, lineHeight: 1.5, marginBottom: 16 }}>
+            Венгерская сторона — сайт-портал, куда загружаются все документы онлайн.
+          </p>
+          {DOCS_TRACK_A.map((d, i) => <DocCard key={d.name} step={d} n={i + 1} />)}
+          <Mono style={{ display: 'block', marginBottom: 4, marginTop: 4, color: gold }}>ТРЕК Б · МИНОБРНАУКИ РФ</Mono>
+          <p style={{ fontFamily: sans, fontSize: 11, color: t3, lineHeight: 1.5, marginBottom: 16 }}>
+            Российская сторона — без её одобрения заявка в Tempus не рассматривается вообще.
+          </p>
+          {DOCS_TRACK_B.map((d, i) => <DocCard key={d.name} step={d} n={i + 1} />)}
+        </Card>
+
+        <Card>
+          <SectionTitle>Таймлайн подачи</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {TIMELINE.map((row, i) => (
+              <div key={row.m} style={{ display: 'flex', gap: 14, padding: '10px 0', borderBottom: i < TIMELINE.length - 1 ? `1px solid ${line}` : 'none' }}>
+                <div style={{ fontFamily: mono, fontSize: 11, color: gold, width: 140, flexShrink: 0 }}>{row.m}</div>
+                <div style={{ fontFamily: sans, fontSize: 12, color: t2 }}>{row.t}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Частые ошибки</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {MISTAKES.map((m, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10 }}>
+                <div style={{ color: red, fontFamily: mono, fontSize: 11, flexShrink: 0 }}>✕</div>
+                <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{m}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Правила во время обучения</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {STUDY_RULES.map((m, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10 }}>
+                <div style={{ color: grn, fontFamily: mono, fontSize: 11, flexShrink: 0 }}>→</div>
+                <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5 }}>{m}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <SectionTitle>Работа во время учёбы</SectionTitle>
+          <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6 }}>
+            До 30 часов в неделю в учебный период; полный рабочий день — до 90 дней в году вне
+            семестра. Нужен венгерский налоговый номер (adóazonosító jel), работодатель обязан
+            зарегистрировать трудоустройство в NAV.
+          </p>
+        </Card>
+
+        <Card style={{ marginBottom: 0 }}>
+          <SectionTitle>Источники</SectionTitle>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {SOURCES.map(s => (
+              <a key={s.u} href={s.u} target="_blank" rel="noopener noreferrer"
+                style={{ fontFamily: sans, fontSize: 12, color: blue, textDecoration: 'none' }}>
+                {s.n}
+              </a>
+            ))}
+          </div>
+        </Card>
+      </ScholarshipLock>
     </div>
   )
 }

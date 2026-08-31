@@ -19,7 +19,7 @@ function yearOf(offset: number): number {
 }
 
 interface Bar { startIdx:number; endIdx:number; label:string; blocker?:boolean }
-interface Marker { idx:number; label:string; urgent?:boolean }
+interface Marker { idx:number; label:string; urgent?:boolean; locked?:boolean }
 interface Lane { id:string; label:string; sub:string; color:string; bars:Bar[]; markers:Marker[] }
 
 function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: CalEvent[] } {
@@ -27,12 +27,45 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const dy = admYear-1
   const ni = profile.ielts < 6.5
   const sf = profile.budget === 'zero'
+  const countries: string[] = profile.countries?.split(',').filter(Boolean) || []
+  const wantsHu = countries.includes('hu')
+  const wantsIt = countries.includes('it')
 
   const D = (y:number, m:number, d=15) => toIdx(new Date(y,m-1,d))
   const dateStr = (y:number,m:number,d=15) => {
     const dt = new Date(y,m-1,d)
     return dt.toISOString().slice(0,10)
   }
+
+  // Дедлайны стипендий Венгрии/Италии (Гайд · PRO) — по просьбе Дениса
+  // (2026-08-31), "все дедлайны должны падать в таймлайн". Даты — годовые
+  // повторяющиеся (не собраны из profile.programs), поэтому те же
+  // допущения точности, что и у DAAD/Eiffel/SI ниже (фиксированная дата
+  // каждый год, могут немного сдвигаться — см. предупреждение в шапке).
+  //
+  // ВАЖНО про год: SH и MAECI — это стипендии, на которые подаются ДО
+  // поступления, одновременно с заявкой в вуз, поэтому они в год `dy`
+  // (год подачи), как и DAAD/Eiffel/SI ниже. DSU — принципиально другое:
+  // на неё нельзя податься, пока не зачислен(а) — заявка идёт уже в
+  // августе-сентябре ТОГО учебного года, когда учёба реально начинается,
+  // то есть в `admYear`, а не в `dy` (иначе дедлайн окажется на год
+  // раньше, чем нужно, и может вообще пропасть с видимого таймлайна).
+  //
+  // 2026-08-31, по просьбе Дениса: без оплаты гайда сами детали (какая
+  // именно стипендия, куда и как подавать) тут показывать нельзя — иначе
+  // платный контент гайда просто виден бесплатно через Таймлайн/календарь.
+  // Название и подробности намеренно не попадают в label/desc — только
+  // "важный дедлайн" + призыв разблокировать. Дата (для позиции на шкале)
+  // остаётся настоящей.
+  const scholEvents = [
+    ...(wantsHu ? [
+      {date:dateStr(dy,1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
+    ] : []),
+    ...(wantsIt ? [
+      {date:dateStr(dy,3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+      {date:dateStr(admYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+    ] : []),
+  ]
 
   // Реальные дедлайны конкретных программ студента (не догадка "одна дата на страну")
   const unis = (programs||[]).map(p=>{
@@ -54,6 +87,7 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
     {date:dateStr(dy,1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:sf},
     {date:dateStr(dy,2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'},
     {date:dateStr(dy,2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'},
+    ...scholEvents,
     ...unis.map(u=>({date:u.date, label:`Дедлайн подачи — ${u.label}`, desc:`⚠ Дата собрана ИИ, может быть неточной — проверь на ${u.url||'сайте вуза'} перед подачей`, urgent:u.idx===firstDl})),
     {date:dateStr(admYear,4,15), label:'Ожидаются первые ответы от вузов', desc:'6–12 недель после дедлайна'},
     {date:dateStr(admYear,5,1),  label:'Принять оффер от вуза',  desc:'4–6 недель на решение'},
@@ -96,6 +130,11 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
         {idx:D(dy,1,9),  label:'Eiffel 9 янв', urgent:true},
         {idx:D(dy,1,14), label:'DAAD 14 янв',  urgent:sf},
         {idx:D(dy,2,15), label:'SI 15 фев'},
+        ...(wantsHu ? [{idx:D(dy,1,15), label:'Важный дедлайн', urgent:true, locked:true}] : []),
+        ...(wantsIt ? [
+          {idx:D(dy,3,26), label:'Важный дедлайн', locked:true},
+          {idx:D(admYear,9,1), label:'Важный дедлайн', locked:true},
+        ] : []),
       ].filter(m=>m.idx>-0.3),
     },
     {
@@ -410,26 +449,26 @@ export default function GanttTimeline({profile,programs=[]}:{profile:any,program
                         display:'flex',flexDirection:'column',alignItems:'center',
                       }}>
                         <div style={{width:1,height:'100%',
-                          background:mk.urgent?red:lane.color,opacity:.5}}/>
+                          background:mk.locked?gold:mk.urgent?red:lane.color,opacity:.5}}/>
                         <div className="g-diamond" style={{
                           position:'absolute',top:'50%',marginTop:-6,
                           width:12,height:12,
-                          background:mk.urgent?red:lane.color,
-                          border:`2px solid ${bg0}`,
-                          boxShadow:`0 0 12px ${mk.urgent?red:lane.color}90`,
+                          background:mk.locked?gold:mk.urgent?red:lane.color,
+                          border:mk.locked?`2px dashed ${bg0}`:`2px solid ${bg0}`,
+                          boxShadow:`0 0 12px ${(mk.locked?gold:mk.urgent?red:lane.color)}90`,
                           animationDelay:`${.3+li*.06+mi*.06}s`,
                         }}/>
                         <div style={{
                           position:'absolute',bottom:4,
                           transform:'translateX(-50%)',
                           fontFamily:mono,fontSize:zoom>1.4?9:8,
-                          color:mk.urgent?red:lane.color,letterSpacing:'0.04em',
+                          color:mk.locked?gold:mk.urgent?red:lane.color,letterSpacing:'0.04em',
                           whiteSpace:'nowrap',background:bg0,
                           padding:'2px 5px',borderRadius:3,
-                          border:`1px solid ${mk.urgent?red+'35':lane.color+'25'}`,
+                          border:mk.locked?`1px dashed ${gold}50`:`1px solid ${mk.urgent?red+'35':lane.color+'25'}`,
                           animation:mk.urgent?'pulse 2s infinite':'none',
                         }}>
-                          {mk.label}
+                          {mk.locked?'🔒 ':''}{mk.label}
                         </div>
                       </div>
                     ))}
