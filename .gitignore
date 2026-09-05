@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# local agent worktrees (research subagents), not project source
+/.claude/
+
 # next.js
 /.next/
 /out/

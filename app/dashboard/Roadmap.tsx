@@ -10,13 +10,33 @@ interface Node {
   tasks: Task[]; insight: string; blockedBy?: string[]
 }
 
-function buildNodes(p: any): Node[] {
+function buildNodes(p: any, programs: any[] = []): Node[] {
   const ni = p.ielts < 6.5
   const sf = p.budget === 'zero'
   const countries: string[] = p.countries?.split(',').filter(Boolean) || []
   const wantsHu = countries.includes('hu')
   const wantsIt = countries.includes('it')
+  const wantsDe = countries.includes('de')
+  const wantsSe = countries.includes('se')
+  const wantsNl = countries.includes('nl')
+  const deUrgent = sf && wantsDe
   const isPro = !!p.is_pro
+
+  // Раньше узел "Подача заявок" ниже был жёстко зашит на 4 конкретных
+  // вуза (TU Munich/Aalto/TU Delft/KTH) — одинаковые для всех, независимо
+  // от того, какие страны и программы студент реально выбрал. Теперь
+  // список строится из реальных избранных/подобранных программ (тот же
+  // источник, что уже питает Таймлайн — timelinePrograms в page.tsx), с
+  // настоящим дедлайном, если он есть.
+  const appliedList: Task[] = (programs||[]).slice(0,8).map(pr => {
+    const uni = pr.university?.name || pr._n || '?'
+    const name = pr.name || pr._p || ''
+    const dl = pr.deadline_month
+      ? `дедлайн ${String(pr.deadline_day||15).padStart(2,'0')}.${String(pr.deadline_month).padStart(2,'0')}`
+      : 'дедлайн уточняется на сайте вуза'
+    return { t: `${uni} — ${name} (${dl})` }
+  })
+
   return [
     {
       id:'ielts', label:'Язык', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
@@ -55,18 +75,26 @@ function buildNodes(p: any): Node[] {
     },
     {
       id:'schol', label:'Стипендии',
-      sub: sf ? 'СРОЧНО — 14 янв' : wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
-      color: gold, status: (sf||wantsHu) ? 'active' : 'parallel', zone:2, row:1, parallel:true,
-      insight: sf ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.'
+      sub: deUrgent ? 'СРОЧНО — 14 янв (DAAD)' : wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
+      color: gold, status: (deUrgent||wantsHu) ? 'active' : 'parallel', zone:2, row:1, parallel:true,
+      insight: deUrgent ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.'
         : wantsHu ? (isPro
             ? 'Stipendium Hungaricum закрывается 15 января — и это ДВЕ отдельные подачи (Tempus + Минобрнауки РФ), не одна.'
             : 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.')
         : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
+      // Раньше DAAD/SI/Holland показывались абсолютно всем, независимо от
+      // того, выбрана ли вообще Германия/Швеция/Нидерланды — студент,
+      // подающий только в Италию и Испанию, видел дедлайн немецкой
+      // стипендии как будто это его дедлайн. Теперь каждая привязана к
+      // реально выбранной стране, как уже было сделано для HU/IT.
       tasks:[
-        {t:'Motivation Letter для DAAD — отдельный документ, не SoP!', urgent:sf},
-        {t:'Подать на DAAD через portal.daad.de — дедлайн 14 января', urgent:sf},
-        {t:'SI Scholarship (Швеция) — дедлайн 15 февраля'},
-        {t:'Проверить Erasmus Mundus и Holland Scholarship'},
+        ...(wantsDe ? [
+          {t:'Motivation Letter для DAAD — отдельный документ, не SoP!', urgent:deUrgent},
+          {t:'Подать на DAAD через portal.daad.de — дедлайн 14 января', urgent:deUrgent},
+        ] : []),
+        ...(wantsSe ? [{t:'SI Scholarship (Швеция) — дедлайн 15 февраля'}] : []),
+        ...(wantsNl ? [{t:'Holland Scholarship (Нидерланды) — дедлайн 1 февраля'}] : []),
+        {t:'Проверить Erasmus Mundus — общеевропейская стипендия, не привязана к одной стране'},
         // 2026-08-31, по просьбе Дениса: без оплаты гайда — ни названий
         // программ, ни дат, ни процесса. Только факт "есть дедлайн" +
         // призыв разблокировать (см. тот же принцип в GanttTimeline.tsx).
@@ -79,6 +107,9 @@ function buildNodes(p: any): Node[] {
           {t:'Италия — начать оформление ISEE Parificato через CAF (уходит 1–2 месяца)'},
           {t:'MAECI (Италия) — подать на studyinitaly.esteri.it, дедлайн 26 марта'},
         ] : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
+        ...(!wantsDe&&!wantsSe&&!wantsNl&&!wantsHu&&!wantsIt ? [
+          {t:'Для выбранных стран у нас пока нет отдельного списка стипендий — проверь сайт каждого вуза напрямую'},
+        ] : []),
       ],
     },
     {
@@ -94,16 +125,14 @@ function buildNodes(p: any): Node[] {
       ],
     },
     {
-      id:'apply', label:'Подача заявок', sub:'Дек — Фев',
+      id:'apply', label:'Подача заявок',
+      sub: appliedList.length ? `${appliedList.length} программ в плане` : 'Сначала добавь программы',
       color: blue, status:'locked', zone:3, row:1, parallel:false,
       blockedBy:['ielts','docs'],
-      insight:'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка занимает 2–4 часа.',
-      tasks:[
-        {t:'TU Munich — через TUMonline, дедлайн 15 янв'},
-        {t:'Aalto — через universityadmissions.fi, дедлайн 20 янв'},
-        {t:'TU Delft — через Studielink, дедлайн 01 фев'},
-        {t:'KTH Stockholm — дедлайн 15 фев'},
-      ],
+      insight: appliedList.length
+        ? 'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка занимает 2–4 часа.'
+        : 'Здесь появится план подачи по конкретным вузам и дедлайнам, как только добавишь программы во вкладке «Программы» или «Избранное».',
+      tasks: appliedList.length ? appliedList : [{t:'Пока пусто — открой вкладку «Программы», добавь несколько в «Избранное»'}],
     },
     {
       id:'result', label:'Оффер и переезд', sub:`Сент ${p.timeline}`,
@@ -141,7 +170,7 @@ function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
   )
 }
 
-export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any, taskDone?:Record<string,boolean>, onToggle:(k:string)=>void}) {
+export default function Roadmap({profile, programs = [], taskDone = {}, onToggle}:{profile:any, programs?:any[], taskDone?:Record<string,boolean>, onToggle:(k:string)=>void}) {
   const [active, setActive] = useState<string|null>(null)
  
 
@@ -163,7 +192,7 @@ export default function Roadmap({profile, taskDone = {}, onToggle}:{profile:any,
     return()=>s.remove()
   },[])
 
-  const nodes = buildNodes(profile)
+  const nodes = buildNodes(profile, programs)
   const activeNode = nodes.find(n=>n.id===active)
   const toggle = (id:string,ti:number) => {
     const k=`${id}-${ti}`

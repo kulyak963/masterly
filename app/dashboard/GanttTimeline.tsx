@@ -30,6 +30,11 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const countries: string[] = profile.countries?.split(',').filter(Boolean) || []
   const wantsHu = countries.includes('hu')
   const wantsIt = countries.includes('it')
+  const wantsDe = countries.includes('de')
+  const wantsSe = countries.includes('se')
+  const wantsNl = countries.includes('nl')
+  const wantsFr = countries.includes('fr')
+  const deUrgent = sf && wantsDe
   const isPro = !!profile.is_pro
 
   const D = (y:number, m:number, d=15) => toIdx(new Date(y,m-1,d))
@@ -90,11 +95,15 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const lastDl  = unis[unis.length-1]?.idx ?? D(dy,2,15)
 
   /* calendar events */
+  // Раньше Eiffel/DAAD/SI/Holland показывались абсолютно всем — студент,
+  // выбравший только Италию и Испанию, видел в своём календаре дедлайн
+  // немецкой стипендии как будто это его дедлайн. Теперь каждая привязана
+  // к реально выбранной стране, тем же принципом, что уже применён к HU/IT.
   const calEvents: CalEvent[] = [
-    {date:dateStr(dy,1,9),  label:'Дедлайн — Eiffel Excellence', desc:'Стипендия Франция · €1 181/мес', urgent:true},
-    {date:dateStr(dy,1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:sf},
-    {date:dateStr(dy,2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'},
-    {date:dateStr(dy,2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'},
+    ...(wantsFr ? [{date:dateStr(dy,1,9),  label:'Дедлайн — Eiffel Excellence', desc:'Стипендия Франция · €1 181/мес', urgent:true}] : []),
+    ...(wantsDe ? [{date:dateStr(dy,1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:deUrgent}] : []),
+    ...(wantsSe ? [{date:dateStr(dy,2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'}] : []),
+    ...(wantsNl ? [{date:dateStr(dy,2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'}] : []),
     ...scholEvents,
     ...unis.map(u=>({date:u.date, label:`Дедлайн подачи — ${u.label}`, desc:`⚠ Дата собрана ИИ, может быть неточной — проверь на ${u.url||'сайте вуза'} перед подачей`, urgent:u.idx===firstDl})),
     {date:dateStr(admYear,4,15), label:'Ожидаются первые ответы от вузов', desc:'6–12 недель после дедлайна'},
@@ -131,13 +140,14 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
     },
     {
       id:'schol', label:'Стипендии',
-      sub: sf?'⚡ DAAD — дедлайн 14 января':'Параллельно с документами',
+      sub: deUrgent?'⚡ DAAD — дедлайн 14 января':'Параллельно с документами',
       color:gold,
-      bars:[{startIdx:0, endIdx:D(dy,1,14), label:'DAAD · Erasmus · SI · Holland', blocker:sf}],
+      bars:[{startIdx:0, endIdx:D(dy,1,14), label:[wantsDe&&'DAAD',wantsFr&&'Eiffel',wantsSe&&'SI',wantsNl&&'Holland'].filter(Boolean).join(' · ')||'Стипендии по выбранным странам', blocker:deUrgent}],
       markers:[
-        {idx:D(dy,1,9),  label:'Eiffel 9 янв', urgent:true},
-        {idx:D(dy,1,14), label:'DAAD 14 янв',  urgent:sf},
-        {idx:D(dy,2,15), label:'SI 15 фев'},
+        ...(wantsFr ? [{idx:D(dy,1,9),  label:'Eiffel 9 янв', urgent:true}] : []),
+        ...(wantsDe ? [{idx:D(dy,1,14), label:'DAAD 14 янв',  urgent:deUrgent}] : []),
+        ...(wantsSe ? [{idx:D(dy,2,15), label:'SI 15 фев'}] : []),
+        ...(wantsNl ? [{idx:D(dy,2,1),  label:'Holland 1 фев'}] : []),
         ...(wantsHu ? [{idx:D(dy,1,15), label: isPro?'SH 15 янв':'Важный дедлайн', urgent:true, locked:!isPro}] : []),
         ...(wantsIt ? [
           {idx:D(dy,3,26), label: isPro?'MAECI 26 мар':'Важный дедлайн', locked:!isPro},

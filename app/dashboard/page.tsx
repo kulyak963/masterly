@@ -14,7 +14,9 @@ import ItalyGuide from './ItalyGuide'
 const CNAME: Record<string,string> = {
   de:'Германия', nl:'Нидерланды', se:'Швеция',
   ch:'Швейцария', fi:'Финляндия', fr:'Франция',
-  cz:'Чехия', at:'Австрия', hu:'Венгрия', it:'Италия'
+  cz:'Чехия', at:'Австрия', hu:'Венгрия', it:'Италия',
+  dk:'Дания', no:'Норвегия', be:'Бельгия', es:'Испания',
+  ee:'Эстония', pl:'Польша', ie:'Ирландия',
 }
 /* Флаги — SVG, не эмодзи: Windows/Chrome не рисует флаг-эмодзи цветной
    картинкой, показывает буквы кода страны как текст (проверено на скрине
@@ -76,24 +78,44 @@ const BUDGET_LIMIT: Record<string,number> = {
   zero:0, low:5000, mid:15000, high:999999
 }
 
+// Раньше скор считался только по языковому баллу, бюджету и рейтингу вуза —
+// GPA и направление магистратуры (совпадает ли оно с бэкграundом студента)
+// не влияли на цифру вообще, хотя /terms прямо обещает пользователю, что
+// GPA учитывается. Теперь оба реально участвуют:
+// - GPA сильнее двигает скор у селективных вузов (низкий QS-номер) — там
+//   оценки реально решают, у менее избирательных — почти не важны.
+// - master_direction — прокси на то, насколько направление магистратуры
+//   совпадает с тем, что студент изучал (программы уже отфильтрованы по
+//   полю на уровне запроса, поэтому это единственный оставшийся сигнал
+//   "насколько бэкграунд реально подходит именно этой программе").
 function calcScore(p: any, profile: any): number {
-  let s = 50
+  let s = 40
+
   const ieltsMin = p.ielts_min || 6.5
-  if (profile.ielts >= ieltsMin + 1) s += 20
-  else if (profile.ielts >= ieltsMin) s += 10
+  if (profile.ielts >= ieltsMin + 1) s += 15
+  else if (profile.ielts >= ieltsMin) s += 8
   else if (profile.ielts < ieltsMin - 0.5) s -= 25
-  else s -= 5
+  else s -= 8
 
   const budget = BUDGET_LIMIT[profile.budget] ?? 15000
-  if (p.tuition_eur === 0) s += profile.budget === 'zero' ? 25 : 15
-  else if (p.tuition_eur <= budget) s += 10
-  else s -= profile.budget === 'zero' ? 30 : 15
+  if (p.tuition_eur === 0) s += profile.budget === 'zero' ? 20 : 12
+  else if (p.tuition_eur <= budget) s += 8
+  else s -= profile.budget === 'zero' ? 25 : 12
 
   const qs = p.university?.ranking_qs
-  if (qs) { if (qs <= 50) s -= 20; else if (qs <= 100) s -= 10; else if (qs > 300) s += 10 }
-  else s += 5
+  const selective = !!qs && qs <= 150
+  if (qs) { if (qs <= 50) s -= 15; else if (qs <= 150) s -= 8; else if (qs > 300) s += 8 }
+  else s += 3
 
-  return Math.max(0, Math.min(100, s))
+  const gpa = profile.gpa ?? 4.0
+  const gpaBonus =
+    gpa >= 4.7 ? 18 : gpa >= 4.3 ? 12 : gpa >= 4.0 ? 6 : gpa >= 3.5 ? -4 : -14
+  s += selective ? gpaBonus * 1.4 : gpaBonus
+
+  if (profile.master_direction === 'change') s -= selective ? 14 : 8
+  else if (profile.master_direction === 'related') s -= selective ? 4 : 2
+
+  return Math.max(0, Math.min(100, Math.round(s)))
 }
 
 function getBucket(score: number) {
@@ -703,10 +725,17 @@ const getVerdict = async (p: any) => {
   setVerdictLoading(false)
 }
 
-    const score = Math.min(97,Math.round((profile.gpa>=4.5?28:profile.gpa>=4.0?20:12)+
-    (profile.ielts>=6.5?22:8)+
-    (profile.work==='yes'?18:profile.work==='some'?10:4)+10+15
-  ))
+    // Раньше тут были две безусловные константы (+10+15 = 25 очков "просто
+    // так"), из-за которых минимум для самого слабого профиля был ~49% —
+    // метрика физически не могла честно сказать "ты не готов", даже когда
+    // это правда. Убраны — теперь диапазон реально идёт от почти нуля до
+    // высоких значений, и направление магистратуры (совпадает ли оно с
+    // бэкграундом) тоже учитывается, как и в скоре программ выше.
+    const gpaC = profile.gpa>=4.7?30:profile.gpa>=4.3?24:profile.gpa>=4.0?17:profile.gpa>=3.5?9:2
+    const langC = profile.ielts>=7.5?28:profile.ielts>=7.0?24:profile.ielts>=6.5?18:profile.ielts>=6.0?10:2
+    const workC = profile.work==='yes'?20:profile.work==='some'?12:4
+    const dirC = profile.master_direction==='same'?8:profile.master_direction==='related'?3:profile.master_direction==='change'?-6:0
+    const score = Math.max(4,Math.min(96,Math.round(gpaC+langC+workC+dirC)))
   const toggleTask = async (key:string) => {
   const newDone = { ...taskDone, [key]: !taskDone[key] }
   setTaskDone(newDone)
@@ -897,7 +926,7 @@ const getVerdict = async (p: any) => {
         {/* ══ JOURNEY ══ */}
         {tab==='journey'&&(
   <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
-   <Roadmap profile={profile} taskDone={taskDone} onToggle={toggleTask}/>
+   <Roadmap profile={profile} programs={timelinePrograms} taskDone={taskDone} onToggle={toggleTask}/>
   </div>
 )}
 
@@ -1097,6 +1126,17 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
               <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
                 <div style={{height:1,background:line,marginBottom:20}}/>
                 <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЕРСОНАЛЬНЫЙ АНАЛИЗ</div>
+                {!selectedProgram.verified&&(
+                  <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',
+                    marginBottom:16,borderRadius:8,background:`${gold}0F`,border:`1px solid ${gold}35`}}>
+                    <span style={{fontFamily:mono,fontSize:12,color:gold,flexShrink:0}}>⚠</span>
+                    <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>
+                      Этот анализ рассуждает поверх данных программы, которые ещё не проверены человеком —
+                      стоимость, дедлайн и требования могли собрать неточно. Перепроверь на сайте вуза
+                      перед тем, как принимать решение по нему.
+                    </span>
+                  </div>
+                )}
                 <p style={{fontFamily:sans,fontSize:15,color:t1,lineHeight:1.6,marginBottom:16,fontWeight:400}}>«{verdict.verdict}»</p>
                 {verdict.fit?.map((f:string,i:number)=>(
                   <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
@@ -1104,6 +1144,17 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
                     <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{f}</span>
                   </div>
                 ))}
+                {verdict.warnings?.length>0&&(
+                  <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${line}`}}>
+                    <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:amb,marginBottom:10}}>НА ЧТО ОБРАТИТЬ ВНИМАНИЕ</div>
+                    {verdict.warnings.map((w:string,i:number)=>(
+                      <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
+                        <span style={{color:amb,flexShrink:0}}>⚠</span>
+                        <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{w}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1403,7 +1454,7 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
           {c:'at',l:'Австрия'},{c:'cz',l:'Чехия'},{c:'dk',l:'Дания'},
           {c:'be',l:'Бельгия'},{c:'ie',l:'Ирландия'},{c:'it',l:'Италия'},
           {c:'es',l:'Испания'},{c:'no',l:'Норвегия'},{c:'pl',l:'Польша'},
-          {c:'hu',l:'Венгрия'},
+          {c:'hu',l:'Венгрия'},{c:'ee',l:'Эстония'},
         ].map(({c,l})=>{
           const sel = (profile.countries||'').split(',').includes(c)
           return (

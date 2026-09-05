@@ -57,12 +57,13 @@ const COUNTRIES_MAIN = [
 const COUNTRIES_MORE = [
   {c:'it',f:'IT',n:'Италия',     tag:'Politecnico · Bologna'},
   {c:'dk',f:'DK',n:'Дания',      tag:'DTU · Copenhagen'},
-  {c:'no',f:'NO',n:'Норвегия',   tag:'NTNU · Бесплатно'},
+  {c:'no',f:'NO',n:'Норвегия',   tag:'NTNU · Бесплатно для EU/EEA'},
   {c:'be',f:'BE',n:'Бельгия',    tag:'KU Leuven · UCL'},
   {c:'es',f:'ES',n:'Испания',    tag:'Barcelona · Madrid'},
   {c:'ee',f:'EE',n:'Эстония',    tag:'Tallinn · Startup'},
   {c:'pl',f:'PL',n:'Польша',     tag:'Warsaw · Wrocław'},
   {c:'hu',f:'HU',n:'Венгрия',    tag:'Стипендия Stipendium'},
+  {c:'ie',f:'IE',n:'Ирландия',   tag:'Trinity College Dublin'},
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
 const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Другое']
@@ -85,16 +86,6 @@ const FIELD_TO_DB: Record<string,string> = {
   'Дизайн':                  'Human-Computer Interaction',
   'Социальные науки':        'Business Analytics',
   'Другое':                  '',
-}
-const RELATED_FIELDS: Record<string, string[]> = {
-  'Компьютерные науки / ИИ': ['Artificial Intelligence','Data Science','Cybersecurity','Robotics','Human-Computer Interaction'],
-  'Инженерия':               ['Robotics','Computational Engineering','Computer Science','Artificial Intelligence'],
-  'Экономика':               ['Business Analytics','Data Science','Human-Computer Interaction'],
-  'Физика / Математика':     ['Computational Engineering','Data Science','Artificial Intelligence','Robotics'],
-  'Биотех':                  ['Computational Engineering','Data Science','Artificial Intelligence'],
-  'Дизайн':                  ['Human-Computer Interaction','Computer Science'],
-  'Социальные науки':        ['Human-Computer Interaction','Business Analytics','Data Science'],
-  'Другое':                  ['Computer Science','Data Science','Business Analytics','Artificial Intelligence'],
 }
 const BUDGETS = [
   {id:'zero',l:'Только стипендия',   s:'Финансирование — обязательное условие'},
@@ -223,6 +214,15 @@ export default function Home() {
   })
   const [showMoreCountries, setShowMoreCountries] = useState(false)
   const [quizMode, setQuizMode] = useState(false)
+  // Раньше тут было захардкожено "280+" — цифра из самого начала лета,
+  // задолго до того, как база выросла до 560+ программ (Венгрия/Италия
+  // и остальные страны). Захардкоженное число неизбежно стареет заново
+  // при каждом следующем прогоне сбора данных — считаем реально.
+  const [programCount, setProgramCount] = useState<number|null>(null)
+  useEffect(() => {
+    supabase.from('programs').select('*', { count: 'exact', head: true })
+      .then(({ count }) => { if (count) setProgramCount(count) })
+  }, [])
 
   useEffect(()=>{
     const s = document.createElement('style')
@@ -288,7 +288,8 @@ export default function Home() {
     countries: a.countries.join(','),
     timeline: a.timeline, budget: a.budget,
     gpa: a.gpa, ielts: a.ielts, work: a.work, score: score,
-    master_field: a.master_direction==='same' ? FIELD_TO_DB[a.field] : a.master_field,
+    master_field: a.master_field,
+    master_direction: a.master_direction,
   })
 
   const goNext = async () => {
@@ -418,8 +419,8 @@ setStep((s:any)=> s+1)
             </div>
           </div>
           {[
-            {n:'280+',l:'программ в базе'},
-            {n:'20',l:'стран Европы'},
+            {n: programCount ? `${Math.floor(programCount/10)*10}+` : '500+', l:'программ в базе'},
+            {n:'17',l:'стран Европы'},
             {n:'€0',l:'от — есть бесплатные'},
           ].map((s,i)=>(
             <div key={i} style={{padding:'22px 24px',
@@ -563,25 +564,36 @@ setStep((s:any)=> s+1)
         {v:'related',l:'Перейти в смежную область',    s:'Например, физика → data science'},
         {v:'change', l:'Кардинально сменить направление', s:'Хочу что-то совсем другое'},
       ].map(o=>(
-        <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.master_direction===o.v} onClick={()=>set('master_direction',o.v)}/>
+        <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.master_direction===o.v} onClick={()=>{
+          set('master_direction',o.v)
+          // "та же сфера" — сразу подставляем лучшую догадку по текущему
+          // полю, но это именно подсказка: ниже всегда можно кликнуть
+          // другой чип. Раньше это подставлялось молча при отправке анкеты
+          // и для "Другое" давало пустую строку — фильтр по направлению
+          // отключался, студент видел вообще все программы без разбора.
+          if(o.v==='same') set('master_field', FIELD_TO_DB[a.field] || '')
+          else if(!a.master_field) set('master_field','')
+        }}/>
       ))}
     </div>
-{(a.master_direction==='related'||a.master_direction==='change')&&(
+{a.master_direction&&(
   <div className="in">
-    <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:10}}>КУДА ХОЧЕШЬ ПЕРЕЙТИ</div>
+    <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>
+      {a.master_direction==='same' ? 'ПРОВЕРЬ ТОЧНОЕ НАПРАВЛЕНИЕ' : 'КУДА ХОЧЕШЬ ПЕРЕЙТИ'}
+    </div>
+    <div style={{fontFamily:sans,fontSize:12,color:t3,marginBottom:10,lineHeight:1.5}}>
+      От этого зависит, какие именно программы мы покажем — если наша догадка неточная, выбери сам.
+    </div>
     <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-      {MASTER_FIELDS
-        .filter(f => a.master_direction==='change' || (RELATED_FIELDS[a.field]||[]).includes(f.v))
-        .map(f=>(
-          <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
-        ))
-      }
+      {MASTER_FIELDS.map(f=>(
+        <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
+      ))}
     </div>
   </div>
 )}
 </div>
 )}
-<NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&(a.master_direction==='same'||!!a.master_field)}/>
+<NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&!!a.master_field}/>
     </Shell>
   )
 
@@ -617,7 +629,7 @@ setStep((s:any)=> s+1)
     {[
       {id:'cost',q:'Что важнее по деньгам?',opts:[
         {v:'free', l:'Учёба должна быть бесплатной',s:'Германия, Финляндия, Чехия'},
-        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, SI покроют расходы'},
+        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, SI, Stipendium Hungaricum, MAECI'},
         {v:'any',  l:'Деньги не ключевой фактор',s:'Фокус на качестве программы'},
       ]},
       {id:'stay',q:'Планируешь остаться в Европе после учёбы?',opts:[
@@ -626,14 +638,14 @@ setStep((s:any)=> s+1)
         {v:'no',   l:'Нет, вернусь домой',s:'Фокус на диплом и нетворк'},
       ]},
       {id:'lang',q:'Язык обучения?',opts:[
-        {v:'en', l:'Только английский',s:'Нидерланды, Швеция, Финляндия'},
+        {v:'en', l:'Только английский',s:'Нидерланды, Швеция, Финляндия, Италия, Венгрия'},
         {v:'de', l:'Готов учить немецкий',s:'Бесплатные программы Германии'},
         {v:'any',l:'Не важно',s:'Рассмотрим все варианты'},
       ]},
       {id:'vibe',q:'Какая среда важнее?',opts:[
-        {v:'research',l:'Сильная научная среда',s:'ETH, TU Munich, KTH'},
+        {v:'research',l:'Сильная научная среда',s:'ETH, TU Munich, KTH, Politecnico di Milano'},
         {v:'startup', l:'Предпринимательская экосистема',s:'Нидерланды, Финляндия'},
-        {v:'life',    l:'Качество жизни',s:'Германия, Австрия, Швейцария'},
+        {v:'life',    l:'Качество жизни',s:'Германия, Австрия, Италия'},
       ]},
     ].filter(q=>!({cost:1,stay:1,lang:1,vibe:1} as any)[q.id] || true).map((quiz,qi)=>{
       const answered = (a as any)[`quiz_${quiz.id}`]
@@ -656,20 +668,29 @@ setStep((s:any)=> s+1)
                       lang:(a as any).quiz_lang||'',
                       vibe:o.v,
                     }
-                    const scores: Record<string,number>={de:0,nl:0,se:0,ch:0,fi:0,fr:0,cz:0,at:0}
-                    if(qa.cost==='free')    {scores.de+=3;scores.fi+=3;scores.cz+=3;scores.se+=2}
-                    if(qa.cost==='schol')   {scores.de+=2;scores.se+=2;scores.fr+=2;scores.nl+=1}
-                    if(qa.cost==='any')     {scores.ch+=2;scores.nl+=2}
+                    // Раньше здесь было только 8 "главных" стран — Венгрия и
+                    // Италия (наши единственные страны с реальным гайдом по
+                    // стипендиям и глубоко собранными данными) физически не
+                    // могли попасть в топ-3, сколько бы приоритетов
+                    // студент ни назвал. Добавлены в общий скоринг.
+                    const scores: Record<string,number>={de:0,nl:0,se:0,ch:0,fi:0,fr:0,cz:0,at:0,hu:0,it:0}
+                    if(qa.cost==='free')    {scores.de+=3;scores.fi+=3;scores.cz+=3;scores.se+=2;scores.hu+=2}
+                    if(qa.cost==='schol')   {scores.de+=2;scores.se+=2;scores.fr+=2;scores.nl+=1;scores.hu+=3;scores.it+=2}
+                    if(qa.cost==='any')     {scores.ch+=2;scores.nl+=2;scores.it+=1}
                     if(qa.stay==='yes')     {scores.nl+=3;scores.de+=2;scores.se+=2;scores.fi+=1}
-                    if(qa.stay==='no')      {scores.cz+=2;scores.at+=1}
-                    if(qa.lang==='en')      {scores.nl+=2;scores.se+=2;scores.fi+=2}
+                    if(qa.stay==='no')      {scores.cz+=2;scores.at+=1;scores.hu+=1;scores.it+=1}
+                    if(qa.lang==='en')      {scores.nl+=2;scores.se+=2;scores.fi+=2;scores.hu+=2;scores.it+=2}
                     if(qa.lang==='de')      {scores.de+=3;scores.at+=2;scores.ch+=1}
-                    if(qa.vibe==='research'){scores.ch+=3;scores.de+=2;scores.se+=2}
+                    if(qa.vibe==='research'){scores.ch+=3;scores.de+=2;scores.se+=2;scores.it+=1}
                     if(qa.vibe==='startup') {scores.nl+=3;scores.fi+=2}
-                    if(qa.vibe==='life')    {scores.de+=2;scores.at+=2;scores.fr+=1}
+                    if(qa.vibe==='life')    {scores.de+=2;scores.at+=2;scores.fr+=1;scores.it+=2}
                     const top3 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c])=>c)
                     set('countries', top3)
                     setQuizMode(false)
+                    // если квиз выбрал страну из свёрнутого списка ("Ещё 8
+                    // стран") — разворачиваем его, иначе результат квиза
+                    // частично невидим за свёрнутой секцией
+                    if(top3.some(c=>COUNTRIES_MORE.some(m=>m.c===c))) setShowMoreCountries(true)
                   }
                 }}/>
             ))}
@@ -849,8 +870,8 @@ setStep((s:any)=> s+1)
 
   // STEP 8 — RESULT
   if(step>=8 && step !== 99) {
-    const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT',hu:'HU',it:'IT'}
-    const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия',hu:'Венгрия',it:'Италия'}
+    const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT',hu:'HU',it:'IT',dk:'DK',no:'NO',be:'BE',es:'ES',ee:'EE',pl:'PL',ie:'IE'}
+    const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия',hu:'Венгрия',it:'Италия',dk:'Дания',no:'Норвегия',be:'Бельгия',es:'Испания',ee:'Эстония',pl:'Польша',ie:'Ирландия'}
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
     const firstSteps = [
       a.ielts<6.5  && {t:'Записаться на языковой экзамен — это первый шаг', c:red},

@@ -70,7 +70,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { jsonrepair } from 'jsonrepair'
 
@@ -253,18 +253,47 @@ function extractJsonArray(fullText, response) {
       else if (fullText[i] === ']') { depth--; if (depth === 0) { end = i; break } }
     }
   }
-  if (start === -1 || end === -1) {
-    const blockSummary = response?.content?.map((b) => b.type).join(', ') ?? '?'
-    throw new Error(
-      `No JSON array found. stop_reason=${response?.stop_reason}, blocks=[${blockSummary}]. Text: ${fullText.slice(0, 500) || '(empty)'}`
-    )
+  if (start !== -1 && end !== -1) {
+    const raw = fullText.slice(start, end + 1)
+    try {
+      return JSON.parse(raw)
+    } catch {
+      try { return JSON.parse(jsonrepair(raw)) } catch { /* падаем в спасательный разбор ниже */ }
+    }
   }
-  const raw = fullText.slice(start, end + 1)
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return JSON.parse(jsonrepair(raw))
+
+  // 2026-09-02, найдено на живом прогоне по Австрии (TU Wien): у крупных
+  // вузов с длинным списком программ ответ иногда обрывается ПОСЕРЕДИНЕ
+  // JSON-массива — упираемся в max_tokens после того, как много бюджета
+  // уже съели thinking/web_search-блоки. Раньше это teряло вообще все
+  // найденные программы (ни одной закрывающей ']' — весь ответ выкидывался
+  // как ошибка). Теперь, если массив не закрылся, вытаскиваем по одному
+  // ЦЕЛЫЕ объекты {...} до места обрыва — то, что модель успела дописать
+  // полностью, не пропадает зря.
+  if (start !== -1) {
+    const salvaged = []
+    let i = start + 1
+    while (i < fullText.length) {
+      const objStart = fullText.indexOf('{', i)
+      if (objStart === -1) break
+      let depth = 0, objEnd = -1
+      for (let j = objStart; j < fullText.length; j++) {
+        if (fullText[j] === '{') depth++
+        else if (fullText[j] === '}') { depth--; if (depth === 0) { objEnd = j; break } }
+      }
+      if (objEnd === -1) break // сам объект тоже оборван — дальше спасать нечего
+      const objRaw = fullText.slice(objStart, objEnd + 1)
+      try { salvaged.push(JSON.parse(objRaw)) }
+      catch { try { salvaged.push(JSON.parse(jsonrepair(objRaw))) } catch { /* пропускаем нечитаемый объект */ } }
+      i = objEnd + 1
+    }
+    if (salvaged.length) return salvaged
   }
+
+  const blockSummary = response?.content?.map((b) => b.type).join(', ') ?? '?'
+  throw new Error(
+    `No JSON array found. stop_reason=${response?.stop_reason}, blocks=[${blockSummary}]. Text: ${fullText.slice(0, 500) || '(empty)'}`
+  )
 }
 
 // =====================================================================
@@ -368,7 +397,11 @@ async function enumerateUniversityPrograms(uni) {
   const byUrl = new Map()
   for (const cluster of ENUMERATE_CLUSTERS) {
     try {
-      const { programs, usage } = await withRetry(() => callWithSearchExpectArray(buildEnumeratePrompt(uni, cluster), { maxTokens: 16000, maxUses: 8 }), 3)
+      // maxTokens поднят с 16000 до 28000 (2026-09-02, после сбоя на
+      // TU Wien) — на вузах с длинным каталогом (много Executive
+      // MBA-вариантов и т.п.) thinking+web_search-блоки съедали почти
+      // весь бюджет, и текст ответа обрывался ещё до первой "[".
+      const { programs, usage } = await withRetry(() => callWithSearchExpectArray(buildEnumeratePrompt(uni, cluster), { maxTokens: 28000, maxUses: 8 }), 3)
       totalUsage.input_tokens += usage.input_tokens ?? 0
       totalUsage.output_tokens += usage.output_tokens ?? 0
       for (const p of programs) {
@@ -551,7 +584,18 @@ async function main() {
   const today = new Date().toISOString().slice(0, 10)
   const suffix = COMPREHENSIVE ? 'comprehensive' : 'auto-research'
   const outPath = new URL(`../sql/${today}-${COUNTRY_CODE}-${suffix}.sql`, import.meta.url)
-  writeFileSync(outPath, `-- Автоматически собрано инструментом scripts/research-programs.mjs
+  // 2026-09-03, найдено на живом прогоне по Германии: раньше это всегда
+  // было writeFileSync — второй запуск в тот же день на ту же страну (typично
+  // при возобновлении после сбоя/зависания, --only-university на остаток)
+  // молча стирал всё, что дописал первый запуск, потому что имя файла
+  // зависит только от даты+страны+режима, не от конкретного запуска.
+  // Реальная потеря: часть успешно найденных программ первого захода по
+  // Германии пропала именно так. Теперь при повторном запуске в тот же
+  // день — дописываем новый раздел с собственным заголовком поверх уже
+  // накопленного, вместо того чтобы стирать файл.
+  const fileExists = existsSync(outPath)
+  const write = fileExists ? appendFileSync : writeFileSync
+  write(outPath, `${fileExists ? '\n-- ============================================================\n-- Новый запуск того же дня/страны/режима — ДОПИСАНО поверх уже\n-- накопленного файла, не стёрто (см. комментарий в коде main()).\n-- ============================================================\n' : ''}-- Автоматически собрано инструментом scripts/research-programs.mjs
 -- Страна: ${COUNTRY_NAME} (${COUNTRY_CODE})${COMPREHENSIVE ? ' — comprehensive режим (по вузам, 3 шага: перечислить/классифицировать/детали)' : `, поля: ${FIELDS.join(', ')}`}, модель: ${MODEL}
 -- Дата: ${today}
 --
