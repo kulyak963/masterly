@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { askAI, extractJson } from '../../../lib/ai'
 
+// НЕ трогаем maxDuration — лимит зависит от тарифа Vercel, а его конкретное
+// значение отсюда не проверить; завысить его — верный способ уронить сборку
+// ("maxDuration cannot exceed N for your plan"). Таймаут на клиенте в
+// getVerdict — достаточная защита от зависшего запроса без этого риска.
+
 export async function POST(req: NextRequest) {
   const { program, profile } = await req.json()
 

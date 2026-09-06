@@ -26,8 +26,18 @@ async function getProgram(id: string) {
 }
 
 export async function generateStaticParams() {
-  const { data } = await supabase.from('programs').select('id').limit(1000)
-  return (data || []).map((p) => ({ id: p.id }))
+  // Supabase/PostgREST caps rows at 1000 per request regardless of .limit() —
+  // с базой за 1000 программ один запрос молча обрезал бы список и часть
+  // страниц не попадала бы в статическую сборку. Пагинируем через .range().
+  const ids: { id: string }[] = []
+  const PAGE = 1000
+  for (let from = 0; ; from += PAGE) {
+    const { data } = await supabase.from('programs').select('id').range(from, from + PAGE - 1)
+    if (!data?.length) break
+    ids.push(...data)
+    if (data.length < PAGE) break
+  }
+  return ids.map((p) => ({ id: p.id }))
 }
 
 type Props = { params: Promise<{ id: string }> }

@@ -1,6 +1,6 @@
 'use client'
 import Roadmap from './Roadmap'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import GanttTimeline from './GanttTimeline'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
@@ -294,20 +294,29 @@ useEffect(() => {
   if (!profile) return
   const countries = profile.countries?.split(',').filter(Boolean) || []
 
-  supabase
-    .from('programs')
-    .select('*, university:universities(*)')
-    .then(({ data }) => {
-      if (data) {
+  // Supabase/PostgREST молча обрезает любой .select() без .range() на 1000
+  // строк, даже без явного .limit() в коде — при 1420 программах в базе
+  // это тихо прятало из дашборда почти все свежесобранные страны (Дания,
+  // Ирландия, Испания и т.д.), никак не сигнализируя об ошибке. Пагинируем.
+  ;(async () => {
+    const all: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data } = await supabase
+        .from('programs')
+        .select('*, university:universities(*)')
+        .range(from, from + 999)
+      if (!data?.length) break
+      all.push(...data)
+      if (data.length < 1000) break
+    }
     const masterField = profile.master_field || ''
-const filtered = data.filter(p =>
-  p.university &&
-  countries.includes(p.university.country) &&
-  (!masterField || p.field === masterField)
-)
-        setPrograms(filtered)
-      }
-    })
+    const filtered = all.filter(p =>
+      p.university &&
+      countries.includes(p.university.country) &&
+      (!masterField || p.field === masterField)
+    )
+    setPrograms(filtered)
+  })()
 }, [profile])
 useEffect(() => {
   if (!profile) return
@@ -382,6 +391,39 @@ useEffect(()=>{
   return ()=>style.remove()
 },[])
 
+// Хуки нельзя вызывать после условного return (loading/!profile ниже) —
+// иначе React видит разное число хуков между рендерами ("Rendered more
+// hooks than during the previous render"). Раньше это было ниже условных
+// return, пересчитывалось на каждый рендер и было безопасно только потому,
+// что не было хуком; став useMemo, обязано стоять до них. Пока profile
+// ещё null, programs всегда [] (см. useEffect выше), так что calcScore
+// здесь ни разу не вызывается с profile=null.
+// COLORS/daysUntil подняты сюда же (были объявлены через const ниже
+// условных return) — иначе useMemo обращался бы к ним раньше инициализации
+// (temporal dead zone) и падал бы с ReferenceError на каждом рендере.
+const COLORS = ['#6B8CFF','#3FB950','#C8A256','#A78BFA','#5AC8FA','#E8795A','#D4843A','#E5534B']
+const daysUntil = (month: number, day: number) => {
+  const now = new Date()
+  const d = new Date(now.getFullYear(), month - 1, day)
+  if (d < now) d.setFullYear(d.getFullYear() + 1)
+  return Math.ceil((d.getTime() - now.getTime()) / 86400000)
+}
+const unis = useMemo(() => diversifyByCountry(programs.map((p: any, i: number) => {
+  const score = calcScore(p, profile)
+  return {
+    ...p,
+    _n: p.university?.name || '',
+    _p: p.name,
+    _days: daysUntil(p.deadline_month, p.deadline_day),
+    _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
+    _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
+    _c: COLORS[i % COLORS.length],
+    _country: p.university?.country || '',
+    _score: score,
+    _bucket: getBucket(score),
+  }
+})), [programs, profile])
+
   if(loading) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <Mono>ЗАГРУЗКА...</Mono>
@@ -410,13 +452,6 @@ useEffect(()=>{
 
   const name = profile.name?.split(' ')[0] || ''
   const countries = profile.countries?.split(',').filter(Boolean) || []
- const COLORS = ['#6B8CFF','#3FB950','#C8A256','#A78BFA','#5AC8FA','#E8795A','#D4843A','#E5534B']
-const daysUntil = (month: number, day: number) => {
-  const now = new Date()
-  const d = new Date(now.getFullYear(), month - 1, day)
-  if (d < now) d.setFullYear(d.getFullYear() + 1)
-  return Math.ceil((d.getTime() - now.getTime()) / 86400000)
-}
 // Раньше был просто .sort() по скору — при нескольких выбранных странах
 // это на практике давало длинные однородные блоки ("сначала все немецкие,
 // потом все итальянские"), потому что скор внутри одной страны склонен
@@ -455,21 +490,6 @@ function diversifyByCountry<T extends { _country: string; _score: number }>(item
   return result
 }
 
-const unis = diversifyByCountry(programs.map((p: any, i: number) => {
-  const score = calcScore(p, profile)
-  return {
-    ...p,
-    _n: p.university?.name || '',
-    _p: p.name,
-    _days: daysUntil(p.deadline_month, p.deadline_day),
-    _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
-    _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
-    _c: COLORS[i % COLORS.length],
-    _country: p.university?.country || '',
-    _score: score,
-    _bucket: getBucket(score),
-  }
-}))
 
 // Программы для таймлайна/календаря — избранное, а если его нет, топ-матч по каждой стране.
 // Раньше даты были одна на всю страну и не зависели от выбора студента.
@@ -524,6 +544,14 @@ const getVerdict = async (p: any) => {
   setVerdict(null)
   setVerdictError(null)
   setVerdictLoading(true)
+  // Без таймаута зависший прокси/AI-запрос вешал кнопку "Анализируем..."
+  // на неопределённое время. Живой прогон показал большой разброс:
+  // прямой вызов без клиентского вмешательства занял 12s, но браузерные
+  // прогоны стабильно упирались в таймаут 25s и затем 45s — реальная
+  // задержка прокси местами превышает даже это. 60s — компромисс между
+  // "не ждать вечно" и "не рвать медленный, но живой ответ".
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), 60000)
   try {
     const res = await fetch('/api/verdict', {
       method: 'POST',
@@ -531,7 +559,8 @@ const getVerdict = async (p: any) => {
       body: JSON.stringify({
         program: { ...p, university_name: p.university?.name },
         profile,
-      })
+      }),
+      signal: abort.signal,
     })
     const data = await res.json()
     if (!res.ok) {
@@ -542,6 +571,8 @@ const getVerdict = async (p: any) => {
   } catch (e) {
     console.error(e)
     setVerdictError('Не получилось получить анализ — попробуй позже')
+  } finally {
+    clearTimeout(timer)
   }
   setVerdictLoading(false)
 }
@@ -819,169 +850,6 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
         </div>
       )
     })}
-    {selectedProgram&&(
-      <div onClick={()=>setSelectedProgram(null)}
-        style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',
-          zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',
-          padding:24,backdropFilter:'blur(4px)'}}>
-        <div onClick={e=>e.stopPropagation()}
-        onTouchStart={e=>{dragStart.current=e.touches[0].clientY;setDragging(true)}}
-onTouchMove={e=>{const dy=e.touches[0].clientY-dragStart.current;if(dy>0)setDragY(dy)}}
-onTouchEnd={()=>{if(dragY>120){setSelectedProgram(null);setDragY(0)}else setDragY(0);setDragging(false)}}
-          style={{width:'100%',maxWidth:isMobile?'100%':520,maxHeight:isMobile?'92vh':'85vh',overflowY:'auto',
-background:bg1,borderRadius:isMobile?'20px 20px 0 0':12,border:`1px solid ${line}`,
-animation:isMobile?'slideUpFull .35s cubic-bezier(.22,.68,0,1.1) both':'slideUp .3s ease both',
-transform:dragY>0?`translateY(${dragY}px)`:'none',
-transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
-          <div style={{padding:'28px 32px'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
-              <div>
-                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.14em',color:t3,marginBottom:8}}>
-                  {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · ПРИМЕРНАЯ ОЦЕНКА {selectedProgram._score}
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
-                  <h2 style={{fontFamily:displayFont.style.fontFamily,fontSize:22,color:t1,fontWeight:800,letterSpacing:'-.01em',lineHeight:1.2}}>
-                    {selectedProgram._p}
-                  </h2>
-                  <VerifiedBadge verified={selectedProgram.verified}/>
-                </div>
-                <div style={{fontFamily:sans,fontSize:13,color:t2,marginBottom:4}}>{selectedProgram._n}</div>
-                <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.5}}>
-                  Оценка — грубая прикидка по языковому баллу/бюджету/рейтингу, не гарантия поступления.
-                </p>
-              </div>
-              <button onClick={()=>setSelectedProgram(null)}
-                style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:20,padding:'0 0 0 16px',flexShrink:0}}>×</button>
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderTop:`1px solid ${line}`,borderLeft:`1px solid ${line}`,marginBottom:24}}>
-              {[
-                {l:'РЕЙТИНГ',v:selectedProgram._rank},
-                {l:'СТОИМОСТЬ',v:selectedProgram._cost},
-                {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,warn:selectedProgram._days<30},
-              ].map((m,i)=>(
-                <div key={i} style={{padding:'12px 14px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
-                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:4}}>{m.l}</div>
-                  <div style={{fontFamily:sans,fontSize:13,color:m.warn?red:t1}}>{m.v}</div>
-                </div>
-              ))}
-            </div>
-            {selectedProgram.summary&&(
-              <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.7,marginBottom:24,fontWeight:300}}>{selectedProgram.summary}</p>
-            )}
-            <div style={{height:1,background:line,marginBottom:20}}/>
-            {selectedProgram.pros?.length>0&&(
-              <div style={{marginBottom:20}}>
-                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЛЮСЫ</div>
-                {selectedProgram.pros.map((p:string,i:number)=>(
-                  <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
-                    <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
-                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{p}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectedProgram.cons?.length>0&&(
-              <div style={{marginBottom:20}}>
-                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>МИНУСЫ</div>
-                {selectedProgram.cons.map((c:string,i:number)=>(
-                  <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
-                    <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
-                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{c}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectedProgram.scholarships?.length>0&&(
-              <div style={{marginBottom:24}}>
-                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>СТИПЕНДИИ</div>
-                <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                  {selectedProgram.scholarships.map((s:string,i:number)=>(
-                    <span key={i} style={{fontFamily:mono,fontSize:9,padding:'4px 10px',borderRadius:3,border:`1px solid ${line}`,color:t2}}>{s}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            <button onClick={()=>getVerdict(selectedProgram)} disabled={verdictLoading}
-              style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
-                background:verdictLoading?'rgba(255,255,255,.04)':t1,
-                color:verdictLoading?t3:bg0,fontFamily:sans,fontSize:13,
-                fontWeight:500,cursor:verdictLoading?'not-allowed':'pointer',
-                letterSpacing:'-.01em',marginBottom:10,transition:'all .2s'}}>
-              {verdictLoading ? 'Анализируем...' : 'Персональный анализ'}
-            </button>
-            <a href={selectedProgram.url || `https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
-              target="_blank" rel="noopener"
-              style={selectedProgram.verified ? {
-                display:'block',textAlign:'center',padding:'11px',borderRadius:8,
-                border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
-              } : {
-                display:'block',textAlign:'center',padding:'13px',borderRadius:8,
-                border:`1.5px solid ${gold}50`,background:`${gold}0F`,
-                fontFamily:sans,fontSize:13,fontWeight:500,color:gold,textDecoration:'none',
-              }}>
-              {selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'}
-            </a>
-            <a href={`/program/${selectedProgram.id}`} target="_blank" rel="noopener"
-              style={{display:'block',textAlign:'center',padding:'9px',fontFamily:sans,fontSize:11,
-                color:t3,textDecoration:'underline'}}>
-              Публичная страница этой программы (можно поделиться)
-            </a>
-            {isMobile&&(
-  <button onClick={()=>setSelectedProgram(null)}
-    style={{position:'sticky',bottom:0,left:0,right:0,
-      width:'100%',marginTop:20,padding:'16px',
-      background:`linear-gradient(to top, ${bg1} 80%, transparent)`,
-      border:'none',borderTop:`1px solid ${line}`,
-      color:t2,fontFamily:sans,fontSize:14,cursor:'pointer',
-      letterSpacing:'-.01em'}}>
-    Закрыть
-  </button>
-)}
-            {verdictError&&(
-              <div style={{marginTop:20,padding:'14px 16px',borderRadius:8,
-                background:`${red}0D`,border:`1px solid ${red}30`}}>
-                <span style={{fontFamily:sans,fontSize:13,color:red}}>{verdictError}</span>
-              </div>
-            )}
-            {verdict&&(
-              <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
-                <div style={{height:1,background:line,marginBottom:20}}/>
-                <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЕРСОНАЛЬНЫЙ АНАЛИЗ</div>
-                {!selectedProgram.verified&&(
-                  <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',
-                    marginBottom:16,borderRadius:8,background:`${gold}0F`,border:`1px solid ${gold}35`}}>
-                    <span style={{fontFamily:mono,fontSize:12,color:gold,flexShrink:0}}>⚠</span>
-                    <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>
-                      Этот анализ рассуждает поверх данных программы, которые ещё не проверены человеком —
-                      стоимость, дедлайн и требования могли собрать неточно. Перепроверь на сайте вуза
-                      перед тем, как принимать решение по нему.
-                    </span>
-                  </div>
-                )}
-                <p style={{fontFamily:sans,fontSize:15,color:t1,lineHeight:1.6,marginBottom:16,fontWeight:400}}>«{verdict.verdict}»</p>
-                {verdict.fit?.map((f:string,i:number)=>(
-                  <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
-                    <span style={{color:t3,flexShrink:0}}>—</span>
-                    <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{f}</span>
-                  </div>
-                ))}
-                {verdict.warnings?.length>0&&(
-                  <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${line}`}}>
-                    <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:amb,marginBottom:10}}>НА ЧТО ОБРАТИТЬ ВНИМАНИЕ</div>
-                    {verdict.warnings.map((w:string,i:number)=>(
-                      <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
-                        <span style={{color:amb,flexShrink:0}}>⚠</span>
-                        <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{w}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    )}
   </div>
 )}
 {tab==='saved'&&(
@@ -1377,6 +1245,182 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
   </div>
 )}
       </main>
+      {/* Раньше эта модалка жила внутри {tab==='unis'&&(...)} — открыть
+          программу можно было только со вкладки «Вузы»; клик на карточку
+          в «Избранном», «Заявках» и т.д. молча ничего не делал (selectedProgram
+          обновлялся, но модалка не была смонтирована в дереве для этих вкладок).
+          Вынесено на уровень выше — рендерится независимо от активной вкладки. */}
+      {selectedProgram&&(
+        <div onClick={()=>setSelectedProgram(null)}
+          style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',
+            zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',
+            padding:24,backdropFilter:'blur(4px)'}}>
+          <div onClick={e=>e.stopPropagation()}
+          onTouchStart={e=>{dragStart.current=e.touches[0].clientY;setDragging(true)}}
+  onTouchMove={e=>{const dy=e.touches[0].clientY-dragStart.current;if(dy>0)setDragY(dy)}}
+  onTouchEnd={()=>{if(dragY>120){setSelectedProgram(null);setDragY(0)}else setDragY(0);setDragging(false)}}
+            style={{width:'100%',maxWidth:isMobile?'100%':520,maxHeight:isMobile?'92vh':'85vh',overflowY:'auto',
+  background:bg1,borderRadius:isMobile?'20px 20px 0 0':12,border:`1px solid ${line}`,
+  animation:isMobile?'slideUpFull .35s cubic-bezier(.22,.68,0,1.1) both':'slideUp .3s ease both',
+  transform:dragY>0?`translateY(${dragY}px)`:'none',
+  transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
+            <div style={{padding:'28px 32px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
+                <div>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.14em',color:t3,marginBottom:8}}>
+                    {BUCKET_CFG[selectedProgram._bucket as keyof typeof BUCKET_CFG].label.toUpperCase()} · ПРИМЕРНАЯ ОЦЕНКА {selectedProgram._score}
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+                    <h2 style={{fontFamily:displayFont.style.fontFamily,fontSize:22,color:t1,fontWeight:800,letterSpacing:'-.01em',lineHeight:1.2}}>
+                      {selectedProgram._p}
+                    </h2>
+                    <VerifiedBadge verified={selectedProgram.verified}/>
+                  </div>
+                  <div style={{fontFamily:sans,fontSize:13,color:t2,marginBottom:4}}>{selectedProgram._n}</div>
+                  <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.5}}>
+                    Оценка — грубая прикидка по языковому баллу/бюджету/рейтингу, не гарантия поступления.
+                  </p>
+                </div>
+                <button onClick={()=>setSelectedProgram(null)}
+                  style={{background:'none',border:'none',color:t3,cursor:'pointer',fontSize:20,padding:'0 0 0 16px',flexShrink:0}}>×</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderTop:`1px solid ${line}`,borderLeft:`1px solid ${line}`,marginBottom:24}}>
+                {[
+                  {l:'РЕЙТИНГ',v:selectedProgram._rank},
+                  {l:'СТОИМОСТЬ',v:selectedProgram._cost},
+                  {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,warn:selectedProgram._days<30},
+                ].map((m,i)=>(
+                  <div key={i} style={{padding:'12px 14px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
+                    <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:4}}>{m.l}</div>
+                    <div style={{fontFamily:sans,fontSize:13,color:m.warn?red:t1}}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+              {selectedProgram.summary&&(
+                <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.7,marginBottom:24,fontWeight:300}}>{selectedProgram.summary}</p>
+              )}
+              <div style={{height:1,background:line,marginBottom:20}}/>
+              {selectedProgram.pros?.length>0&&(
+                <div style={{marginBottom:20}}>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЛЮСЫ</div>
+                  {selectedProgram.pros.map((p:string,i:number)=>(
+                    <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
+                      <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
+                      <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedProgram.cons?.length>0&&(
+                <div style={{marginBottom:20}}>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>МИНУСЫ</div>
+                  {selectedProgram.cons.map((c:string,i:number)=>(
+                    <div key={i} style={{display:'flex',gap:12,marginBottom:8,alignItems:'flex-start'}}>
+                      <span style={{color:t3,fontSize:11,marginTop:2,flexShrink:0}}>—</span>
+                      <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{c}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedProgram.scholarships?.length>0&&(
+                <div style={{marginBottom:24}}>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>СТИПЕНДИИ</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                    {selectedProgram.scholarships.map((s:string,i:number)=>(
+                      <span key={i} style={{fontFamily:mono,fontSize:9,padding:'4px 10px',borderRadius:3,border:`1px solid ${line}`,color:t2}}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <button onClick={()=>getVerdict(selectedProgram)} disabled={verdictLoading}
+                style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
+                  background:verdictLoading?'rgba(255,255,255,.04)':t1,
+                  color:verdictLoading?t3:bg0,fontFamily:sans,fontSize:13,
+                  fontWeight:500,cursor:verdictLoading?'not-allowed':'pointer',
+                  letterSpacing:'-.01em',marginBottom:verdictLoading?4:10,transition:'all .2s'}}>
+                {verdictLoading ? 'Анализируем...' : 'Персональный анализ'}
+              </button>
+              {verdictLoading&&(
+                // ИИ-анализ иногда реально занимает 20-40+ секунд (нестабильный
+                // прокси) — без этой подсказки долгое ожидание читалось как
+                // "зависло/сломалось", хотя запрос просто ещё выполняется.
+                <p style={{fontFamily:sans,fontSize:11,color:t3,textAlign:'center',marginBottom:10}}>
+                  Иногда занимает до минуты — не закрывай окно
+                </p>
+              )}
+              <a href={selectedProgram.url || `https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
+                target="_blank" rel="noopener"
+                style={selectedProgram.verified ? {
+                  display:'block',textAlign:'center',padding:'11px',borderRadius:8,
+                  border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
+                } : {
+                  display:'block',textAlign:'center',padding:'13px',borderRadius:8,
+                  border:`1.5px solid ${gold}50`,background:`${gold}0F`,
+                  fontFamily:sans,fontSize:13,fontWeight:500,color:gold,textDecoration:'none',
+                }}>
+                {selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'}
+              </a>
+              <a href={`/program/${selectedProgram.id}`} target="_blank" rel="noopener"
+                style={{display:'block',textAlign:'center',padding:'9px',fontFamily:sans,fontSize:11,
+                  color:t3,textDecoration:'underline'}}>
+                Публичная страница этой программы (можно поделиться)
+              </a>
+              {isMobile&&(
+    <button onClick={()=>setSelectedProgram(null)}
+      style={{position:'sticky',bottom:0,left:0,right:0,
+        width:'100%',marginTop:20,padding:'16px',
+        background:`linear-gradient(to top, ${bg1} 80%, transparent)`,
+        border:'none',borderTop:`1px solid ${line}`,
+        color:t2,fontFamily:sans,fontSize:14,cursor:'pointer',
+        letterSpacing:'-.01em'}}>
+      Закрыть
+    </button>
+  )}
+              {verdictError&&(
+                <div style={{marginTop:20,padding:'14px 16px',borderRadius:8,
+                  background:`${red}0D`,border:`1px solid ${red}30`}}>
+                  <span style={{fontFamily:sans,fontSize:13,color:red}}>{verdictError}</span>
+                </div>
+              )}
+              {verdict&&(
+                <div style={{marginTop:20,animation:'slideUp .4s ease both'}}>
+                  <div style={{height:1,background:line,marginBottom:20}}/>
+                  <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:12}}>ПЕРСОНАЛЬНЫЙ АНАЛИЗ</div>
+                  {!selectedProgram.verified&&(
+                    <div style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',
+                      marginBottom:16,borderRadius:8,background:`${gold}0F`,border:`1px solid ${gold}35`}}>
+                      <span style={{fontFamily:mono,fontSize:12,color:gold,flexShrink:0}}>⚠</span>
+                      <span style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.5}}>
+                        Этот анализ рассуждает поверх данных программы, которые ещё не проверены человеком —
+                        стоимость, дедлайн и требования могли собрать неточно. Перепроверь на сайте вуза
+                        перед тем, как принимать решение по нему.
+                      </span>
+                    </div>
+                  )}
+                  <p style={{fontFamily:sans,fontSize:15,color:t1,lineHeight:1.6,marginBottom:16,fontWeight:400}}>«{verdict.verdict}»</p>
+                  {verdict.fit?.map((f:string,i:number)=>(
+                    <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
+                      <span style={{color:t3,flexShrink:0}}>—</span>
+                      <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{f}</span>
+                    </div>
+                  ))}
+                  {verdict.warnings?.length>0&&(
+                    <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${line}`}}>
+                      <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:amb,marginBottom:10}}>НА ЧТО ОБРАТИТЬ ВНИМАНИЕ</div>
+                      {verdict.warnings.map((w:string,i:number)=>(
+                        <div key={i} style={{display:'flex',gap:12,marginBottom:8}}>
+                          <span style={{color:amb,flexShrink:0}}>⚠</span>
+                          <span style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.5}}>{w}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {isMobile&&(
   <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:50,
     background:'rgba(13,13,15,0.92)',backdropFilter:'blur(24px)',

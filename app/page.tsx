@@ -260,6 +260,18 @@ export default function Home() {
     return () => { cancelled = true; clearInterval(id) }
   },[signupPending])
 
+  // Экран step===99 ("СТРОИМ ТВОЙ ПЛАН") продвигается через
+  // onAnimationEnd на CSS-анимации логотипа — если событие по любой
+  // причине не долетит (вкладка в фоне во время анимации, редкий
+  // браузерный баг, троттлинг на слабом устройстве), пользователь
+  // застревает на этом экране навсегда без единого способа продолжить.
+  // Подстраховка: жёсткий таймер чуть дольше анимации (3.5s).
+  useEffect(() => {
+    if (step !== 99) return
+    const t = setTimeout(() => setStep(8), 3800)
+    return () => clearTimeout(t)
+  }, [step])
+
   const set = (k: string, v: unknown) => setA(x => ({...x,[k]:v}))
   const TOTAL = 8
 
