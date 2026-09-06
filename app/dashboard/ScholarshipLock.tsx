@@ -1,26 +1,52 @@
 'use client'
 import { useState } from 'react'
-import { bg0, bg2, line, t1, t2, gold, sans, mono } from '@/lib/theme'
+import { bg0, bg1, bg2, line, t1, t2, gold, sans, mono } from '@/lib/theme'
 
 /**
  * Общий "замок" для платного контента гайдов по стипендиям (Венгрия,
- * Италия, и любая следующая страна). Вынесен из HungaryGuide.tsx, чтобы не
- * дублировать одну и ту же разметку блюра/кнопки в каждом новом гайде.
+ * Италия, и любая следующая страна).
+ *
+ * 2026-09-06: раньше принимал реальный контент как children и просто
+ * накладывал CSS-блюр — сам текст всё равно уходил в HTML/JS клиенту,
+ * блюр защищал только от взгляда, не от чтения. Теперь для НЕ-Pro
+ * пользователя реальный контент серверу вообще не запрашивается (см.
+ * app/api/guide/[country]/route.ts) — сюда приходит либо реальные дети
+ * (когда unlocked=true), либо ничего, и компонент сам рисует общий
+ * скелетон-плейсхолдер вместо попытки "заблюрить" несуществующий текст.
+ *
  * Платежа в проекте всё ещё нет — кнопка честно говорит об этом, не
  * делает вид, что что-то происходит.
- *
- * `isPro` (2026-08-31) — читается из `profiles.is_pro`, ручной/админский
- * флаг (см. sql/2026-08-31-add-is-pro-column.sql и scripts/set-pro.mjs) —
- * включается вручную через Supabase, никакого платежа за ним пока нет.
- * Когда isPro=true — рендерим детей как есть, без блюра и кнопки.
  */
-export default function ScholarshipLock({ children, isPro = false }: { children: React.ReactNode; isPro?: boolean }) {
+function SkeletonLines({ n = 3 }: { n?: number }) {
+  const widths = ['92%', '78%', '85%', '65%', '90%']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: n }).map((_, i) => (
+        <div key={i} style={{ height: 11, borderRadius: 4, background: 'rgba(255,255,255,.06)', width: widths[i % widths.length] }} />
+      ))}
+    </div>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div style={{ background: bg1, border: `1px solid ${line}`, borderRadius: 8, padding: 20, marginBottom: 16 }}>
+      <div style={{ height: 14, width: '40%', borderRadius: 4, background: 'rgba(255,255,255,.09)', marginBottom: 16 }} />
+      <SkeletonLines n={3} />
+    </div>
+  )
+}
+
+export default function ScholarshipLock({ children, unlocked = false, loading = false }: { children: React.ReactNode; unlocked?: boolean; loading?: boolean }) {
   const [unlockMsg, setUnlockMsg] = useState(false)
-  if (isPro) return <>{children}</>
+  if (unlocked) return <>{children}</>
+
   return (
     <div style={{ position: 'relative' }}>
-      <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none', maxHeight: 620, overflow: 'hidden' }}>
-        {children}
+      <div style={{ pointerEvents: 'none', userSelect: 'none', maxHeight: 620, overflow: 'hidden', opacity: loading ? 0.5 : 1 }}>
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
       <div style={{
         position: 'absolute', inset: 0, top: 40,

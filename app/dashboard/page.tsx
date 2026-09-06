@@ -9,6 +9,7 @@ import VerifiedBadge from '@/components/VerifiedBadge'
 import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
+import { resolveAdmissionYear } from '@/lib/admissionYear'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -147,7 +148,12 @@ function calcScore(p: any, profile: any): number {
     z += profile.work === 'yes' ? 0.15 : 0
   }
 
-  return Math.round(100 / (1 + Math.exp(-z)))
+  // При максимально сильном профиле z доходит до ~7, сигмоида на этом
+  // участке уже практически 1 — округление показывало студенту "99%" или
+  // "98%" шанс поступления, что читается как обещание гарантии, которую
+  // ни один вуз никогда не даёт. Верхняя граница 90 — это честный "очень
+  // сильный кандидат", а не "поступление предрешено".
+  return Math.min(90, Math.max(4, Math.round(100 / (1 + Math.exp(-z)))))
 }
 
 function getBucket(score: number) {
@@ -181,6 +187,33 @@ function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
 }
 function Mono({children,style={}}:{children:React.ReactNode,style?:React.CSSProperties}) {
   return <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,...style}}>{children}</span>
+}
+// Полноэкранная заглушка для Pro-фич целиком (не частичный блюр, как
+// ScholarshipLock — здесь скрывать нечего, просто фича недоступна на
+// бесплатном тарифе). Платежа всё ещё нет — честно говорим об этом.
+function ProUpsell({title,desc}:{title:string,desc:string}) {
+  const [msg,setMsg] = useState(false)
+  return (
+    <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+      <div style={{maxWidth:420,textAlign:'center',padding:'36px 32px',borderRadius:12,
+        background:bg1,border:`1px solid ${line}`,boxShadow:'0 20px 48px rgba(0,0,0,.35)'}}>
+        <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🔒</div>
+        <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>{title}</div>
+        <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:20}}>{desc}</p>
+        <button onClick={()=>setMsg(true)} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
+          background:gold,color:bg0,fontFamily:sans,fontSize:13,fontWeight:600,cursor:'pointer',
+          letterSpacing:'-.01em',marginBottom:msg?10:0}}>
+          Разблокировать Pro
+        </button>
+        {msg&&(
+          <p style={{fontFamily:sans,fontSize:11,color:t2,lineHeight:1.5}}>
+            Оплата пока не подключена — эта часть продукта в разработке. Скоро можно будет
+            разблокировать разовым платежом.
+          </p>
+        )}
+      </div>
+    </div>
+  )
 }
 /* ══════════════════════════════════════════════════════
    MAIN DASHBOARD
@@ -410,12 +443,19 @@ const daysUntil = (month: number, day: number) => {
 }
 const unis = useMemo(() => diversifyByCountry(programs.map((p: any, i: number) => {
   const score = calcScore(p, profile)
+  // Раньше программа дороже заявленного бюджета просто получала более
+  // низкий скор — студент, сказавший "нужно бесплатно", не видел НИКАКОГО
+  // прямого сигнала, что показанный вариант вообще не подходит под его
+  // ограничение, только менее заметное отличие в цифре скора.
+  const budgetLimit = BUDGET_LIMIT[profile.budget] ?? 15000
+  const overBudget = p.tuition_eur > budgetLimit
   return {
     ...p,
     _n: p.university?.name || '',
     _p: p.name,
     _days: daysUntil(p.deadline_month, p.deadline_day),
     _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
+    _overBudget: overBudget,
     _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
     _c: COLORS[i % COLORS.length],
     _country: p.university?.country || '',
@@ -507,9 +547,19 @@ const haptic = (ms=8) => {
   if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms)
 }
 
+// Бесплатный тариф — 1 программа в избранном (см. память проекта:
+// "Free forever — ... 1 favorite"). Раньше лимита не было вообще —
+// вся ценность Pro-тарифа ("unlimited favorites") доставалась бесплатно.
+// Проверка на клиенте — это лимит на удобство, а не защита секретных
+// данных (в отличие от гайдов), так что этого достаточно.
+const FREE_FAVORITES_LIMIT = 1
 const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
   e.stopPropagation()
   const isFav = favorites.has(programId)
+  if (!isFav && !profile.is_pro && favorites.size >= FREE_FAVORITES_LIMIT) {
+    alert(`На бесплатном тарифе можно сохранить ${FREE_FAVORITES_LIMIT} программу в избранное. Безлимит — в Pro (оплата пока не подключена).`)
+    return
+  }
   const next = new Map(favorites)
   if (isFav) {
     next.delete(programId)
@@ -553,9 +603,13 @@ const getVerdict = async (p: any) => {
   const abort = new AbortController()
   const timer = setTimeout(() => abort.abort(), 60000)
   try {
+    const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/verdict', {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: {
+        'Content-Type':'application/json',
+        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
       body: JSON.stringify({
         program: { ...p, university_name: p.university?.name },
         profile,
@@ -563,7 +617,9 @@ const getVerdict = async (p: any) => {
       signal: abort.signal,
     })
     const data = await res.json()
-    if (!res.ok) {
+    if (res.status === 403 && data?.locked) {
+      setVerdictError('Персональный анализ — платная функция Pro. Оплата пока не подключена, скоро можно будет разблокировать.')
+    } else if (!res.ok) {
       setVerdictError('Не получилось получить анализ — попробуй позже')
     } else {
       setVerdict(data)
@@ -678,7 +734,7 @@ const getVerdict = async (p: any) => {
                 Привет, {name}
               </h1>
               <Mono style={{color:t2}}>
-                {countries.map((c:string)=>c.toUpperCase()).join(' · ')} · {profile.field} · {profile.timeline}
+                {countries.map((c:string)=>c.toUpperCase()).join(' · ')} · {profile.field} · {resolveAdmissionYear(profile.timeline)}
               </Mono>
             </div>
 
@@ -841,7 +897,7 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 <span style={{justifySelf:'center'}} title={CNAME[u._country]||u._country}>
                   <Flag code={u._country}/>
                 </span>
-                <Mono style={{color:t2}}>{u._cost}</Mono>
+                <Mono style={{color:u._overBudget?red:t2}}>{u._overBudget?'⚠ ':''}{u._cost}</Mono>
                 <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:18,color:cfg.color}}>{u._score}</div>
                 <Mono style={{color:u._days<30?red:t2}}>{u._days} дн.</Mono>
               </div>
@@ -1233,7 +1289,10 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
   </div>
 )}
 {tab==='timeline'&&(
-  <GanttTimeline profile={profile} programs={timelinePrograms}/>
+  profile.is_pro
+    ? <GanttTimeline profile={profile} programs={timelinePrograms}/>
+    : <ProUpsell title="Таймлайн — функция Pro"
+        desc="Полный план-график от сегодня до переезда со всеми дедлайнами и экспортом в календарь (Google/Apple) — часть платного тарифа."/>
 )}
 {tab==='scholarship-guide'&&(
   <div style={{padding:'36px 40px'}}>
@@ -1287,7 +1346,7 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderTop:`1px solid ${line}`,borderLeft:`1px solid ${line}`,marginBottom:24}}>
                 {[
                   {l:'РЕЙТИНГ',v:selectedProgram._rank},
-                  {l:'СТОИМОСТЬ',v:selectedProgram._cost},
+                  {l:'СТОИМОСТЬ',v:selectedProgram._cost,warn:selectedProgram._overBudget},
                   {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,warn:selectedProgram._days<30},
                 ].map((m,i)=>(
                   <div key={i} style={{padding:'12px 14px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>

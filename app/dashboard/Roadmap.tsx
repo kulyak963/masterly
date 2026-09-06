@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
+import { resolveAdmissionYear } from '@/lib/admissionYear'
 
 interface Task { t: string; done?: boolean; urgent?: boolean; locked?: boolean }
 interface Node {
@@ -21,6 +22,10 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
   const wantsNl = countries.includes('nl')
   const deUrgent = sf && wantsDe
   const isPro = !!p.is_pro
+  // p.timeline может быть 'later' ("пока не решил") или протухшим годом
+  // из анкеты (см. lib/admissionYear.ts) — раньше оба случая подставлялись
+  // в текст буквально ("Сент later" / год, который уже прошёл).
+  const admYear = resolveAdmissionYear(p.timeline)
 
   // Раньше узел "Подача заявок" ниже был жёстко зашит на 4 конкретных
   // вуза (TU Munich/Aalto/TU Delft/KTH) — одинаковые для всех, независимо
@@ -135,7 +140,7 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
       tasks: appliedList.length ? appliedList : [{t:'Пока пусто — открой вкладку «Программы», добавь несколько в «Избранное»'}],
     },
     {
-      id:'result', label:'Оффер и переезд', sub:`Сент ${p.timeline}`,
+      id:'result', label:'Оффер и переезд', sub:`Сент ${admYear}`,
       color: grn, status:'locked', zone:3, row:2, parallel:false,
       blockedBy:['apply'],
       insight:'Сразу после оффера — виза и жильё. Не медли: места в общежитиях заканчиваются в первые дни.',
@@ -150,7 +155,7 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
         ...(wantsIt ? (isPro
           ? [{t:'DSU (Италия) — подать заявку в региональное агентство, август–сентябрь (нужно уже быть зачисленным)'}]
           : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
-        {t:`Начало учёбы — сентябрь ${p.timeline}`},
+        {t:`Начало учёбы — сентябрь ${admYear}`},
       ],
     },
   ]

@@ -6,6 +6,7 @@ import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, mono } fr
 import { displayFont } from '@/lib/fonts'
 import { CITY_SHOTS } from '@/components/PhotoCycler'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
+import { soonestAdmissionYear } from '@/lib/admissionYear'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -283,6 +284,14 @@ export default function Home() {
     gpa: a.gpa, ielts: a.ielts, work: a.work, score: score,
     master_field: a.master_field,
     master_direction: a.master_direction,
+    // Раньше не сохранялись вообще — ИИ-анализ (app/api/verdict/route.ts)
+    // читает quiz_vibe/quiz_stay и при пустом значении подставляет дефолт
+    // "качество жизни"/"не решил" ВСЕМ, включая тех, кто квиз прошёл и дал
+    // настоящий ответ. Требует sql/2026-09-06-add-quiz-columns.sql.
+    quiz_cost: a.quiz_cost || null,
+    quiz_stay: a.quiz_stay || null,
+    quiz_lang: a.quiz_lang || null,
+    quiz_vibe: a.quiz_vibe || null,
   })
 
   const goNext = async () => {
@@ -784,12 +793,20 @@ setStep((s:any)=> s+1)
       <SH n={6} total={TOTAL} title="Сроки и бюджет" sub="Определяет интенсивность подготовки и стипендии"/>
       <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>КОГДА ПЛАНИРУЕШЬ НАЧАТЬ</div>
       <div style={{display:'flex',flexDirection:'column',gap:2,marginBottom:4}}>
-        {[
-          {v:'2025',l:'Уже в 2025',  s:'Дедлайны близко — нужно действовать сейчас'},
-          {v:'2026',l:'Осень 2026',  s:'Оптимально — время есть'},
-          {v:'2027',l:'Осень 2027',  s:'Максимум времени для сильного профиля'},
-          {v:'later',l:'Пока не решил',s:'Разберёмся вместе с таймингом'},
-        ].map(o=>(
+        {(() => {
+          // Раньше года были захардкожены (2025/2026/2027) — к сентябрю 2026
+          // "Осень 2026" (подписанная "Оптимально") на деле уже год как
+          // закрыта для подачи, а весь Таймлайн строился на дедлайнах в
+          // прошлом и оставался пустым. Считаем от реальной сегодняшней даты.
+          const soon = soonestAdmissionYear()
+          const tight = soon === new Date().getFullYear()
+          return [
+            {v:String(soon), l:`${tight?'Уже в':'Осень'} ${soon}`, s: tight?'Дедлайны близко — нужно действовать сейчас':'Ближайший реальный поток'},
+            {v:String(soon+1), l:`Осень ${soon+1}`, s:'Оптимально — время есть'},
+            {v:String(soon+2), l:`Осень ${soon+2}`, s:'Максимум времени для сильного профиля'},
+            {v:'later',l:'Пока не решил',s:'Разберёмся вместе с таймингом'},
+          ]
+        })().map(o=>(
           <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.timeline===o.v} onClick={()=>set('timeline',o.v)}/>
         ))}
       </div>

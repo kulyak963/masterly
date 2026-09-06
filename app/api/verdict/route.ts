@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { askAI, extractJson } from '../../../lib/ai'
+import { getSupabaseAdmin } from '../../../lib/supabaseAdmin'
 
 // НЕ трогаем maxDuration — лимит зависит от тарифа Vercel, а его конкретное
 // значение отсюда не проверить; завысить его — верный способ уронить сборку
@@ -7,6 +8,30 @@ import { askAI, extractJson } from '../../../lib/ai'
 // getVerdict — достаточная защита от зависшего запроса без этого риска.
 
 export async function POST(req: NextRequest) {
+  // Раньше эндпоинт был открыт вообще без проверки — не только бесплатным
+  // пользователям, а вообще любому, кто найдёт URL, включая неавторизо-
+  // ванных: каждый вызов — реальный платный запрос к Anthropic. По модели
+  // монетизации (см. память проекта) "ИИ-анализ" — платная фича Pro.
+  const authHeader = req.headers.get('authorization') ?? ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  if (!token) return NextResponse.json({ error: 'Требуется вход' }, { status: 401 })
+
+  const db = getSupabaseAdmin()
+  const { data: userRes } = await db.auth.getUser(token)
+  if (!userRes?.user) return NextResponse.json({ error: 'Требуется вход' }, { status: 401 })
+
+  const { data: profileRow } = await db
+    .from('profiles')
+    .select('is_pro')
+    .eq('user_id', userRes.user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!profileRow?.is_pro) {
+    return NextResponse.json({ error: 'Персональный анализ — платная функция Pro', locked: true }, { status: 403 })
+  }
+
   const { program, profile } = await req.json()
 
   const prompt = `Ты помогаешь студенту понять подходит ли ему магистерская программа.

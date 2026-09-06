@@ -2,11 +2,27 @@
 import { useState, useEffect } from 'react'
 import CalendarExportModal, { CalEvent } from './CalendarExportModal'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
+import { resolveAdmissionYear } from '@/lib/admissionYear'
 
 const NOW = new Date(); NOW.setHours(0,0,0,0)
 
 function toIdx(d: Date): number {
   return (d.getTime() - NOW.getTime()) / (1000*60*60*24*30.44)
+}
+
+// Раньше все дедлайны считались от `dy = admYear - 1`, где admYear брался
+// из анкеты как есть — если студент прошёл анкету весной, а зашёл в кабинет
+// осенью (или "оптимальный" год анкеты сам оказался уже прошедшим — см.
+// lib/admissionYear.ts), каждый дедлайн уезжал в прошлое и весь Таймлайн
+// молча фильтровался в пустоту (calEvents.filter(e=>e.date>=NOW...) вырезал
+// вообще всё). Список программ уже считал даты иначе — "ближайшее будущее
+// наступление месяца/дня от сегодня" — и поэтому не ломался. Переносим ту
+// же логику сюда, чтобы Таймлайн и карточки программ не расходились.
+function nextOccurrence(month: number, day = 15): Date {
+  let year = NOW.getFullYear()
+  let d = new Date(year, month - 1, day)
+  if (d < NOW) { year += 1; d = new Date(year, month - 1, day) }
+  return d
 }
 
 function monthLabel(offset: number): string {
@@ -23,8 +39,6 @@ interface Marker { idx:number; label:string; urgent?:boolean; locked?:boolean }
 interface Lane { id:string; label:string; sub:string; color:string; bars:Bar[]; markers:Marker[] }
 
 function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: CalEvent[] } {
-  const admYear = parseInt(profile.timeline)||2026
-  const dy = admYear-1
   const ni = profile.ielts < 6.5
   const sf = profile.budget === 'zero'
   const countries: string[] = profile.countries?.split(',').filter(Boolean) || []
@@ -37,11 +51,42 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const deUrgent = sf && wantsDe
   const isPro = !!profile.is_pro
 
-  const D = (y:number, m:number, d=15) => toIdx(new Date(y,m-1,d))
-  const dateStr = (y:number,m:number,d=15) => {
-    const dt = new Date(y,m-1,d)
-    return dt.toISOString().slice(0,10)
-  }
+  // Дедлайны (стипендии, подача в вуз) — всегда ближайшее будущее
+  // наступление месяца/дня, независимо от того, что выбрано в анкете.
+  const D = (m:number, d=15) => toIdx(nextOccurrence(m,d))
+  const dateStr = (m:number, d=15) => nextOccurrence(m,d).toISOString().slice(0,10)
+  // Финальные вехи (оффер/виза/переезд) искренне привязаны к конкретному
+  // году поступления — но не к тому, что записан в анкете (мог протухнуть),
+  // а к году, в который реально попадает последний дедлайн подачи, чтобы
+  // "принять оффер" никогда не оказался раньше "подать документы" на шкале.
+  const DY = (year:number, m:number, d=15) => toIdx(new Date(year,m-1,d))
+  const dateStrY = (year:number,m:number,d=15) => new Date(year,m-1,d).toISOString().slice(0,10)
+
+  // Реальные дедлайны конкретных программ студента (не догадка "одна дата
+  // на страну") — считаются от ближайшего будущего наступления (см. D
+  // выше), поэтому никогда не проваливаются в прошлое.
+  const unis = (programs||[]).map(p=>{
+    const m = p.deadline_month || 1
+    const d = p.deadline_day || 15
+    return {
+      label: `${p.university?.name || p._n || '?'} — ${p.name || p._p || ''}`,
+      idx: D(m, d),
+      dateObj: nextOccurrence(m, d),
+      date: dateStr(m, d),
+      url: p.url || p.university?.website || '',
+    }
+  }).sort((a,b)=>a.idx-b.idx)
+  const firstDl = unis[0]?.idx ?? D(1,15)
+  const lastDl  = unis[unis.length-1]?.idx ?? D(2,15)
+  // Год поступления для вех ПОСЛЕ подачи (оффер/виза/переезд) — год
+  // последнего реального дедлайна (европейские программы с началом в
+  // сентябре почти всегда закрывают приём в январе-апреле ТОГО ЖЕ года).
+  // Раньше эти вехи брались из анкеты напрямую — если её "оптимальный" год
+  // успевал протухнуть к моменту захода в кабинет (см. lib/admissionYear.ts),
+  // "принять оффер" оказывалось раньше самих дедлайнов подачи на шкале.
+  const impliedAdmYear = unis.length
+    ? unis[unis.length-1].dateObj.getFullYear()
+    : resolveAdmissionYear(profile.timeline)
 
   // Дедлайны стипендий Венгрии/Италии (Гайд · PRO) — по просьбе Дениса
   // (2026-08-31), "все дедлайны должны падать в таймлайн". Даты — годовые
@@ -49,13 +94,12 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   // допущения точности, что и у DAAD/Eiffel/SI ниже (фиксированная дата
   // каждый год, могут немного сдвигаться — см. предупреждение в шапке).
   //
-  // ВАЖНО про год: SH и MAECI — это стипендии, на которые подаются ДО
-  // поступления, одновременно с заявкой в вуз, поэтому они в год `dy`
-  // (год подачи), как и DAAD/Eiffel/SI ниже. DSU — принципиально другое:
-  // на неё нельзя податься, пока не зачислен(а) — заявка идёт уже в
-  // августе-сентябре ТОГО учебного года, когда учёба реально начинается,
-  // то есть в `admYear`, а не в `dy` (иначе дедлайн окажется на год
-  // раньше, чем нужно, и может вообще пропасть с видимого таймлайна).
+  // SH и MAECI — стипендии, на которые подаются ДО поступления, вместе с
+  // заявкой в вуз, поэтому считаются как обычный дедлайн (ближайшее
+  // будущее наступление). DSU — принципиально другое: на неё нельзя
+  // податься, пока не зачислен(а) — заявка идёт уже в августе-сентябре
+  // ТОГО учебного года, когда учёба реально начинается, то есть в
+  // `impliedAdmYear`, а не в ближайшее наступление даты.
   //
   // 2026-08-31, по просьбе Дениса: без оплаты гайда сами детали (какая
   // именно стипендия, куда и как подавать) тут показывать нельзя — иначе
@@ -67,32 +111,18 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const scholEvents = [
     ...(wantsHu ? [
       isPro
-        ? {date:dateStr(dy,1,15), label:'Дедлайн — Stipendium Hungaricum (Tempus/DreamApply)', desc:'Не забыть параллельный трек Минобрнауки — дедлайн обычно раньше', urgent:true}
-        : {date:dateStr(dy,1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
+        ? {date:dateStr(1,15), label:'Дедлайн — Stipendium Hungaricum (Tempus/DreamApply)', desc:'Не забыть параллельный трек Минобрнауки — дедлайн обычно раньше', urgent:true}
+        : {date:dateStr(1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
     ] : []),
     ...(wantsIt ? [
       isPro
-        ? {date:dateStr(dy,3,26), label:'Дедлайн — MAECI (стипендия Правительства Италии)', desc:'€10 800, подача на studyinitaly.esteri.it'}
-        : {date:dateStr(dy,3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+        ? {date:dateStr(3,26), label:'Дедлайн — MAECI (стипендия Правительства Италии)', desc:'€10 800, подача на studyinitaly.esteri.it'}
+        : {date:dateStr(3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
       isPro
-        ? {date:dateStr(admYear,9,1), label:'Дедлайн подачи на DSU (регион)', desc:'Подаётся уже после зачисления; точная дата различается по региону'}
-        : {date:dateStr(admYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+        ? {date:dateStrY(impliedAdmYear,9,1), label:'Дедлайн подачи на DSU (регион)', desc:'Подаётся уже после зачисления; точная дата различается по региону'}
+        : {date:dateStrY(impliedAdmYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
     ] : []),
   ]
-
-  // Реальные дедлайны конкретных программ студента (не догадка "одна дата на страну")
-  const unis = (programs||[]).map(p=>{
-    const m = p.deadline_month || 1
-    const d = p.deadline_day || 15
-    return {
-      label: `${p.university?.name || p._n || '?'} — ${p.name || p._p || ''}`,
-      idx: D(dy, m, d),
-      date: dateStr(dy, m, d),
-      url: p.url || p.university?.website || '',
-    }
-  }).sort((a,b)=>a.idx-b.idx)
-  const firstDl = unis[0]?.idx ?? D(dy,1,15)
-  const lastDl  = unis[unis.length-1]?.idx ?? D(dy,2,15)
 
   /* calendar events */
   // Раньше Eiffel/DAAD/SI/Holland показывались абсолютно всем — студент,
@@ -100,16 +130,16 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   // немецкой стипендии как будто это его дедлайн. Теперь каждая привязана
   // к реально выбранной стране, тем же принципом, что уже применён к HU/IT.
   const calEvents: CalEvent[] = [
-    ...(wantsFr ? [{date:dateStr(dy,1,9),  label:'Дедлайн — Eiffel Excellence', desc:'Стипендия Франция · €1 181/мес', urgent:true}] : []),
-    ...(wantsDe ? [{date:dateStr(dy,1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:deUrgent}] : []),
-    ...(wantsSe ? [{date:dateStr(dy,2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'}] : []),
-    ...(wantsNl ? [{date:dateStr(dy,2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'}] : []),
+    ...(wantsFr ? [{date:dateStr(1,9),  label:'Дедлайн — Eiffel Excellence', desc:'Стипендия Франция · €1 181/мес', urgent:true}] : []),
+    ...(wantsDe ? [{date:dateStr(1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:deUrgent}] : []),
+    ...(wantsSe ? [{date:dateStr(2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'}] : []),
+    ...(wantsNl ? [{date:dateStr(2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'}] : []),
     ...scholEvents,
     ...unis.map(u=>({date:u.date, label:`Дедлайн подачи — ${u.label}`, desc:`⚠ Дата собрана ИИ, может быть неточной — проверь на ${u.url||'сайте вуза'} перед подачей`, urgent:u.idx===firstDl})),
-    {date:dateStr(admYear,4,15), label:'Ожидаются первые ответы от вузов', desc:'6–12 недель после дедлайна'},
-    {date:dateStr(admYear,5,1),  label:'Принять оффер от вуза',  desc:'4–6 недель на решение'},
-    {date:dateStr(admYear,5,7),  label:'Подать на студенческую визу', desc:'Германия 6–12 нед · Нидерланды 3–4 нед', urgent:true},
-    {date:dateStr(admYear,9,1),  label:`Начало учёбы — сентябрь ${admYear}`, desc:'Переезд и первый день в вузе'},
+    {date:dateStrY(impliedAdmYear,4,15), label:'Ожидаются первые ответы от вузов', desc:'6–12 недель после дедлайна'},
+    {date:dateStrY(impliedAdmYear,5,1),  label:'Принять оффер от вуза',  desc:'4–6 недель на решение'},
+    {date:dateStrY(impliedAdmYear,5,7),  label:'Подать на студенческую визу', desc:'Германия 6–12 нед · Нидерланды 3–4 нед', urgent:true},
+    {date:dateStrY(impliedAdmYear,9,1),  label:`Начало учёбы — сентябрь ${impliedAdmYear}`, desc:'Переезд и первый день в вузе'},
   ].filter(e=>e.date>=NOW.toISOString().slice(0,10)) // only future
    .sort((a,b)=>a.date.localeCompare(b.date))
 
@@ -142,16 +172,16 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
       id:'schol', label:'Стипендии',
       sub: deUrgent?'⚡ DAAD — дедлайн 14 января':'Параллельно с документами',
       color:gold,
-      bars:[{startIdx:0, endIdx:D(dy,1,14), label:[wantsDe&&'DAAD',wantsFr&&'Eiffel',wantsSe&&'SI',wantsNl&&'Holland'].filter(Boolean).join(' · ')||'Стипендии по выбранным странам', blocker:deUrgent}],
+      bars:[{startIdx:0, endIdx:D(1,14), label:[wantsDe&&'DAAD',wantsFr&&'Eiffel',wantsSe&&'SI',wantsNl&&'Holland'].filter(Boolean).join(' · ')||'Стипендии по выбранным странам', blocker:deUrgent}],
       markers:[
-        ...(wantsFr ? [{idx:D(dy,1,9),  label:'Eiffel 9 янв', urgent:true}] : []),
-        ...(wantsDe ? [{idx:D(dy,1,14), label:'DAAD 14 янв',  urgent:deUrgent}] : []),
-        ...(wantsSe ? [{idx:D(dy,2,15), label:'SI 15 фев'}] : []),
-        ...(wantsNl ? [{idx:D(dy,2,1),  label:'Holland 1 фев'}] : []),
-        ...(wantsHu ? [{idx:D(dy,1,15), label: isPro?'SH 15 янв':'Важный дедлайн', urgent:true, locked:!isPro}] : []),
+        ...(wantsFr ? [{idx:D(1,9),  label:'Eiffel 9 янв', urgent:true}] : []),
+        ...(wantsDe ? [{idx:D(1,14), label:'DAAD 14 янв',  urgent:deUrgent}] : []),
+        ...(wantsSe ? [{idx:D(2,15), label:'SI 15 фев'}] : []),
+        ...(wantsNl ? [{idx:D(2,1),  label:'Holland 1 фев'}] : []),
+        ...(wantsHu ? [{idx:D(1,15), label: isPro?'SH 15 янв':'Важный дедлайн', urgent:true, locked:!isPro}] : []),
         ...(wantsIt ? [
-          {idx:D(dy,3,26), label: isPro?'MAECI 26 мар':'Важный дедлайн', locked:!isPro},
-          {idx:D(admYear,9,1), label: isPro?'DSU сент':'Важный дедлайн', locked:!isPro},
+          {idx:D(3,26), label: isPro?'MAECI 26 мар':'Важный дедлайн', locked:!isPro},
+          {idx:DY(impliedAdmYear,9,1), label: isPro?'DSU сент':'Важный дедлайн', locked:!isPro},
         ] : []),
       ].filter(m=>m.idx>-0.3),
     },
@@ -176,20 +206,20 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
       id:'wait', label:'Ожидание решений',
       sub:'6–12 недель · Возможны интервью',
       color:t2,
-      bars:[{startIdx:lastDl+0.3, endIdx:D(admYear,4,1), label:'Рассмотрение заявок'}],
-      markers:[{idx:D(admYear,4,1), label:'Первые ответы'}],
+      bars:[{startIdx:lastDl+0.3, endIdx:DY(impliedAdmYear,4,1), label:'Рассмотрение заявок'}],
+      markers:[{idx:DY(impliedAdmYear,4,1), label:'Первые ответы'}],
     },
     {
       id:'final', label:'Оффер и переезд',
-      sub:`Виза · Жильё · Старт ${admYear}`,
+      sub:`Виза · Жильё · Старт ${impliedAdmYear}`,
       color:grn,
       bars:[
-        {startIdx:D(admYear,4,1), endIdx:D(admYear,5,15), label:'Принять оффер'},
-        {startIdx:D(admYear,5,7), endIdx:D(admYear,9,1),  label:'Виза · Жильё'},
+        {startIdx:DY(impliedAdmYear,4,1), endIdx:DY(impliedAdmYear,5,15), label:'Принять оффер'},
+        {startIdx:DY(impliedAdmYear,5,7), endIdx:DY(impliedAdmYear,9,1),  label:'Виза · Жильё'},
       ],
       markers:[
-        {idx:D(admYear,5,7), label:'Подать на визу', urgent:true},
-        {idx:D(admYear,9,1), label:`Переезд — Сент ${admYear}`},
+        {idx:DY(impliedAdmYear,5,7), label:'Подать на визу', urgent:true},
+        {idx:DY(impliedAdmYear,9,1), label:`Переезд — Сент ${impliedAdmYear}`},
       ],
     },
   ]
