@@ -374,8 +374,12 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
                           </div>
                         )}
 
-                        {/* task preview */}
-                        {!isLocked&&(
+                        {/* task preview — узел "apply" показывает дедлайны сразу, как
+                            только программа добавлена в избранное, даже пока сам узел
+                            формально заблокирован (Язык+Документы ещё не готовы) —
+                            иначе новый дедлайн не виден на карточке, пока не откроешь
+                            панель деталей кликом */}
+                        {(!isLocked||node.id==='apply')&&(
                           <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${line}`}}>
                             {node.tasks.slice(0,2).map((task,ti)=>{
                               const done=task.done||!!taskDone[`${node.id}-${ti}`]

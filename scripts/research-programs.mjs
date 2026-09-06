@@ -104,10 +104,17 @@ if (!COUNTRY_CODE || !COUNTRY_NAME) {
   process.exit(1)
 }
 
+// 2026-09-03: расширено с 8 до 12 категорий по прямой просьбе Дениса
+// "расширить базу по всем направлениям" — раньше Биотех/Дизайн/Соцнауки/
+// чистые естественные науки не матчились НИ ПОД ОДНО поле в
+// FIELD_KEYWORD_RULES и просто терялись как classified=null, даже когда
+// реально встречались на этапе перечисления (шаг 1 ищет по всем
+// факультетам вуза, шаг 2 — классификация — их просто выбрасывал).
 const ALL_FIELDS = [
   'Computer Science', 'Artificial Intelligence', 'Data Science',
   'Cybersecurity', 'Business Analytics', 'Robotics',
   'Human-Computer Interaction', 'Computational Engineering',
+  'Biotechnology', 'Design', 'Social Sciences', 'Natural Sciences',
 ]
 const FIELDS = args.fields ? args.fields.split(',').map((f) => f.trim()) : ALL_FIELDS
 for (const f of FIELDS) {
@@ -428,8 +435,10 @@ async function enumerateUniversityPrograms(uni) {
 // за 2026-08-28/29 (Sport Management/Agile Entrepreneurship и т.п. →
 // Business Analytics).
 const FIELD_KEYWORD_RULES = [
-  // Жёсткие исключения — проверяются ПЕРВЫМИ, до любых совпадений по полю
-  { exclude: true, re: /\b(medicine|medical|dentist|dental|pharma(cy|ceutical)?(?! innovation)|nursing|clinical|theology|theological|divinity|law\b|llm\b|legal(?! tech)|history|literature|linguistics(?! computational)|philosophy|philology|fine arts|performing arts|music(?! informatics)|painting|sculpture|agricultur|forestry|pedagog|teacher education|social work|veterinary)\b/i },
+  // Жёсткие исключения — проверяются ПЕРВЫМИ, до любых совпадений по полю.
+  // "social work" убран отсюда 2026-09-03 — теперь это законное
+  // направление (Social Sciences), раньше просто выбрасывалось целиком.
+  { exclude: true, re: /\b(medicine|medical|dentist|dental|pharma(cy|ceutical)?(?! innovation)|nursing|clinical|theology|theological|divinity|law\b|llm\b|legal(?! tech)|history|literature|linguistics(?! computational)|philosophy|philology|fine arts|performing arts|music(?! informatics)|painting|sculpture|agricultur|forestry|pedagog|teacher education|veterinary)\b/i },
 
   { field: 'Cybersecurity', re: /\b(cyber ?security|information security|network security|infosec)\b/i },
   { field: 'Artificial Intelligence', re: /\b(artificial intelligence|\bai\b|machine learning|deep learning)\b/i },
@@ -449,6 +458,32 @@ const FIELD_KEYWORD_RULES = [
   {
     field: 'Business Analytics',
     re: /\b(business|management|marketing|finance|financial|accounting|entrepreneur|sport management|hr\b|human resources?|supply chain|logistics|hospitality|tourism|economic|econom(y|ics)|innovation|mba|international trade|banking|insurance)\b/i,
+  },
+  // 2026-09-03: 4 новые категории — раньше программы по этим направлениям
+  // либо выбрасывались как classified=null (несмотря на то что шаг 1
+  // прицельно перечисляет и такие факультеты через "other"-кластер), либо
+  // (Биотех/Дизайн/Соцнауки) насильно приписывались к одной из 8 старых
+  // категорий на уровне анкеты (см. lib/masterFields.ts) — второе честнее
+  // называть багом, не приближением: студент-биотехнолог получал в выдаче
+  // Computational Engineering. Порядок — ПОСЛЕ всех старых правил
+  // намеренно: ничего, что уже классифицировалось раньше, не должно
+  // сменить категорию задним числом, эти 4 правила ловят только то, что
+  // раньше проваливалось мимо всех восьми.
+  {
+    field: 'Biotechnology',
+    re: /\b(biotechnology|biotech|molecular biology|genetic engineering|genomics|synthetic biology|biomedicine|biomedical sciences|life sciences|cell biology|microbiology|biochemistry|bioprocess|biopharmaceutical|neuroscience)\b/i,
+  },
+  {
+    field: 'Design',
+    re: /\b(industrial design|product design|design engineering|graphic design|fashion design|interior design|architecture|architectural design|urban design|spatial design|design management|service design)\b/i,
+  },
+  {
+    field: 'Social Sciences',
+    re: /\b(political science|international relations|international studies|sociology|social sciences?|public policy|public administration|development studies|area studies|anthropology|social psychology|peace and conflict|gender studies|global studies|diplomacy|social work)\b/i,
+  },
+  {
+    field: 'Natural Sciences',
+    re: /\b(applied physics|theoretical physics|astrophysics|astronomy|\bphysics\b|chemistry|\bmathematics\b|applied mathematics|pure mathematics|\bstatistics\b|earth science|geoscience|geology|environmental science|climate science|oceanography|materials science|nanoscience)\b/i,
   },
 ]
 
@@ -730,7 +765,14 @@ async function main() {
         const { items, usage } = await classifyPrograms(uni, rawList, alreadyKnownNames)
         totalUsage.input_tokens += usage.input_tokens ?? 0
         totalUsage.output_tokens += usage.output_tokens ?? 0
-        classified = items.filter((p) => p?.field && ALL_FIELDS.includes(p.field))
+        // --fields в --comprehensive режиме (2026-09-03) — точечный
+        // повторный проход по уже покрытым вузам ради НОВЫХ категорий
+        // (Biotechnology/Design/Social Sciences/Natural Sciences), без
+        // траты дорогих детальных запросов (шаг 3) на CS/Business
+        // программы, которые почти наверняка уже есть в базе с
+        // предыдущего прохода — dedup по имени их всё равно бы отсеял,
+        // но только после того как деньги на запрос уже потрачены.
+        classified = items.filter((p) => p?.field && ALL_FIELDS.includes(p.field) && (!args.fields || FIELDS.includes(p.field)))
         console.log(`подходят: ${classified.length} из ${rawList.length}`)
       } catch (e) {
         console.log(`ОШИБКА: ${e.message}`)

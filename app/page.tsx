@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import { CITY_SHOTS } from '@/components/PhotoCycler'
+import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -67,26 +68,6 @@ const COUNTRIES_MORE = [
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
 const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Другое']
-const MASTER_FIELDS = [
-  {v:'Computer Science',      l:'CS / Разработка'},
-  {v:'Artificial Intelligence',l:'ИИ / ML'},
-  {v:'Data Science',          l:'Data Science'},
-  {v:'Cybersecurity',         l:'Кибербезопасность'},
-  {v:'Business Analytics',    l:'Бизнес / Аналитика'},
-  {v:'Robotics',              l:'Робототехника'},
-  {v:'Human-Computer Interaction', l:'UX / HCI'},
-  {v:'Computational Engineering',  l:'Матмех / Вычисления'},
-]
-const FIELD_TO_DB: Record<string,string> = {
-  'Компьютерные науки / ИИ': 'Computer Science',
-  'Инженерия':               'Robotics',
-  'Экономика':               'Business Analytics',
-  'Физика / Математика':     'Computational Engineering',
-  'Биотех':                  'Computational Engineering',
-  'Дизайн':                  'Human-Computer Interaction',
-  'Социальные науки':        'Business Analytics',
-  'Другое':                  '',
-}
 const BUDGETS = [
   {id:'zero',l:'Только стипендия',   s:'Финансирование — обязательное условие'},
   {id:'low', l:'До €5 000 / год',    s:'Подработка или частичная помощь'},

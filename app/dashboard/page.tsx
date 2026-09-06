@@ -2,13 +2,13 @@
 import Roadmap from './Roadmap'
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import Timeline from './Timeline'
 import GanttTimeline from './GanttTimeline'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
+import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -78,44 +78,76 @@ const BUDGET_LIMIT: Record<string,number> = {
   zero:0, low:5000, mid:15000, high:999999
 }
 
-// Раньше скор считался только по языковому баллу, бюджету и рейтингу вуза —
-// GPA и направление магистратуры (совпадает ли оно с бэкграundом студента)
-// не влияли на цифру вообще, хотя /terms прямо обещает пользователю, что
-// GPA учитывается. Теперь оба реально участвуют:
-// - GPA сильнее двигает скор у селективных вузов (низкий QS-номер) — там
-//   оценки реально решают, у менее избирательных — почти не важны.
-// - master_direction — прокси на то, насколько направление магистратуры
-//   совпадает с тем, что студент изучал (программы уже отфильтрованы по
-//   полю на уровне запроса, поэтому это единственный оставшийся сигнал
-//   "насколько бэкграунд реально подходит именно этой программе").
+// Скор — оценка шанса на поступление именно в эту программу, не общий
+// рейтинг "насколько программа хороша". Переписан на логистическую модель
+// (2026-09-03) вместо аддитивной с жёстким клампом: раньше сильный
+// профиль легко пробивал 100 и слабый легко проваливался в 0 задолго до
+// того, как реально кончались факторы — щипцы просто срезали хвосты,
+// не давая честной картины "насколько именно уверенно". Логистическая
+// кривая (100 / (1+e^-z)) сама насыщается на краях, поэтому даже очень
+// сильный кандидат в очень слабую программу не покажет буквально 100% —
+// как и в реальности, стопроцентных гарантий не бывает.
+//
+// Считаем "логит" z из независимых сигналов (каждый — вклад в log-odds),
+// затем сжимаем в проценты:
+// - IELTS: разрыв с минимумом программы, не бинарно "хватает/не хватает".
+// - Бюджет: p.tuition_eur против реального лимита профиля — с усиленным
+//   штрафом, если профиль явно требует именно стипендию (budget==='zero'),
+//   а программа платная — это не "стретч", это структурно другой сценарий.
+// - Селективность — раньше бралась только из QS-рейтинга вуза. Теперь,
+//   если у программы есть свой acceptance_rate (колонка в БД, изредка
+//   заполнена реальным поиском), используется он — это прямой сигнал
+//   именно про ЭТУ программу, точнее, чем рейтинг всего вуза. QS — только
+//   запасной вариант, когда acceptance_rate не собран.
+// - GPA программы (`gpa_min`) сознательно НЕ используется — собранные
+//   цифры разных стран на разных шкалах (немецкая 1.0-лучшая, американская
+//   4.0-лучшая, часто вообще "3" как дефолт-заглушка модели при сборе,
+//   не реальное требование) без явного поля шкалы сравнивать с profile.gpa
+//   (российская шкала 3–5) значит сравнивать несравнимое и звать это
+//   точностью. GPA студента вместо этого — независимый сигнал "насколько
+//   сильный кандидат вообще", отдельно от порога конкретной программы.
+// - Совпадение направления (master_direction) теперь ослабляется/усиливается
+//   в зависимости от селективности — сменить направление почти не мешает
+//   в непроходной программе, но реально бьёт по шансам в топовой.
+// - Опыт работы — раньше вообще не учитывался в этом скоре (хотя собирается
+//   в анкете). Для Business Analytics (это и MBA/Executive-программы тоже)
+//   опыт весит заметно больше, чем для чисто академических технических
+//   направлений, где решают оценки и портфолио, не стаж.
 function calcScore(p: any, profile: any): number {
-  let s = 40
-
-  const ieltsMin = p.ielts_min || 6.5
-  if (profile.ielts >= ieltsMin + 1) s += 15
-  else if (profile.ielts >= ieltsMin) s += 8
-  else if (profile.ielts < ieltsMin - 0.5) s -= 25
-  else s -= 8
-
-  const budget = BUDGET_LIMIT[profile.budget] ?? 15000
-  if (p.tuition_eur === 0) s += profile.budget === 'zero' ? 20 : 12
-  else if (p.tuition_eur <= budget) s += 8
-  else s -= profile.budget === 'zero' ? 25 : 12
-
-  const qs = p.university?.ranking_qs
-  const selective = !!qs && qs <= 150
-  if (qs) { if (qs <= 50) s -= 15; else if (qs <= 150) s -= 8; else if (qs > 300) s += 8 }
-  else s += 3
+  let z = 0
 
   const gpa = profile.gpa ?? 4.0
-  const gpaBonus =
-    gpa >= 4.7 ? 18 : gpa >= 4.3 ? 12 : gpa >= 4.0 ? 6 : gpa >= 3.5 ? -4 : -14
-  s += selective ? gpaBonus * 1.4 : gpaBonus
+  z += gpa >= 4.7 ? 2.0 : gpa >= 4.3 ? 1.2 : gpa >= 4.0 ? 0.5 : gpa >= 3.5 ? -0.5 : -1.5
 
-  if (profile.master_direction === 'change') s -= selective ? 14 : 8
-  else if (profile.master_direction === 'related') s -= selective ? 4 : 2
+  const ieltsMin = p.ielts_min || 6.5
+  z += Math.max(-2, Math.min(2, profile.ielts - ieltsMin)) * 0.9
 
-  return Math.max(0, Math.min(100, Math.round(s)))
+  const budgetLimit = BUDGET_LIMIT[profile.budget] ?? 15000
+  if (p.tuition_eur === 0) z += profile.budget === 'zero' ? 1.6 : 1.0
+  else if (profile.budget === 'zero') z -= 2.2
+  else if (p.tuition_eur <= budgetLimit) z += 0.4
+  else if (p.tuition_eur <= budgetLimit * 1.3) z -= 0.7
+  else z -= 1.7
+
+  const qs = p.university?.ranking_qs
+  const accRate = typeof p.acceptance_rate === 'number' ? p.acceptance_rate : null
+  const sel = accRate !== null
+    ? (accRate / 100 - 0.5) * 6
+    : qs ? (qs <= 50 ? -4.0 : qs <= 150 ? -2.0 : qs <= 300 ? -0.6 : 0.8) : 0.3
+  z += sel
+  const selective = sel < -1.0
+
+  if (profile.master_direction === 'change') z -= selective ? 1.6 : 0.9
+  else if (profile.master_direction === 'related') z -= selective ? 0.5 : 0.25
+  else if (profile.master_direction === 'same') z += 0.3
+
+  if (p.field === 'Business Analytics') {
+    z += profile.work === 'yes' ? 0.5 : profile.work === 'some' ? 0.2 : -0.1
+  } else {
+    z += profile.work === 'yes' ? 0.15 : 0
+  }
+
+  return Math.round(100 / (1 + Math.exp(-z)))
 }
 
 function getBucket(score: number) {
@@ -138,88 +170,6 @@ const STATUS_CFG: Record<ApplicationStatus,{label:string;color:string}> = {
   offer:       { label:'Оффер',          color:grn },
   rejected:    { label:'Отказ',          color:red },
 }
-/* ── journey phases ── */
-function makePhases(profile: any) {
-  const ni = profile.ielts < 6.5
-  const sf = profile.budget === 'zero'
-  return [
-    {
-      id:'ielts', n:1, color: ni ? red : grn,
-      title: ni ? 'Сдать языковой экзамен' : 'Язык готов',
-      when: 'Прямо сейчас',
-      status: ni ? 'blocker' : 'done',
-      why: ni
-        ? `Текущий балл ${profile.ielts} — ниже минимума 6.5. Без языкового сертификата ни один вуз не примет заявку.`
-        : `Балл ${profile.ielts} принят всеми вузами шортлиста.`,
-      tasks: ni ? [
-        {t:'Выбрать экзамен: TOEFL/Duolingo (сдаются из России онлайн) или другой языковой экзамен — уточни в требованиях программы', urgent:true},
-        {t:'Пройти бесплатный mock test на Cambridge One'},
-        {t:'Готовиться по официальным сборникам заданий, минимум 8 недель'},
-        {t:'Целевой балл 7.0 — запас на всякий случай'},
-      ] : [{t:`Языковой балл ${profile.ielts} — зачтено`, done:true}],
-    },
-    {
-      id:'profile', n:2, color:purp,
-      title:'Усилить профиль', when:'1–2 месяца',
-      status: ni ? 'upcoming' : 'active',
-      why:`GPA ${profile.gpa} — ${profile.gpa>=4.0?'выше среднего для европейских вузов':'достаточно для большинства программ'}. ${profile.work==='no'?'Добавь проекты на GitHub.':'Опыт нужно описать в academic формате.'}`,
-      tasks:[
-        {t:'Academic CV — формат Europass или Harvard, не LinkedIn'},
-        {t:'GitHub: читаемый код, описание проектов на английском'},
-        {t:'Онлайн-курс от целевого вуза на Coursera или edX'},
-        {t: profile.work==='no' ? 'Найти стажировку или research project' : 'Описать опыт в academic формате'},
-      ],
-    },
-    {
-      id:'schol', n:3, color:gold,
-      title:'Подать на стипендии', when:'Окт — Нояб',
-      status: sf ? 'active' : 'upcoming',
-      why: sf
-        ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов. Motivation Letter — отдельный документ, не SoP!'
-        : 'Стипендии подаются параллельно с вузами. Пропустишь дедлайн — ждать год.',
-      tasks:[
-        {t:'Motivation Letter для DAAD — не SoP!', urgent:sf},
-        {t:'Подать на DAAD через portal.daad.de — 14 января', urgent:sf},
-        {t:'SI Scholarship если Швеция в шортлисте — 15 фев'},
-        {t:'Проверить Erasmus Mundus и Holland Scholarship'},
-      ],
-    },
-    {
-      id:'docs', n:4, color:amb,
-      title:'Собрать документы', when:'2–4 месяца',
-      status:'upcoming',
-      why:'SoP пишется отдельно для каждого вуза. Рекомендации нужно запросить за 2+ месяца до дедлайна.',
-      tasks:[
-        {t:'Запросить рекомендации у 2–3 профессоров — прямо сейчас!', urgent:true},
-        {t:'Statement of Purpose для каждого вуза — упоминай конкретную лабораторию'},
-        {t:'Перевести транскрипт и диплом у нотариуса'},
-        {t:'Проверить требования каждого вуза по форматам файлов'},
-      ],
-    },
-    {
-      id:'apply', n:5, color:blue,
-      title:'Подать заявки', when:'Декабрь — Февраль',
-      status:'future',
-      why:'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка: 2–4 часа.',
-      tasks: (profile.countries?.split(',').filter(Boolean) || []).map((c: string) => ({
-  t: `Подать заявку — ${CNAME[c] || c.toUpperCase()}`
-})),
-},
-    {
-      id:'results', n:6, color:grn,
-      title:'Оффер и переезд', when:'Март — Сентябрь',
-      status:'future',
-      why:'Решения приходят через 6–12 недель. Сразу после оффера — виза и жильё.',
-      tasks:[
-        {t:'Принять оффер в течение 4–6 недель'},
-        {t:'Подать на студенческую визу сразу после оффера'},
-        {t:'Найти жильё: Wohnungssuche / Kamernet / Spotahome'},
-        {t:`Начало учёбы — сентябрь ${profile.timeline}`},
-      ],
-    },
-  ]
-}
-
 /* ── atoms ── */
 function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
   return (
@@ -232,176 +182,6 @@ function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
 function Mono({children,style={}}:{children:React.ReactNode,style?:React.CSSProperties}) {
   return <span style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,...style}}>{children}</span>
 }
-function StatusPill({status,color}:{status:string,color:string}) {
-  const cfg: Record<string,{l:string,c:string}> = {
-    blocker:{l:'БЛОКЕР',c:red}, done:{l:'ГОТОВО',c:grn},
-    active:{l:'СЕЙЧАС',c:color}, upcoming:{l:'СКОРО',c:t2}, future:{l:'ПОЗЖЕ',c:t3},
-  }
-  const s = cfg[status] || {l:'—',c:t3}
-  return (
-    <span style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',
-      padding:'3px 8px',borderRadius:3,
-      background:`${s.c}18`,border:`1px solid ${s.c}40`,color:s.c,
-      animation:status==='blocker'?'pulse 2s infinite':'none'}}>
-      {s.l}
-    </span>
-  )
-}
-
-
-/* ── Journey component ── */
-function Journey({profile,taskDone,onToggle}:{profile:any,taskDone:Record<string,boolean>,onToggle:(k:string)=>void}) {
-  const phases = makePhases(profile)
-  const fa = phases.find(p=>p.status==='blocker'||p.status==='active')
-  const [active, setActive] = useState(fa?.id || phases[0].id)
-  const totalT = phases.reduce((s,p)=>s+p.tasks.length,0)
-  const doneT  = phases.reduce((s,p)=>s+p.tasks.filter((t:any,ti:number)=>t.done||!!taskDone[`${p.id}-${ti}`]).length,0)
-
-  return (
-    <div style={{padding:'32px 40px'}}>
-      <div style={{marginBottom:24}}>
-        <Mono style={{display:'block',marginBottom:10}}>ТВОЙ ПУТЬ К ПОСТУПЛЕНИЮ</Mono>
-        <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:32,color:t1,fontWeight:800,letterSpacing:'-.02em',marginBottom:12}}>
-          Journey Map
-        </h1>
-        <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <div style={{flex:1}}><Bar v={Math.round(doneT/totalT*100)||0} color={t1} h={3}/></div>
-          <Mono style={{flexShrink:0,color:t2}}>{doneT} / {totalT} задач</Mono>
-        </div>
-      </div>
-
-      {/* phase tabs */}
-      <div style={{display:'flex',gap:0,marginBottom:24,borderBottom:`1px solid ${line}`,overflowX:'auto'}}>
-        {phases.map(ph=>{
-          const isA = active===ph.id
-          const isFut = ph.status==='future'
-          const phD = ph.tasks.filter((t:any,ti:number)=>t.done||!!taskDone[`${ph.id}-${ti}`]).length
-          return (
-            <button key={ph.id} onClick={()=>setActive(ph.id)} style={{
-              flexShrink:0,padding:'10px 18px 12px',background:'none',border:'none',
-              borderBottom:`2px solid ${isA?ph.color:'transparent'}`,
-              cursor:'pointer',textAlign:'left',transition:'border-color .2s',marginBottom:-1}}>
-              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:5}}>
-                <Mono style={{color:isA?ph.color:t3}}>{String(ph.n).padStart(2,'0')}</Mono>
-                {ph.status==='done'&&<span style={{fontFamily:mono,fontSize:9,color:grn}}>✓</span>}
-                {ph.status==='blocker'&&<span style={{width:5,height:5,borderRadius:'50%',background:red,display:'inline-block',animation:'pulse 1.5s infinite'}}/>}
-              </div>
-              <div style={{fontFamily:sans,fontSize:12,fontWeight:isA?500:400,color:isA?t1:isFut?t3:t2,letterSpacing:'-.01em',whiteSpace:'nowrap'}}>
-                {ph.title}
-              </div>
-              <div style={{height:2,background:'rgba(255,255,255,.06)',borderRadius:1,overflow:'hidden',marginTop:6,width:50}}>
-                <div style={{height:'100%',width:`${ph.tasks.length?Math.round(phD/ph.tasks.length*100):0}%`,background:ph.color,borderRadius:1}}/>
-              </div>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* active phase */}
-      {phases.filter(ph=>ph.id===active).map(ph=>{
-        const phD = ph.tasks.filter((t:any,ti:number)=>t.done||!!taskDone[`${ph.id}-${ti}`]).length
-        const pct = ph.tasks.length?Math.round(phD/ph.tasks.length*100):0
-        return (
-          <div key={ph.id} style={{animation:'slideUp .35s cubic-bezier(.22,.68,0,1.1) both'}}>
-            {/* hero */}
-            <div style={{padding:'22px 24px',borderRadius:8,marginBottom:16,
-              background:`linear-gradient(135deg,${ph.color}0A 0%,rgba(255,255,255,.02) 100%)`,
-              border:`1px solid ${ph.color}28`}}>
-              <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:20,marginBottom:14}}>
-                <div>
-                  <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-                    <StatusPill status={ph.status} color={ph.color}/>
-                    <Mono style={{color:t2}}>Шаг {ph.n} из {phases.length}</Mono>
-                  </div>
-                  <h2 style={{fontFamily:serif,fontStyle:'italic',fontSize:24,color:t1,fontWeight:400,letterSpacing:'-.015em',lineHeight:1.1,marginBottom:5}}>
-                    {ph.title}
-                  </h2>
-                  <Mono style={{color:ph.status==='future'?t3:ph.color}}>{ph.when.toUpperCase()}</Mono>
-                </div>
-                <div style={{flexShrink:0,width:56,height:56,borderRadius:'50%',background:bg0,
-                  border:`1.5px solid ${pct===100?grn:ph.color}30`,
-                  display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                  <div style={{fontFamily:serif,fontStyle:'italic',fontSize:16,color:pct===100?grn:ph.color,lineHeight:1}}>
-                    {pct}<span style={{fontSize:9,opacity:.4}}>%</span>
-                  </div>
-                </div>
-              </div>
-              <Bar v={pct} color={ph.color} h={3}/>
-            </div>
-
-            {/* why */}
-            <div style={{padding:'14px 18px',marginBottom:14,borderRadius:6,
-              background:'rgba(255,255,255,.02)',border:`1px solid ${line}`,
-              borderLeft:`3px solid ${ph.color}45`}}>
-              <Mono style={{display:'block',marginBottom:6,color:ph.color}}>ПОЧЕМУ ЭТО ВАЖНО</Mono>
-              <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.7,fontWeight:300}}>{ph.why}</p>
-            </div>
-
-            {/* tasks */}
-            <div style={{marginBottom:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
-                <Mono>ЗАДАЧИ</Mono>
-                <Mono style={{color:t2}}>{phD} / {ph.tasks.length}</Mono>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                {ph.tasks.map((task:any,ti:number)=>{
-                  const key = `${ph.id}-${ti}`
-                  const done = task.done||!!taskDone[key]
-                  return (
-                    <div key={ti} onClick={()=>!task.done&&onToggle(key)}
-                      style={{display:'flex',alignItems:'flex-start',gap:14,padding:'13px 16px',borderRadius:8,
-                        background:done?`${grn}0D`:'rgba(255,255,255,.02)',
-                        border:`1px solid ${done?`${grn}25`:task.urgent?`${red}28`:line}`,
-                        borderLeft:`2px solid ${done?grn:task.urgent?red:'transparent'}`,
-                        cursor:task.done?'default':'pointer',transition:'all .15s'}}>
-                      <div style={{width:17,height:17,borderRadius:'50%',flexShrink:0,marginTop:1,
-                        border:`1.5px solid ${done?grn:task.urgent?red:t3}`,
-                        background:done?grn:'transparent',
-                        display:'flex',alignItems:'center',justifyContent:'center',transition:'all .18s',
-                        boxShadow:done?`0 0 7px ${grn}35`:'none'}}>
-                        {done&&<span style={{color:bg0,fontSize:9,fontWeight:700}}>✓</span>}
-                      </div>
-                      <div style={{flex:1}}>
-                        <div style={{fontFamily:sans,fontSize:13,fontWeight:500,
-                          color:done?t2:t1,textDecoration:done?'line-through':'none',
-                          letterSpacing:'-.01em',lineHeight:1.4,marginBottom:task.urgent&&!done?4:0}}>
-                          {task.t}
-                        </div>
-                        {task.urgent&&!done&&(
-                          <Mono style={{color:red,animation:'pulse 2s infinite'}}>СРОЧНО</Mono>
-                        )}
-                      </div>
-                      {done&&<Mono style={{color:grn,flexShrink:0,paddingTop:2}}>ГОТОВО</Mono>}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* next phase */}
-            {ph.n<phases.length&&(
-              <div onClick={()=>setActive(phases[ph.n].id)}
-                style={{display:'flex',alignItems:'center',justifyContent:'space-between',
-                  padding:'13px 16px',borderRadius:8,border:`1px solid ${line}`,
-                  background:'rgba(255,255,255,.02)',cursor:'pointer',transition:'border-color .15s'}}
-                onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.14)'}
-                onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=line}>
-                <div>
-                  <Mono style={{display:'block',marginBottom:3}}>СЛЕДУЮЩИЙ ШАГ</Mono>
-                  <span style={{fontFamily:sans,fontSize:13,color:t2,letterSpacing:'-.01em'}}>
-                    {phases[ph.n].title}<span style={{color:t3}}> · {phases[ph.n].when}</span>
-                  </span>
-                </div>
-                <span style={{fontFamily:mono,fontSize:14,color:t3}}>→</span>
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 /* ══════════════════════════════════════════════════════
    MAIN DASHBOARD
 ══════════════════════════════════════════════════════ */
@@ -637,18 +417,59 @@ const daysUntil = (month: number, day: number) => {
   if (d < now) d.setFullYear(d.getFullYear() + 1)
   return Math.ceil((d.getTime() - now.getTime()) / 86400000)
 }
-const unis = programs.map((p: any, i: number) => ({
-  ...p,
-  _n: p.university?.name || '',
-  _p: p.name,
-  _days: daysUntil(p.deadline_month, p.deadline_day),
-  _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
-  _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
-  _c: COLORS[i % COLORS.length],
-  _country: p.university?.country || '',
-  _score: calcScore(p, profile),
-  _bucket: getBucket(calcScore(p, profile)),
-})).sort((a: any, b: any) => b._score - a._score)
+// Раньше был просто .sort() по скору — при нескольких выбранных странах
+// это на практике давало длинные однородные блоки ("сначала все немецкие,
+// потом все итальянские"), потому что скор внутри одной страны склонен
+// кучковаться (похожая стоимость/селективность вузов). Список от этого
+// читался как "подборки по странам", а не как единый ранжированный шорт-
+// лист. Диверсификация ниже сохраняет сортировку по скору ВНУТРИ каждой
+// страны, но подмешивает страны друг в друга при выдаче: на каждом шаге
+// берём лучший ещё не показанный вариант среди стран, отличных от той,
+// что была на предыдущем месте (если такая ещё осталась) — соседние
+// карточки почти никогда не совпадают по стране, а порядок всё равно
+// в целом идёт от сильных к слабым, а не вперемешку случайно.
+function diversifyByCountry<T extends { _country: string; _score: number }>(items: T[]): T[] {
+  const byCountry = new Map<string, T[]>()
+  for (const it of items) {
+    if (!byCountry.has(it._country)) byCountry.set(it._country, [])
+    byCountry.get(it._country)!.push(it)
+  }
+  for (const arr of byCountry.values()) arr.sort((a, b) => b._score - a._score)
+  const countries = [...byCountry.keys()]
+  const result: T[] = []
+  let lastCountry: string | null = null
+  while (result.length < items.length) {
+    let bestCountry: string | null = null
+    let bestScore = -Infinity
+    const hasOther = countries.some(c => c !== lastCountry && byCountry.get(c)!.length > 0)
+    for (const c of countries) {
+      const arr = byCountry.get(c)!
+      if (!arr.length) continue
+      if (hasOther && c === lastCountry) continue
+      if (arr[0]._score > bestScore) { bestScore = arr[0]._score; bestCountry = c }
+    }
+    if (bestCountry === null) bestCountry = countries.find(c => byCountry.get(c)!.length > 0)!
+    result.push(byCountry.get(bestCountry)!.shift()!)
+    lastCountry = bestCountry
+  }
+  return result
+}
+
+const unis = diversifyByCountry(programs.map((p: any, i: number) => {
+  const score = calcScore(p, profile)
+  return {
+    ...p,
+    _n: p.university?.name || '',
+    _p: p.name,
+    _days: daysUntil(p.deadline_month, p.deadline_day),
+    _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
+    _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
+    _c: COLORS[i % COLORS.length],
+    _country: p.university?.country || '',
+    _score: score,
+    _bucket: getBucket(score),
+  }
+}))
 
 // Программы для таймлайна/календаря — избранное, а если его нет, топ-матч по каждой стране.
 // Раньше даты были одна на всю страну и не зависели от выбора студента.
@@ -1416,6 +1237,57 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
 
     <div style={{height:1,background:line,marginBottom:28}}/>
 
+    {/* Направление магистратуры — раньше это спрашивалось только один раз
+        при заполнении анкеты и больше нигде не редактировалось. С тех пор
+        как это поле стало реально влиять на подбор программ и скор (см.
+        calcScore выше), у существующих пользователей должна быть
+        возможность его поправить — например, если авто-подстановка при
+        регистрации угадала неточно, или человек передумал про направление. */}
+    <div style={{marginBottom:28}}>
+      <Mono style={{display:'block',marginBottom:12}}>НАПРАВЛЕНИЕ МАГИСТРАТУРЫ</Mono>
+      <div style={{display:'flex',flexDirection:'column',gap:4,marginBottom:14}}>
+        {[
+          {v:'same',   l:'Продолжаю в той же сфере'},
+          {v:'related',l:'Смежная область'},
+          {v:'change', l:'Кардинально другое направление'},
+        ].map(o=>(
+          <div key={o.v} onClick={()=>{
+            setProfile((p:any)=>{
+              const next = {...p, master_direction:o.v}
+              if(o.v==='same' && !p.master_field) next.master_field = FIELD_TO_DB[p.field] || ''
+              return next
+            })
+          }} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderRadius:6,
+            background:profile.master_direction===o.v?'rgba(255,255,255,.06)':'transparent',
+            borderLeft:`2px solid ${profile.master_direction===o.v?t1:'transparent'}`,
+            cursor:'pointer',transition:'all .15s'}}>
+            <div style={{width:14,height:14,borderRadius:'50%',flexShrink:0,
+              border:`1.5px solid ${profile.master_direction===o.v?t1:t3}`,
+              background:profile.master_direction===o.v?t1:'transparent'}}>
+              {profile.master_direction===o.v&&<div style={{width:6,height:6,background:bg0,borderRadius:'50%',margin:'3px auto'}}/>}
+            </div>
+            <span style={{fontFamily:sans,fontSize:13,color:profile.master_direction===o.v?t1:t2}}>{o.l}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{fontFamily:sans,fontSize:12,color:t3,marginBottom:10,lineHeight:1.5}}>
+        Точное направление — от этого зависит, какие программы тебе показывают:
+      </div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {MASTER_FIELDS.map(f=>(
+          <button key={f.v} onClick={()=>setProfile((p:any)=>({...p,master_field:f.v}))}
+            style={{fontFamily:sans,fontSize:12,padding:'6px 12px',borderRadius:4,
+              border:`1px solid ${profile.master_field===f.v?'rgba(255,255,255,.35)':line}`,
+              background:profile.master_field===f.v?'rgba(255,255,255,.08)':'transparent',
+              color:profile.master_field===f.v?t1:t2,cursor:'pointer',transition:'all .15s'}}>
+            {f.l}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div style={{height:1,background:line,marginBottom:28}}/>
+
     {/* Бюджет */}
     <div style={{marginBottom:28}}>
       <Mono style={{display:'block',marginBottom:12}}>БЮДЖЕТ</Mono>
@@ -1481,6 +1353,8 @@ transition:dragging?'none':'transform .3s cubic-bezier(.22,.68,0,1.1)'}}>
         work: profile.work,
         budget: profile.budget,
         countries: profile.countries,
+        master_field: profile.master_field,
+        master_direction: profile.master_direction,
       }).eq('user_id', profile.user_id)
       alert('Сохранено!')
     }} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
