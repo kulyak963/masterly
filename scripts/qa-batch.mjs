@@ -76,13 +76,44 @@ function findParenGroups(str) {
   return groups
 }
 
+// Раньше здесь разбивали на операторы по первому ';' через regex — текст
+// полей (summary/pros/cons) часто настоящий русский текст с собственной
+// пунктуацией, и точка с запятой ВНУТРИ строкового значения обрубала
+// оператор посередине, из-за чего часть программ терялась молча (см.
+// живой пример: 10 реальных insert в файле, регэксп-версия находила 5).
+// Тот же посимвольный разбор, что уже используется в run-sql.mjs —
+// учитывает, находимся ли мы внутри '...'.
+function splitStatements(sql) {
+  const lines = sql.split('\n').map((line) => {
+    let inStr = false
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === "'") inStr = !inStr
+      if (!inStr && line[i] === '-' && line[i + 1] === '-') return line.slice(0, i)
+    }
+    return line
+  })
+  const cleaned = lines.join('\n')
+  const statements = []
+  let current = '', inStr = false
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i]
+    current += ch
+    if (ch === "'") inStr = !inStr
+    if (ch === ';' && !inStr) { statements.push(current.slice(0, -1).trim()); current = '' }
+  }
+  if (current.trim()) statements.push(current.trim())
+  return statements
+}
+
 function parseInsertPrograms(sql) {
   const rows = []
-  const stmtRe = /insert into programs\s*\(([\s\S]*?)\)\s*values\s*([\s\S]*?);/gi
-  let m
-  while ((m = stmtRe.exec(sql))) {
-    const cols = splitTopLevel(m[1], ',').map((c) => c.trim())
-    const groups = findParenGroups(m[2])
+  for (const stmt of splitStatements(sql)) {
+    if (!/^insert into programs/i.test(stmt)) continue
+    const colsMatch = stmt.match(/insert into programs\s*\(([\s\S]*?)\)\s*values/i)
+    if (!colsMatch) continue
+    const cols = splitTopLevel(colsMatch[1], ',').map((c) => c.trim())
+    const afterValues = stmt.slice(stmt.search(/values/i) + 6)
+    const groups = findParenGroups(afterValues)
     for (const g of groups) {
       const vals = splitTopLevel(g, ',').map(parseSqlValue)
       rows.push(Object.fromEntries(cols.map((c, i) => [c, vals[i]])))
