@@ -142,3 +142,39 @@ insert into programs (
   array['Стоимость и дедлайн для не-EEA подтверждены сторонним агрегатором educations.com, а не напрямую на официальной странице VUB в одном месте', 'Точный GPA-минимум не указан в выдаче — 3.0 является общевузовской оценкой-экстраполяцией', 'С 2025–2026 ряд фламандских вузов повысил не-EU тарифы (см. The PIE News), цифра может быть уже неактуальна'],
   false, null
 );
+
+-- verified=false: на странице https://uclouvain.be/en-prog-2026-ling2m-cond_adm в выдаче не подтверждены одновременно tuition+deadline+IELTS для не-EU. Tuition €1,194 — из материалов о реформе UCLouvain 2026-27 и Studacy (неассимилированные не-EU платят ordinary fee). IELTS 6.0 и дедлайн 30 апреля — общие для UCLouvain/ESPO, не подтверждены именно для ling2m. Язык (английский) подтверждён PDF программы.
+insert into programs (
+  university_id, name, field, language, duration_months, tuition_eur,
+  tuition_status, tuition_checked_at,
+  deadline_month, deadline_day, ielts_min, gpa_min, url, scholarships,
+  summary, pros, cons, verified, verified_at
+) values (
+  '50fd6d84-6cb0-411b-93a4-d7c26a7077ad',
+  'Master [120] in Linguistics (Empirical Linguistics Research focus, entirely in English)', 'Linguistics', 'English', 24, 1194,
+  'ai', current_date,
+  4, 30, 6, null, 'https://uclouvain.be/en-prog-2026-ling2m-cond_adm',
+  array[]::text[],
+  'Магистратура UCLouvain по лингвистике с фокусом на эмпирических методах исследования, полностью на английском. Программа на 120 кредитов (2 года), сильный исследовательский и международный профиль (более половины студентов — иностранцы).',
+  array['Программа полностью на английском — подходит для иностранных студентов', 'Более 50% студентов — международные, мультилингвальная академическая среда', 'Сильный исследовательский трек с подготовкой к PhD'],
+  array['Точная не-EU ставка не подтверждена на странице условий допуска: €1,194 — это по реформе 2026-27 «обычная» ставка, по данным Studacy её платят и неассимилированные не-EU студенты, но прямого подтверждения на странице ling2m не найдено', 'IELTS 6.0 взят с факультета ESPO/ESL как типичный для англоязычных программ UCLouvain — на самой странице ling2m-cond_adm в выдаче не подтверждён', 'Дедлайн 30 апреля указан как общий не-EU дедлайн UCLouvain, но на конкретной странице ling2m в выдаче не подтверждён', 'Допуск по среднему баллу 13/20 — GPA в системе 4.0 напрямую не указан'],
+  false, null
+);
+
+-- verified=false: стоимость €5 010/год для не-ЕС подтверждена со страниц UCLouvain и сторонних источников (835€ базовый + 4 175€ надбавка), но IELTS-минимум и точный дедлайн не найдены на самой странице программы arcb2m; использованы общие правила UCLouvain для магистратур (IELTS 6.5, дедлайн 30 апреля для не-ЕС на сентябрьский набор). Программа действительно существует и преподаётся на английском (подтверждено loci-ima.com и страницей uclouvain.be/en-prog-2026-arcb2m-programme).
+insert into programs (
+  university_id, name, field, language, duration_months, tuition_eur,
+  tuition_status, tuition_checked_at,
+  deadline_month, deadline_day, ielts_min, gpa_min, url, scholarships,
+  summary, pros, cons, verified, verified_at
+) values (
+  '50fd6d84-6cb0-411b-93a4-d7c26a7077ad',
+  'Master [120] in Architecture (Bruxelles) – International Master in Architecture (IMA, taught in English)', 'Architecture', 'English', 24, 5010,
+  'ai', current_date,
+  4, 30, 6.5, null, 'https://uclouvain.be/en-prog-2026-arcb2m-programme',
+  array[]::text[],
+  'Двухлетняя англоязычная магистратура по архитектуре в Брюсселе на базе факультета LOCI UCLouvain; рассчитана на иностранных студентов с архитектурным бэкграундом, готовит к международной профессиональной практике.',
+  array['Полностью англоязычная программа с сильным проектным компонентом (30 кредитов на студийную работу)', 'Международная среда в Брюсселе, одна из немногих полноценных англоязычных магистратур по архитектуре в Бельгии', 'Стоимость для не-ЕС студентов относительно умеренная для Западной Европы (~€5 010/год)'],
+  array['Не подтверждены единым первоисточником ни IELTS-минимум, ни точный дедлайн именно для arcb2m — взяты по общим правилам UCLouvain (IELTS 6.5 и30 апреля для не-ЕС), поэтому verified=false', 'Дополнительный сбор €200 за подачу заявки для не-ЕС абитуриентов, не входит в указанную сумму tuition', 'С2026-27 учебного года базовый fee растёт (€835 → €1 194), плюс надбавка для не-ЕС €4 175 — итоговая сумма может вырасти'],
+  false, null
+);

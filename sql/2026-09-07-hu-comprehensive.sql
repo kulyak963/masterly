@@ -52,3 +52,42 @@ insert into programs (
   array['Точная non-EU ставка на странице курса не указана — приведённая цифра ~6400 EUR/год основана на сторонних источниках (studiesinhungary.com / scribd-презентация Semmelweis 7200 EUR/2 года), единая страница с tuition+deadline+IELTS не подтверждена лично', 'Дедлайн 30 апреля — типичный для Stipendium Hungaricum, но конкретное число для этого курса надо проверять на apply.stipendiumhungaricum.hu'],
   false, null
 );
+
+-- verified=false, потому что tuition (3,500 EUR/сем для non-EU/EEA) подтверждён на elte.hu/en/communication-and-media-ma, но минимальный IELTS для этой конкретной программы не указан в видимом сниппете. Deadline 15 января — типичный дедлайн Stipendium Hungaricum (SH-портал указан в URL); self-funded дедлайн ELTE обычно позже. Источник: официальная страница ELTE + портал apply.stipendiumhungaricum.hu/courses/course/2642.
+insert into programs (
+  university_id, name, field, language, duration_months, tuition_eur,
+  tuition_status, tuition_checked_at,
+  deadline_month, deadline_day, ielts_min, gpa_min, url, scholarships,
+  summary, pros, cons, verified, verified_at
+) values (
+  '6b80088f-1578-4aa9-a976-6dae07a23cfb',
+  'Communication and Media Studies MA', 'Journalism', 'English', 24, 14000,
+  'ai', current_date,
+  1, 15, 6, null, 'https://www.elte.hu/en/communication-and-media-ma',
+  array['Stipendium Hungaricum (покрывает tuition, даёт стипендию HUF 140,000/мес на магистратуре)'],
+  'Магистратура ELTE по коммуникации и медиа на английском, 2 года (4 семестра), для не-ЕС/ЕЭЗ стоимость 3,500 EUR за семестр (14,000 EUR за всю программу). Программа участвует в стипендии Stipendium Hungaricum, которая покрывает обучение и даёт ежемесячную стипендию.',
+  array['Чётко подтверждённая non-EU ставка: 3,500 EUR/семестр (без скрытых сборов)', 'Участие в Stipendium Hungaricum — реальный шанс на полное покрытие tuition + стипендию', 'ELTE — старейший и крупнейший университет Венгрии, сильный факультет гуманитарных наук'],
+  array['IELTS 6.0 не подтверждён напрямую в сниппете страницы программы — это стандарт ELTE, но точную цифру для non-EU стоит перепроверить на странице приёмной комиссии'],
+  false, null
+);
+
+-- Стоимость 8000 EUR/год для Non-EEA подтверждена сниппетом с официальной страницы программы (uni-corvinus.hu). Однако дедлайн и IELTS не подтверждены с той же страницы в результатах поиска (topuniversities даёт IELTS 7+, сторонние источники — 6.5; конкретный deadline для non-EU на странице не показан). Поэтому verified=false.
+insert into programs (
+  university_id, name, field, language, duration_months, tuition_eur,
+  tuition_status, tuition_checked_at,
+  deadline_month, deadline_day, ielts_min, gpa_min, url, scholarships,
+  summary, pros, cons, verified, verified_at
+) values (
+  'a0917ff2-15d3-4d1d-87bd-e01624092c78',
+  'MA in Communication and Media Studies', 'Journalism', 'English', 24, 8000,
+  'ai', current_date,
+  4, 30, 6.5, null, 'https://www.uni-corvinus.hu/post/landing-page/masters/ma-in-communication-and-media-studies/?lang=en',
+  array['Stipendium Hungaricum (полный грант правительства Венгрии)', 'Corvinus Excellence Scholarship (скидки на tuition для иностранцев)'],
+  'Двухгодичная англоязычная магистратура по коммуникациям и медиа в Университете Корвинус в Будапеште. Для не-ЕЭЗ студентов годовая стоимость — около 8000 EUR.',
+  array['Чётко разделённые тарифы EEA vs Non-EEA на официальной странице программы', 'Возможность получения стипендии Stipendium Hungaricum, покрывающей полную стоимость', 'Сильный международный состав и сильная бизнес-школа в Будапеште'],
+  array['Точная дата дедлайна подачи и точный требуемый балл IELTS для не-EU абитуриентов не подтверждены с официальной страницы программы в выдаче — нужно уточнять', 'Общая страница Fees and Costs указывает 6800 EUR, что расходится с цифрой 8000 EUR на странице программы — возможны изменения/акции'],
+  false, null
+);
+
+-- Предупреждения при сборе:
+-- - Semmelweis University / "Systemic Psychology (MSc)": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use, tool_use, tool_use]. Text: (empty)

@@ -106,3 +106,7 @@ insert into programs (
   array['Стоимость ~€14 220 за программу — заметно выше бесплатных альтернатив (например, EUCLID)', 'На основной странице postgraduatecenter не указаны раздельно тарифы для EU и non-EU студентов, а также точные требования IELTS/GPA — данные уточнены по сторонним агрегаторам', 'Дедлайн 30 апреля не подтверждён на самой странице программы (информация из mastersportal)', 'verified=false: не удалось найти одну страницу, где одновременно подтверждены tuition, deadline и IELTS именно для non-EU студентов'],
   false, null
 );
+
+-- Предупреждения при сборе:
+-- - University of Vienna / "MA Erasmus Mundus Global Studies": timeout: прокси не ответил за 90с
+-- - University of Vienna / "LLM International Legal Studies": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use, tool_use]. Text: (empty)

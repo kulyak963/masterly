@@ -88,3 +88,8 @@ insert into programs (
   array['Высокая стоимость для не-ЕС студентов — 34 500 €, одна из самых дорогих программ MR в Испании', 'IELTS требуется минимум 7.0 (рекомендуют 7.5) — это заметно выше среднего и может стать барьером', 'Фиксированного дедлайна нет (rolling admissions), реальная дата закрытия зависит от набора; конкретную дату на сайте программы не подтверждают', 'Длительность 11 месяцев (не 24, как иногда пишут в агрегаторах) — короткий и интенсивный формат'],
   false, null
 );
+
+-- Предупреждения при сборе:
+-- - Universitat Politècnica de Catalunya / "Master's degree in Architectural Design Ecology in the Digital Age": timeout: прокси не ответил за 90с
+-- - Universitat Pompeu Fabra / "Master in Theoretical and Applied Linguistics": No JSON array found. stop_reason=end_turn, blocks=[thinking, server_tool_use, server_tool_use, server_tool_use, web_search_tool_result, web_search_tool_result, web_search_tool_result, thinking, server_tool_use, server_tool_use, web_search_tool_result, web_search_tool_result]. Text: (empty)
+-- - Universidad Carlos III de Madrid / "Master in Clinical Engineering": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use, tool_use]. Text: (empty)

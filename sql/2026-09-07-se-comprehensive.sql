@@ -70,3 +70,6 @@ insert into programs (
   array['Точный дедлайн для не-ЕС студентов не подтверждён из сниппетов поиска (указан оценочный 15 января по аналогии с другими программами SU)', 'IELTS6.5 — оценка по общему требованию SU; конкретный минимум для этой программы в найденных фрагментах не подтверждён', 'Высокая стоимость для не-ЕС (~180 000 SEK за весь курс)'],
   false, null
 );
+
+-- Предупреждения при сборе:
+-- - Lund University / "Language and Linguistics, English - Master's Programme": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use, tool_use]. Text: (empty)

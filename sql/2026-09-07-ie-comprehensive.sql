@@ -106,3 +106,12 @@ insert into programs (
   array['Не подтверждено напрямую на странице курса требование по IELTS именно для этой программы — взято ориентировочно 6.5 (у смежной MA English указано 7.0); точную цифру нужно уточнять у приёмной комиссии', 'Стоимость €20 040 в год для не-ЕС получена по аналогии с шаблоном страницы fees (€8 290 EU / €20 040 non-EU для 2026/27) — конкретная строка для 1MLP1 в сниппете не была видна целиком'],
   false, null
 );
+
+-- Предупреждения при сборе:
+-- - University College Dublin / "MSc International Law & Business": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use, tool_use]. Text: (empty)
+-- - University College Dublin / "MA Journalism & International Affairs": No JSON array found. stop_reason=tool_use, blocks=[tool_use, tool_use]. Text: (empty)
+
+-- ССЫЛКИ НЕ ПРОШЛИ ПРОВЕРКУ (программы целиком исключены):
+-- - University College Dublin — "MSc Urban Design (Research)": https://www.ucd.ie/courses/t060 (ECONNRESET)
+-- - University College Dublin — "Research Masters in Architectural Design": https://www.ucd.ie/courses/t256 (ECONNRESET)
+-- - University of Galway — "MSc in Health Psychology": https://www.universityofgalway.ie/courses/taught-postgraduate-courses/health-psychology.html (ECONNRESET)
