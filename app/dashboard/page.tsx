@@ -459,7 +459,17 @@ const daysUntil = (month: number, day: number) => {
   if (d < now) d.setFullYear(d.getFullYear() + 1)
   return Math.ceil((d.getTime() - now.getTime()) / 86400000)
 }
-const unis = useMemo(() => diversifyByCountry(programs.map((p: any, i: number) => {
+// MBA/Executive-программы почти всегда требуют реального стажа (обычно
+// 3+ года) — раньше показывались всем наравне с обычной магистратурой,
+// и Executive MBA за €105 000 мог оказаться первой строкой у выпускника
+// бакалавриата без единого дня опыта (см. аудит продукта 2026-09-07).
+// requires_work_years проставлен точечно для 20 MBA/Executive программ
+// (см. CLAUDE.md) — "some" (стажировки/проекты) всё ещё не считается
+// достаточным для формата, рассчитанного на practicing managers.
+const qualifiesForExperienceGated = (p: any, profile: any) =>
+  p.requires_work_years == null || profile.work === 'yes'
+
+const unis = useMemo(() => diversifyByCountry(programs.filter((p:any) => qualifiesForExperienceGated(p, profile)).map((p: any, i: number) => {
   const score = calcScore(p, profile)
   // Раньше программа дороже заявленного бюджета просто получала более
   // низкий скор — студент, сказавший "нужно бесплатно", не видел НИКАКОГО
