@@ -12,6 +12,7 @@ import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
 import { tuitionLabel, isOverBudget } from '@/lib/tuition'
+import { isDeadLink } from '@/lib/linkHealth'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -547,18 +548,15 @@ function diversifyByCountry<T extends { _country: string; _score: number }>(item
 }
 
 
-// Программы для таймлайна/календаря — избранное, а если его нет, топ-матч по каждой стране.
-// Раньше даты были одна на всю страну и не зависели от выбора студента.
-const timelinePrograms = (() => {
-  const favs = unis.filter((u: any) => favorites.has(u.id))
-  if (favs.length) return favs
-  const seen = new Set<string>()
-  const picked: any[] = []
-  for (const u of unis) {
-    if (!seen.has(u._country)) { seen.add(u._country); picked.push(u) }
-  }
-  return picked
-})()
+// Программы для таймлайна/Journey — ТОЛЬКО реальное избранное. Раньше при
+// пустом избранном сюда тихо подставлялся один случайный топ-матч на
+// страну — Journey и Таймлайн называли конкретные вузы и считали дни до
+// их дедлайнов так, будто это осознанный выбор студента, хотя он ещё
+// ничего не добавил (см. аудит продукта 2026-09-07). Пустой список —
+// честное состояние, оба компонента сами показывают "добавь программы".
+// (Не useMemo — просто выражение, как и раньше: unis уже useMemo выше,
+// а сам фильтр здесь после ранних return'ов, где хуки звать нельзя.)
+const timelinePrograms = unis.filter((u: any) => favorites.has(u.id))
 const haptic = (ms=8) => {
   if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(ms)
 }
@@ -1425,18 +1423,31 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                   Иногда занимает до минуты — не закрывай окно
                 </p>
               )}
-              <a href={selectedProgram.url || `https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`}
-                target="_blank" rel="noopener"
-                style={selectedProgram.verified ? {
-                  display:'block',textAlign:'center',padding:'11px',borderRadius:8,
-                  border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
-                } : {
-                  display:'block',textAlign:'center',padding:'13px',borderRadius:8,
-                  border:`1.5px solid ${gold}50`,background:`${gold}0F`,
-                  fontFamily:sans,fontSize:13,fontWeight:500,color:gold,textDecoration:'none',
-                }}>
-                {selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'}
-              </a>
+              {(() => {
+                // Ссылка, о которой уже известно, что она мёртвая (404/403/
+                // DNS — см. scripts/check-links.mjs, 25% базы на 2026-09-08),
+                // не лучше отсутствующей — гугл-поиск по названию хотя бы
+                // куда-то приведёт, а не гарантированно на пустую страницу.
+                const linkBroken = isDeadLink(selectedProgram.url_status)
+                const googleFallback = `https://www.google.com/search?q=${encodeURIComponent(selectedProgram._p+' '+selectedProgram._n+' master admission')}`
+                const href = (selectedProgram.url && !linkBroken) ? selectedProgram.url : googleFallback
+                const label = linkBroken
+                  ? '⚠ Ссылка устарела — найти на сайте вуза →'
+                  : selectedProgram.verified ? 'Страница программы →' : '⚠ Проверить точные данные на сайте вуза →'
+                return (
+                  <a href={href} target="_blank" rel="noopener"
+                    style={(selectedProgram.verified && !linkBroken) ? {
+                      display:'block',textAlign:'center',padding:'11px',borderRadius:8,
+                      border:`1px solid ${line}`,fontFamily:sans,fontSize:12,color:t2,textDecoration:'none',
+                    } : {
+                      display:'block',textAlign:'center',padding:'13px',borderRadius:8,
+                      border:`1.5px solid ${gold}50`,background:`${gold}0F`,
+                      fontFamily:sans,fontSize:13,fontWeight:500,color:gold,textDecoration:'none',
+                    }}>
+                    {label}
+                  </a>
+                )
+              })()}
               <a href={`/program/${selectedProgram.id}`} target="_blank" rel="noopener"
                 style={{display:'block',textAlign:'center',padding:'9px',fontFamily:sans,fontSize:11,
                   color:t3,textDecoration:'underline'}}>

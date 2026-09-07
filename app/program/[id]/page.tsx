@@ -6,6 +6,7 @@ import { bg0, line, t1, t2, t3, gold, sans, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import { tuitionLabel } from '@/lib/tuition'
+import { isDeadLink } from '@/lib/linkHealth'
 
 export const revalidate = 3600
 
@@ -192,6 +193,14 @@ export default async function ProgramPage({ params }: Props) {
               border: `1px solid ${line}`, fontFamily: sans, fontSize: 13, color: t2, textDecoration: 'none' }}>
               Страница программы на сайте вуза →
             </a>
+          )}
+          {isDeadLink(program.url_status) && (
+            <p style={{ fontFamily: sans, fontSize: 11, color: gold, textAlign: 'center', lineHeight: 1.5 }}>
+              ⚠ Эта ссылка не открылась при последней проверке — страница могла переехать. Если не загрузится,
+              {program.university?.website ? (
+                <> поищи программу на <a href={program.university.website} target="_blank" rel="noopener" style={{ color: gold, textDecoration: 'underline' }}>сайте вуза</a>.</>
+              ) : ' поищи программу на сайте вуза напрямую.'}
+            </p>
           )}
           <Link href="/" style={{ display: 'block', textAlign: 'center', padding: '15px', borderRadius: 4,
             border: 'none', background: gold, color: bg0, fontFamily: sans, fontSize: 14, fontWeight: 700,
