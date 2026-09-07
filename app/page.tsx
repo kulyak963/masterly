@@ -216,6 +216,34 @@ export default function Home() {
       .then(({ count }) => { if (count) setProgramCount(count) })
   }, [])
 
+  // Сколько программ реально нашлось под ответы этого человека.
+  // До этого экран результата обещал "программы подобраны под твои
+  // страны и бюджет", но ни одной цифры не показывал — человек отвечал
+  // на 8 вопросов и отдавал почту на веру. Живое число — это
+  // доказательство вместо обещания.
+  const [matchCount, setMatchCount] = useState<number|null>(null)
+  useEffect(() => {
+    if (step !== 8) return
+    if (!a.countries.length || !a.master_field || a.master_field.startsWith('other:')) return
+    let cancelled = false
+    ;(async () => {
+      const { data: unis } = await supabase.from('universities').select('id').in('country', a.countries)
+      if (cancelled || !unis?.length) return
+      let q = supabase.from('programs')
+        .select('*', { count: 'exact', head: true })
+        .in('university_id', unis.map(u => u.id))
+        .eq('field', a.master_field)
+      // Кабинет прячет программы, требующие опыта работы, от тех, у кого
+      // его нет (qualifiesForExperienceGated в app/dashboard/page.tsx).
+      // Считать без этого фильтра — значит пообещать больше, чем человек
+      // потом увидит; обещание должно совпадать с тем, что доставляем.
+      if (a.work !== 'yes') q = q.is('requires_work_years', null)
+      const { count } = await q
+      if (!cancelled) setMatchCount(count ?? null)
+    })()
+    return () => { cancelled = true }
+  }, [step, a.countries, a.master_field, a.work])
+
   useEffect(()=>{
     const s = document.createElement('style')
     s.textContent = CSS
@@ -960,11 +988,18 @@ setStep((s:any)=> s+1)
   if(step>=8 && step !== 99) {
     const flags: Record<string,string> = {de:'DE',nl:'NL',se:'SE',ch:'CH',fi:'FI',fr:'FR',cz:'CZ',at:'AT',hu:'HU',it:'IT',dk:'DK',no:'NO',be:'BE',es:'ES',ee:'EE',pl:'PL',ie:'IE'}
     const countryNames: Record<string,string> = {de:'Германия',nl:'Нидерланды',se:'Швеция',ch:'Швейцария',fi:'Финляндия',fr:'Франция',cz:'Чехия',at:'Австрия',hu:'Венгрия',it:'Италия',dk:'Дания',no:'Норвегия',be:'Бельгия',es:'Испания',ee:'Эстония',pl:'Польша',ie:'Ирландия'}
+    // Тот же список в предложном падеже — для фраз вида "программы в ...".
+    // Большинство идёт по правилу -ия → -ии, но Нидерланды и Польша из
+    // него выпадают, поэтому проще держать явный словарь, чем правило.
+    const countryNamesIn: Record<string,string> = {de:'Германии',nl:'Нидерландах',se:'Швеции',ch:'Швейцарии',fi:'Финляндии',fr:'Франции',cz:'Чехии',at:'Австрии',hu:'Венгрии',it:'Италии',dk:'Дании',no:'Норвегии',be:'Бельгии',es:'Испании',ee:'Эстонии',pl:'Польше',ie:'Ирландии'}
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
     const firstSteps = [
       a.ielts<6.5  && {t:'Записаться на языковой экзамен — это первый шаг', c:red},
       a.budget==='zero' && {t:'DAAD дедлайн 14 января — начни Motivation Letter сегодня', c:gold},
-      {t:`Изучить программы в ${a.countries.map(c=>countryNames[c]).slice(0,2).join(' и ')||'выбранных странах'}`, c:t1},
+      // Предложный падеж: подстановка именительного давала "Изучить
+      // программы в Германия" / "в Нидерланды" прямо на экране, где мы
+      // просим почту — мелочь, но читается как небрежность.
+      {t:`Изучить программы в ${a.countries.map(c=>countryNamesIn[c]).slice(0,2).join(' и ')||'выбранных странах'}`, c:t1},
       {t:'Составить Academic CV в Europass формате', c:t2},
     ].filter(Boolean).slice(0,3) as {t:string,c:string}[]
 
@@ -1012,6 +1047,32 @@ setStep((s:any)=> s+1)
           ))}
 
          <div style={{marginTop:28,display:'flex',flexDirection:'column',gap:10}}>
+  {/* Доказательство до просьбы о почте: показываем реальное число
+      подобранных программ. Пустой результат тоже показываем честно —
+      узкое направление лучше признать здесь, чем дать человеку
+      зарегистрироваться и упереться в пустой кабинет. */}
+  {matchCount!==null&&(
+    <div style={{border:`1px solid ${matchCount>0?gold+'55':line}`,borderRadius:8,
+      background:matchCount>0?gold+'0D':'rgba(255,255,255,.02)',
+      padding:'14px 16px',textAlign:'center'}}>
+      {matchCount>0?(
+        <>
+          <div style={{fontFamily:displayFont.style.fontFamily,fontSize:34,fontWeight:800,
+            color:gold,letterSpacing:'-.03em',lineHeight:1,marginBottom:4}}>{matchCount}</div>
+          <div style={{fontFamily:sans,fontSize:12.5,color:t2,letterSpacing:'-.01em'}}>
+            {matchCount===1?'программа найдена':matchCount<5?'программы найдено':'программ найдено'}
+            {' '}по твоему направлению в {a.countries.map(c=>countryNamesIn[c]).slice(0,2).join(' и ')}
+          </div>
+        </>
+      ):(
+        <div style={{fontFamily:sans,fontSize:12.5,color:t2,letterSpacing:'-.01em',lineHeight:1.5}}>
+          По этому направлению в выбранных странах у нас пока пусто.
+          План и дедлайны всё равно сохраним — а программы стоит поискать,
+          расширив список стран в настройках.
+        </div>
+      )}
+    </div>
+  )}
   {/* что получишь */}
 <div style={{marginTop:24,marginBottom:8,
   border:`1px solid ${line}`,borderRadius:8,overflow:'hidden'}}>
