@@ -74,6 +74,15 @@ export default function ScholarshipLock({ children, unlocked = false, loading = 
           <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5, marginBottom: 16 }}>
             Требования, документы, дедлайны и частые ошибки — разово, без подписки.
           </p>
+          {/* Раньше цену было видно только на странице Lava.top после
+              клика — для аудитории, которая считает каждую тысячу, это
+              читалось как подвох (см. аудит продукта 2026-09-07). */}
+          <div style={{ fontFamily: sans, fontSize: 20, fontWeight: 700, color: t1, marginBottom: 4 }}>
+            2 990 ₽
+          </div>
+          <p style={{ fontFamily: sans, fontSize: 11, color: t2, marginBottom: 16 }}>
+            разово — русский слой по визе и оплате, полные гайды по всем странам, безлимитное избранное, таймлайн, ИИ-анализ
+          </p>
           <button onClick={onBuy} disabled={buying} style={{
             width: '100%', padding: '11px', borderRadius: 8, border: 'none',
             background: gold, color: bg0, fontFamily: sans, fontSize: 13, fontWeight: 600,

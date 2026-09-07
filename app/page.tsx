@@ -489,6 +489,39 @@ setStep((s:any)=> s+1)
             ))}
           </div>
         </div>
+
+        {/* что бесплатно / что Pro — раньше лендинг вообще не упоминал
+            ни цену, ни состав тарифов, ни для кого продукт (см. аудит
+            продукта 2026-09-07: цену было видно только на странице
+            оплаты, а границы продукта — только на своём опыте). */}
+        <div className="hero-up" style={{padding:'0 24px 48px',maxWidth:1080,margin:'0 auto',width:'100%',animationDelay:'.45s'}}>
+          <div style={{fontFamily:mono,fontSize:10,fontWeight:600,color:t3,letterSpacing:'0.1em',marginBottom:10}}>ЧТО ВНУТРИ</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',border:`1px solid ${line}`,borderRadius:4,overflow:'hidden'}}>
+            <div style={{padding:'20px 22px',borderRight:`1px solid ${line}`}}>
+              <div style={{fontFamily:sans,fontSize:13,fontWeight:700,color:t1,marginBottom:10}}>Бесплатно навсегда</div>
+              <ul style={{margin:0,padding:0,listStyle:'none',display:'flex',flexDirection:'column',gap:6}}>
+                {['Подбор программ под профиль','Personal roadmap (Journey)','1 программа в избранном'].map(t=>(
+                  <li key={t} style={{fontFamily:sans,fontSize:12,color:t2,display:'flex',gap:8}}><span style={{color:t3}}>—</span>{t}</li>
+                ))}
+              </ul>
+            </div>
+            <div style={{padding:'20px 22px',background:`${gold}08`}}>
+              <div style={{display:'flex',alignItems:'baseline',gap:8,marginBottom:10}}>
+                <span style={{fontFamily:sans,fontSize:13,fontWeight:700,color:t1}}>Pro</span>
+                <span style={{fontFamily:sans,fontSize:15,fontWeight:700,color:gold}}>2 990 ₽</span>
+                <span style={{fontFamily:sans,fontSize:11,color:t3}}>разово</span>
+              </div>
+              <ul style={{margin:0,padding:0,listStyle:'none',display:'flex',flexDirection:'column',gap:6}}>
+                {['Виза, оплата и документы по каждой стране','Полные гайды по стипендиям','Безлимитное избранное · таймлайн · ИИ-анализ'].map(t=>(
+                  <li key={t} style={{fontFamily:sans,fontSize:12,color:t2,display:'flex',gap:8}}><span style={{color:gold}}>—</span>{t}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.6,marginTop:12,maxWidth:640}}>
+            Сейчас база сильнее всего покрывает IT, инженерию, данные и бизнес-направления — если ты гуманитарий или медик, часть фильтров пока будет пустой, честно предупреждаем сразу.
+          </p>
+        </div>
       </div>
     </div>
     )

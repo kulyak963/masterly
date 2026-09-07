@@ -217,7 +217,9 @@ function ProUpsell({title,desc}:{title:string,desc:string}) {
         background:bg1,border:`1px solid ${line}`,boxShadow:'0 20px 48px rgba(0,0,0,.35)'}}>
         <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🔒</div>
         <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>{title}</div>
-        <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:20}}>{desc}</p>
+        <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:16}}>{desc}</p>
+        <div style={{fontFamily:sans,fontSize:22,fontWeight:700,color:t1,marginBottom:2}}>2 990 ₽</div>
+        <p style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:18}}>разово, без подписки</p>
         <button onClick={onBuy} disabled={buying} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
           background:gold,color:bg0,fontFamily:sans,fontSize:13,fontWeight:600,cursor:buying?'not-allowed':'pointer',
           letterSpacing:'-.01em',marginBottom:error?10:0,opacity:buying?0.7:1}}>
