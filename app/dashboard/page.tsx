@@ -589,7 +589,14 @@ const toggleFavorite = async (programId: string, e: React.MouseEvent) => {
   e.stopPropagation()
   const isFav = favorites.has(programId)
   if (!isFav && !profile.is_pro && favorites.size >= FREE_FAVORITES_LIMIT) {
-    alert(`На бесплатном тарифе можно сохранить ${FREE_FAVORITES_LIMIT} программу в избранное. Безлимит — в Pro (оплата пока не подключена).`)
+    // Текст говорил "оплата пока не подключена" — устарело с 2026-09-07,
+    // Lava.top подключён. Это худшее место для такой опечатки: человек
+    // упёрся в лимит, то есть уже хочет заплатить, а мы ему сообщаем,
+    // что не можем взять деньги. Ведём в чек-аут.
+    if (confirm(`На бесплатном тарифе можно сохранить ${FREE_FAVORITES_LIMIT} программу в избранное.\n\nБезлимитное избранное, сравнение, таймлайн и ИИ-анализ — в Pro за 2 990 ₽ разово.\n\nОткрыть оплату?`)) {
+      const { error } = await startCheckout()
+      if (error) alert(error)
+    }
     return
   }
   const next = new Map(favorites)
