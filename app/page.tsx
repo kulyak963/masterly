@@ -46,14 +46,21 @@ input:focus{border-color:rgba(255,255,255,.3)}
 input::placeholder{color:rgba(242,239,233,.2)}
 `
 
+// Раньше Швеция/Финляндия были подписаны "Free", а Чехия — "Бесплатно
+// на чешском" (при том что 100% программ в базе на английском, то есть
+// платных для не-ЕС) — прямое повторение той же ошибки, которую чинили
+// в базе данных (см. аудит продукта 2026-09-07 и scripts/reset-false-free.mjs):
+// Швеция и Дания берут с не-ЕС студентов давно, широкий диапазон по
+// программам, никакого единого "Free". Германия оставлена "в основном
+// бесплатно" — это правда почти везде, кроме TUM и Баден-Вюртемберга.
 const COUNTRIES_MAIN = [
-  {c:'de',f:'DE',n:'Германия',   tag:'Бесплатно · DAAD'},
+  {c:'de',f:'DE',n:'Германия',   tag:'В основном бесплатно · DAAD'},
   {c:'nl',f:'NL',n:'Нидерланды', tag:'Holland Scholarship'},
-  {c:'se',f:'SE',n:'Швеция',     tag:'SI Grant · Free'},
+  {c:'se',f:'SE',n:'Швеция',     tag:'Стипендия SI'},
   {c:'ch',f:'CH',n:'Швейцария',  tag:'ETH · EPFL'},
-  {c:'fi',f:'FI',n:'Финляндия',  tag:'Aalto · Free'},
+  {c:'fi',f:'FI',n:'Финляндия',  tag:'Aalto University'},
   {c:'fr',f:'FR',n:'Франция',    tag:'Eiffel Excellence'},
-  {c:'cz',f:'CZ',n:'Чехия',      tag:'Бесплатно на чешском'},
+  {c:'cz',f:'CZ',n:'Чехия',      tag:'Прага · Брно'},
   {c:'at',f:'AT',n:'Австрия',    tag:'TU Wien · WU'},
 ]
 
@@ -383,9 +390,9 @@ setStep((s:any)=> s+1)
   // STEP 0 — WELCOME
   if(step===0) {
     const BOARD_ROWS = [
-      {code:'DE', name:'Германия',   tag:'Бесплатно · DAAD',      status:'ПРИЁМ ОТКРЫТ',   color:gold},
+      {code:'DE', name:'Германия',   tag:'В основном бесплатно · DAAD', status:'ПРИЁМ ОТКРЫТ',   color:gold},
       {code:'NL', name:'Нидерланды', tag:'Holland Scholarship',   status:'ПРИЁМ ОТКРЫТ',   color:gold},
-      {code:'SE', name:'Швеция',     tag:'SI Grant · Free',       status:'СКОРО ЗАКРЫТИЕ', color:red},
+      {code:'SE', name:'Швеция',     tag:'Стипендия SI',          status:'СКОРО ЗАКРЫТИЕ', color:red},
       {code:'CH', name:'Швейцария',  tag:'ETH · EPFL',            status:'ВЫСОКИЙ ШАНС',   color:blue},
     ]
     return (
@@ -815,7 +822,7 @@ setStep((s:any)=> s+1)
           <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>ФИНАНСОВЫЙ ВОПРОС</div>
           {a.pain==='money'&&(
             <div style={{padding:'10px 14px',marginBottom:16,background:`${grn}10`,borderLeft:`2px solid ${grn}`,borderRadius:'0 4px 4px 0'}}>
-              <span style={{fontFamily:sans,fontSize:12,color:grn}}>Германия, Финляндия, Чехия — бесплатное обучение. DAAD покрывает проживание. Это реально.</span>
+              <span style={{fontFamily:sans,fontSize:12,color:grn}}>В Германии большинство вузов бесплатны даже для не-ЕС (кроме отдельных вузов вроде TUM). Плюс реальные стипендии вроде DAAD, которые покрывают проживание. Это реально.</span>
             </div>
           )}
           <div style={{display:'flex',flexDirection:'column',gap:2}}>
