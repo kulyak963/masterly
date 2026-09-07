@@ -328,7 +328,7 @@ Universities in many European countries show ONE tuition figure that is actually
 This program's field must be "${field}" for every entry you return.
 
 ## Never fabricate
-If you can't find a real figure, use your best-sourced estimate but set verified=false and say what's missing in cons. Never invent a URL — only cite ones you actually found.
+If you found a real, sourced figure, use it and set verified accordingly. If you found nothing but have a genuinely well-grounded estimate (e.g. a clearly comparable program at the same university), use it, set verified=false, and say in cons that it's an estimate. If you found NOTHING usable — no figure, no comparable — set tuition_eur to null rather than guessing a plausible-sounding number. A null we can label "unknown" is far better than a confident-looking number that's actually invented — that's exactly the bug that made ~96 unverified programs display as "free" (2026-09 audit). Never invent a URL — only cite ones you actually found.
 
 ## Output — ONLY this JSON array (no markdown fences, no other text):
 [
@@ -353,7 +353,7 @@ If you can't find a real figure, use your best-sourced estimate but set verified
     "source_note_ru": "что подтверждено и почему verified true/false, по-русски"
   }
 ]
-"ielts_min" null only if genuinely no fixed threshold. "tuition_eur" annual EUR (convert if needed).`
+"ielts_min" null only if genuinely no fixed threshold. "tuition_eur" annual EUR (convert if needed), or null if truly not found — never 0 unless tuition is actually, confirmedly free.`
 }
 
 async function researchField(field, existingPrograms) {
@@ -534,7 +534,7 @@ Confirm/refine tuition, deadline, and IELTS requirement — specifically for NON
 A few parallel searches around the known URL and program name is enough. No second round — it silently loses the response on this platform.
 
 ## Never fabricate
-If a real figure can't be found, use your best-sourced estimate, set verified=false, explain what's missing in cons. verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME page cited in "url".
+If a real figure can't be found, use your best-sourced estimate, set verified=false, explain what's missing in cons. If you found NOTHING usable at all, set tuition_eur to null rather than inventing a plausible-sounding number — a labeled "unknown" beats a confident-looking guess. verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME page cited in "url".
 
 ## URLs must be real
 Only use a URL that literally appeared in search results — the known URL above, or one you found confirming/refining it. Never invent one.
@@ -573,17 +573,36 @@ function sqlArray(arr) {
 function sqlNum(n) {
   return n === null || n === undefined ? 'null' : n
 }
+function sqlStr(s) {
+  return s === null || s === undefined ? 'null' : `'${sqlEscape(s)}'`
+}
+
+// tuition_status: 'verified' — тюишн+дедлайн+язык подтверждены на одной
+// официальной странице для не-ЕС студентов (см. buildDetailPrompt).
+// 'ai' — цифра найдена, но не на такой странице (оценка, не факт).
+// 'unknown' — цифра не найдена вообще. Раньше p.tuition_eur ?? 0 тихо
+// превращал "не найдено" в "бесплатно" (см. аудит продукта 2026-09-07,
+// это и создало ~96 ложных "Бесплатно" в базе, включая страны, где
+// не-ЕС студенты платят). Теперь неизвестное остаётся null.
+function tuitionStatus(p) {
+  if (p.verified) return 'verified'
+  if (p.tuition_eur === null || p.tuition_eur === undefined) return 'unknown'
+  return 'ai'
+}
 
 function programInsertSql(p) {
+  const status = tuitionStatus(p)
   return `\n-- ${p.source_note_ru ? sqlEscape(p.source_note_ru).replace(/\n/g, '\n-- ') : 'Источник: ' + p.url}\n` +
     `insert into programs (
   university_id, name, field, language, duration_months, tuition_eur,
+  tuition_status, tuition_checked_at,
   deadline_month, deadline_day, ielts_min, gpa_min, url, scholarships,
   summary, pros, cons, verified, verified_at
 ) values (
   '${p.universityId}',
-  '${sqlEscape(p.program_name)}', '${p.field}', 'English', ${sqlNum(p.duration_months ?? 24)}, ${sqlNum(p.tuition_eur ?? 0)},
-  ${sqlNum(p.deadline_month)}, ${sqlNum(p.deadline_day)}, ${sqlNum(p.ielts_min)}, ${sqlNum(p.gpa_min ?? 3)}, '${sqlEscape(p.url)}',
+  '${sqlEscape(p.program_name)}', '${p.field}', 'English', ${sqlNum(p.duration_months ?? 24)}, ${sqlNum(p.tuition_eur)},
+  '${status}', ${status === 'unknown' ? 'null' : 'current_date'},
+  ${sqlNum(p.deadline_month)}, ${sqlNum(p.deadline_day)}, ${sqlNum(p.ielts_min)}, ${sqlNum(p.gpa_min)}, '${sqlEscape(p.url)}',
   ${sqlArray(p.scholarships)},
   '${sqlEscape(p.summary_ru)}',
   ${sqlArray(p.pros_ru)},

@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { supabase } from '../../../lib/supabase'
+import { tuitionLabel } from '@/lib/tuition'
 
 export const alt = 'Mastersly'
 export const size = { width: 1200, height: 630 }
@@ -17,13 +18,13 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const { id } = await params
   const { data: program } = await supabase
     .from('programs')
-    .select('name, tuition_eur, university:universities(name, country)')
+    .select('name, tuition_eur, tuition_status, university:universities(name, country)')
     .eq('id', id)
     .single()
 
   const uniName = (program?.university as any)?.name || 'Mastersly'
   const country = CNAME[(program?.university as any)?.country] || ''
-  const cost = program?.tuition_eur === 0 ? 'Бесплатно' : program?.tuition_eur ? `€${program.tuition_eur}/год` : ''
+  const cost = program ? tuitionLabel(program) : ''
 
   return new ImageResponse(
     (

@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { bg0, line, t1, t2, t3, gold, sans, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import { tuitionLabel } from '@/lib/tuition'
 
 export const revalidate = 3600
 
@@ -70,7 +71,7 @@ export default async function ProgramPage({ params }: Props) {
 
   const uni = program.university
   const countryName = CNAME[uni?.country] || uni?.country?.toUpperCase() || ''
-  const cost = program.tuition_eur === 0 ? 'Бесплатно' : `€${Number(program.tuition_eur).toLocaleString('ru-RU')}/год`
+  const cost = tuitionLabel(program)
   const deadline = program.deadline_month && program.deadline_day
     ? `${String(program.deadline_day).padStart(2, '0')}.${String(program.deadline_month).padStart(2, '0')}`
     : null

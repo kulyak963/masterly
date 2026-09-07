@@ -11,6 +11,7 @@ import ItalyGuide from './ItalyGuide'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
+import { tuitionLabel, isOverBudget } from '@/lib/tuition'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -125,7 +126,13 @@ function calcScore(p: any, profile: any): number {
   z += Math.max(-2, Math.min(2, profile.ielts - ieltsMin)) * 0.9
 
   const budgetLimit = BUDGET_LIMIT[profile.budget] ?? 15000
-  if (p.tuition_eur === 0) z += profile.budget === 'zero' ? 1.6 : 1.0
+  // tuition_eur === null значит "неизвестно", не "бесплатно" (см.
+  // lib/tuition.ts) — раньше непроверенная цена тихо приравнивалась к
+  // нулю через нестрогое сравнение и получала бонус как за free-программу.
+  // Неизвестность — это неопределённость, а не хорошая новость, так что
+  // никакого бонуса, только небольшой минус за риск сюрприза с ценой.
+  if (p.tuition_eur == null) z -= profile.budget === 'zero' ? 0.6 : 0.2
+  else if (p.tuition_eur === 0) z += profile.budget === 'zero' ? 1.6 : 1.0
   else if (profile.budget === 'zero') z -= 2.2
   else if (p.tuition_eur <= budgetLimit) z += 0.4
   else if (p.tuition_eur <= budgetLimit * 1.3) z -= 0.7
@@ -457,13 +464,13 @@ const unis = useMemo(() => diversifyByCountry(programs.map((p: any, i: number) =
   // прямого сигнала, что показанный вариант вообще не подходит под его
   // ограничение, только менее заметное отличие в цифре скора.
   const budgetLimit = BUDGET_LIMIT[profile.budget] ?? 15000
-  const overBudget = p.tuition_eur > budgetLimit
+  const overBudget = isOverBudget(p, budgetLimit)
   return {
     ...p,
     _n: p.university?.name || '',
     _p: p.name,
     _days: daysUntil(p.deadline_month, p.deadline_day),
-    _cost: p.tuition_eur === 0 ? 'Бесплатно' : `€${p.tuition_eur.toLocaleString()}/год`,
+    _cost: tuitionLabel(p),
     _overBudget: overBudget,
     _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
     _c: COLORS[i % COLORS.length],

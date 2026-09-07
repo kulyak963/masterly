@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { askAI, extractJson } from '../../../lib/ai'
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin'
+import { tuitionLabel } from '../../../lib/tuition'
 
 // НЕ трогаем maxDuration — лимит зависит от тарифа Vercel, а его конкретное
 // значение отсюда не проверить; завысить его — верный способ уронить сборку
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
 - Главная боль: ${profile.pain}
 
 ПРОГРАММА: ${program.name} в ${program.university_name}
-Стоимость: ${program.tuition_eur === 0 ? 'бесплатно' : `€${program.tuition_eur}/год`}
+Стоимость: ${tuitionLabel(program).toLowerCase()}
 IELTS минимум: ${program.ielts_min}
 Рейтинг: ${program.ranking_qs ? `#${program.ranking_qs} QS` : 'не в рейтинге'}
 Плюсы программы: ${program.pros?.join(', ')}
