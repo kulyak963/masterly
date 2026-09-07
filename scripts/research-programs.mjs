@@ -417,6 +417,9 @@ Issue several PARALLEL search queries in a SINGLE turn: one general "site:${host
 ## URLs must be real
 Only use a URL that literally appeared in your search results — never invent one.
 
+## Only specific, named degree programs — not faculty/department listing pages
+Each entry must be ONE specific degree a student applies to by that exact name (e.g. "MSc Medical Informatics"), never a page that just lists several such degrees (e.g. "Faculty of Social Sciences — Psychology Master's programmes (overview)" or "Law School — LLM programmes"). If a search result is a listing/overview page, open it mentally and list the individual programs it contains instead of the listing page itself — a listing page is not itself a program someone can apply to.
+
 ## Output — ONLY this JSON array, nothing else (literal "[]" if you truly found nothing in this slice, never explain in prose instead):
 [{"name": "Official program name", "url": "https://..."}]`
 }
@@ -566,10 +569,20 @@ function normalizeName(name) {
     .join(' ')
 }
 
+// Живой пример на Нидерландах (2026-09-07): "Faculty of Social and
+// Behavioural Sciences - Psychology Master's (overview)" и "Amsterdam
+// Law School - LLM Master's programmes (overview)" прошли как отдельные
+// "программы" несмотря на явный запрет в промпте (buildEnumeratePrompt) —
+// модель иногда всё равно возвращает страницу-листинг. Страховка:
+// отбрасываем по названию до того, как это дойдёт до детального шага
+// (который стоил бы токенов впустую на нереальную "программу").
+const OVERVIEW_PAGE_RE = /\((overview|listing)\)|programmes? overview|list of programs?/i
+
 async function classifyPrograms(uni, rawList, alreadyKnownNames) {
   const knownNormalized = new Set(alreadyKnownNames.map(normalizeName))
   const items = rawList
     .filter((p) => !knownNormalized.has(normalizeName(p.name)))
+    .filter((p) => !OVERVIEW_PAGE_RE.test(p.name))
     .map((p) => ({ name: p.name, url: p.url, field: classifyByKeywords(p.name) }))
   return { items, usage: { input_tokens: 0, output_tokens: 0 } }
 }
