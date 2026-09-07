@@ -55,33 +55,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid json' }, { status: 400 })
   }
 
-  const db = getSupabaseAdmin()
-  const email = payload.buyer?.email?.trim().toLowerCase() ?? null
+  try {
+    const db = getSupabaseAdmin()
+    const email = payload.buyer?.email?.trim().toLowerCase() ?? null
 
-  let matchedUserId: string | null = null
-  if (payload.eventType === 'payment.success' && email) {
-    const { data: users } = await db.auth.admin.listUsers()
-    const user = users?.users.find((u) => u.email?.toLowerCase() === email)
-    if (user) {
-      matchedUserId = user.id
-      await db.from('profiles').update({ is_pro: true }).eq('user_id', user.id)
-    } else {
-      console.warn(`Lava.top payment.success для email без аккаунта Mastersly: ${email}`)
+    let matchedUserId: string | null = null
+    if (payload.eventType === 'payment.success' && email) {
+      const { data: users, error: listErr } = await db.auth.admin.listUsers()
+      if (listErr) console.error('listUsers failed:', listErr.message)
+      const user = users?.users.find((u) => u.email?.toLowerCase() === email)
+      if (user) {
+        matchedUserId = user.id
+        const { error: updErr } = await db.from('profiles').update({ is_pro: true }).eq('user_id', user.id)
+        if (updErr) console.error('profiles update failed:', updErr.message)
+      } else {
+        console.warn(`Lava.top payment.success для email без аккаунта Mastersly: ${email}`)
+      }
     }
+
+    // Журнал — не блокирует ответ вебхуку, если запись не удалась.
+    const { error: insErr } = await db.from('payment_events').insert({
+      provider: 'lava_top',
+      event_type: payload.eventType,
+      contract_id: payload.contractId ?? null,
+      buyer_email: email,
+      amount: payload.amount ?? null,
+      currency: payload.currency ?? null,
+      status: payload.status ?? null,
+      matched_user_id: matchedUserId,
+      raw_payload: payload,
+    })
+    if (insErr) console.error('payment_events insert failed:', insErr.message)
+
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    // Раньше необработанное исключение здесь давало пустой ответ 500 без
+    // тела и без деталей ни в ответе, ни в логах — диагностировать было
+    // невозможно. detail попадает в ответ, потому что до этой точки уже
+    // прошла проверка X-Api-Key, так что вызвать это может только тот, у
+    // кого и так есть секрет вебхука.
+    console.error('Lava.top webhook handler crashed:', e)
+    return NextResponse.json({ error: 'internal error', detail: e?.message ?? String(e) }, { status: 500 })
   }
-
-  // Журнал — не блокирует ответ вебхуку, если запись не удалась.
-  await db.from('payment_events').insert({
-    provider: 'lava_top',
-    event_type: payload.eventType,
-    contract_id: payload.contractId ?? null,
-    buyer_email: email,
-    amount: payload.amount ?? null,
-    currency: payload.currency ?? null,
-    status: payload.status ?? null,
-    matched_user_id: matchedUserId,
-    raw_payload: payload,
-  }).then(({ error }) => { if (error) console.error('payment_events insert failed:', error.message) })
-
-  return NextResponse.json({ ok: true })
 }
