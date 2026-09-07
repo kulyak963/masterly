@@ -510,8 +510,13 @@ const FIELD_KEYWORD_RULES = [
   // попадали в один общий "Дизайн", хотя это разные специальности с
   // разным набором вступительных требований (портфолио другого типа).
   {
+    // Живой пример на Норвегии (2026-09-07): "Informatics: Programming
+    // and Systems Architecture" (программирование, никакого отношения к
+    // зданиям) попало сюда только из-за голого слова "architecture" —
+    // "systems/software/enterprise/information/computer/network/data/
+    // cloud architecture" — все это термины информатики, не строительства.
     field: 'Architecture',
-    re: /\b(architecture|architectural design|urban design|urban planning|landscape architecture|spatial design)\b/i,
+    re: /\b(?:(?<!systems |software |enterprise |information |computer |network |data |cloud |solution |security |service.oriented )architecture|architectural design|urban design|urban planning|landscape architecture|spatial design)\b/i,
   },
   {
     field: 'Design',
