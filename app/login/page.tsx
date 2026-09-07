@@ -229,15 +229,15 @@ export default function LoginPage() {
               Письмо открыто на телефоне? Введи код из него здесь:
             </p>
             <div style={{ display:'flex', gap:8 }}>
-              <input type="text" inputMode="numeric" maxLength={6} placeholder="Код из письма"
+              <input type="text" inputMode="numeric" maxLength={10} placeholder="Код из письма"
                 value={otpCode} onChange={e=>{ setOtpCode(e.target.value.replace(/\D/g,'')); setOtpError('') }}
                 onKeyDown={e=>{ if (e.key==='Enter') verifyOtpCode() }}
                 style={{ flex:1, textAlign:'center', letterSpacing:'0.3em', fontFamily:mono }}/>
-              <button onClick={verifyOtpCode} disabled={otpCode.length<6||otpVerifying}
+              <button onClick={verifyOtpCode} disabled={otpCode.length<4||otpVerifying}
                 style={{ padding:'0 18px', borderRadius:8, border:'none',
-                background:otpCode.length>=6?grn:'rgba(255,255,255,.06)',
-                color:otpCode.length>=6?bg0:t3, fontFamily:sans, fontSize:13, fontWeight:600,
-                cursor:otpCode.length>=6&&!otpVerifying?'pointer':'not-allowed' }}>
+                background:otpCode.length>=4?grn:'rgba(255,255,255,.06)',
+                color:otpCode.length>=4?bg0:t3, fontFamily:sans, fontSize:13, fontWeight:600,
+                cursor:otpCode.length>=4&&!otpVerifying?'pointer':'not-allowed' }}>
                 {otpVerifying?'...':'OK'}
               </button>
             </div>
@@ -310,7 +310,7 @@ export default function LoginPage() {
 
             <div style={{ padding:'24px 28px', display:'flex', flexDirection:'column', gap:12 }}>
 
-              <button onClick={loginWithGoogle} disabled={loading} className="btn"
+              <button type="button" onClick={loginWithGoogle} disabled={loading} className="btn"
                 style={{ width:'100%', padding:'13px 16px', borderRadius:8, border:`1px solid ${line}`,
                   background:'rgba(255,255,255,.05)', display:'flex', alignItems:'center',
                   justifyContent:'center', gap:10, fontFamily:sans, fontSize:14, fontWeight:500,
@@ -334,7 +334,7 @@ export default function LoginPage() {
               <div style={{ display:'flex', gap:4, padding:4, borderRadius:8,
                 background:'rgba(255,255,255,.04)', border:`1px solid ${line}` }}>
                 {[['magic','Ссылка на почту'],['password','Пароль']].map(([v,l])=>(
-                  <button key={v} onClick={()=>{ setTab(v as any); setError('') }} style={{
+                  <button key={v} type="button" onClick={()=>{ setTab(v as any); setError('') }} style={{
                     flex:1, padding:'8px', borderRadius:6, border:'none',
                     background: tab===v ? 'rgba(255,255,255,.08)' : 'transparent',
                     color: tab===v ? t1 : t3, fontFamily:sans, fontSize:12,
@@ -344,12 +344,19 @@ export default function LoginPage() {
                 ))}
               </div>
 
-              <input type="email" placeholder="твой@email.com" value={email}
-                onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (tab==='magic' ? loginWithEmail() : pwMode==='signin' ? signInWithPassword() : pwMode==='signup' ? signUpWithPassword() : sendResetLink())}/>
+              <form onSubmit={e => {
+                e.preventDefault()
+                if (loading) return
+                if (tab === 'magic') loginWithEmail()
+                else if (pwMode === 'signin') signInWithPassword()
+                else if (pwMode === 'signup') signUpWithPassword()
+                else sendResetLink()
+              }} style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              <input type="email" name="email" autoComplete="email" placeholder="твой@email.com" value={email}
+                onChange={e => setEmail(e.target.value)}/>
 
               {tab === 'magic' ? (
-                <button onClick={loginWithEmail} disabled={loading || !email.trim()} className="btn"
+                <button type="submit" disabled={loading || !email.trim()} className="btn"
                   style={{ width:'100%', padding:'13px', borderRadius:8, border:'none',
                     background: email.trim() ? t1 : 'rgba(255,255,255,.06)',
                     color: email.trim() ? bg0 : t3, fontFamily:sans, fontSize:14, fontWeight:500,
@@ -359,18 +366,19 @@ export default function LoginPage() {
               ) : (
                 <>
                   {pwMode !== 'forgot' && (
-                    <input type="password" placeholder="Пароль" value={password}
-                      onChange={e=>setPassword(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && (pwMode==='signin' ? signInWithPassword() : signUpWithPassword())}/>
+                    <input type="password" name="password"
+                      autoComplete={pwMode === 'signup' ? 'new-password' : 'current-password'}
+                      placeholder="Пароль" value={password}
+                      onChange={e=>setPassword(e.target.value)}/>
                   )}
                   {pwMode === 'signup' && (
-                    <input type="password" placeholder="Повтори пароль" value={confirm}
-                      onChange={e=>setConfirm(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && signUpWithPassword()}/>
+                    <input type="password" name="confirm-password" autoComplete="new-password"
+                      placeholder="Повтори пароль" value={confirm}
+                      onChange={e=>setConfirm(e.target.value)}/>
                   )}
 
                   {pwMode === 'signin' && (
-                    <button onClick={signInWithPassword} disabled={loading || !email.trim() || !password} className="btn"
+                    <button type="submit" disabled={loading || !email.trim() || !password} className="btn"
                       style={{ width:'100%', padding:'13px', borderRadius:8, border:'none',
                         background: email.trim()&&password ? t1 : 'rgba(255,255,255,.06)',
                         color: email.trim()&&password ? bg0 : t3, fontFamily:sans, fontSize:14,
@@ -379,7 +387,7 @@ export default function LoginPage() {
                     </button>
                   )}
                   {pwMode === 'signup' && (
-                    <button onClick={signUpWithPassword} disabled={loading || !email.trim() || !password || !confirm} className="btn"
+                    <button type="submit" disabled={loading || !email.trim() || !password || !confirm} className="btn"
                       style={{ width:'100%', padding:'13px', borderRadius:8, border:'none',
                         background: email.trim()&&password&&confirm ? t1 : 'rgba(255,255,255,.06)',
                         color: email.trim()&&password&&confirm ? bg0 : t3, fontFamily:sans, fontSize:14,
@@ -388,7 +396,7 @@ export default function LoginPage() {
                     </button>
                   )}
                   {pwMode === 'forgot' && (
-                    <button onClick={sendResetLink} disabled={loading || !email.trim()} className="btn"
+                    <button type="submit" disabled={loading || !email.trim()} className="btn"
                       style={{ width:'100%', padding:'13px', borderRadius:8, border:'none',
                         background: email.trim() ? t1 : 'rgba(255,255,255,.06)',
                         color: email.trim() ? bg0 : t3, fontFamily:sans, fontSize:14,
@@ -400,21 +408,22 @@ export default function LoginPage() {
                   <div style={{ display:'flex', justifyContent:'space-between', fontFamily:sans, fontSize:12 }}>
                     {pwMode === 'signin' ? (
                       <>
-                        <button onClick={()=>{setPwMode('signup');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
+                        <button type="button" onClick={()=>{setPwMode('signup');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
                           Нет аккаунта? Регистрация
                         </button>
-                        <button onClick={()=>{setPwMode('forgot');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
+                        <button type="button" onClick={()=>{setPwMode('forgot');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
                           Забыли пароль?
                         </button>
                       </>
                     ) : (
-                      <button onClick={()=>{setPwMode('signin');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
+                      <button type="button" onClick={()=>{setPwMode('signin');setError('')}} style={{ background:'none', border:'none', color:t2, cursor:'pointer', textDecoration:'underline' }}>
                         ← Уже есть аккаунт
                       </button>
                     )}
                   </div>
                 </>
               )}
+              </form>
 
               {showTurnstile && <div ref={turnstile.containerRef} style={{ margin:'4px auto 0' }}/>}
 
