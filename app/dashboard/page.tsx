@@ -11,7 +11,7 @@ import ItalyGuide from './ItalyGuide'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
-import { tuitionLabel, isOverBudget } from '@/lib/tuition'
+import { tuitionLabel, budgetState, type BudgetState } from '@/lib/tuition'
 import { isDeadLink } from '@/lib/linkHealth'
 import { readinessScore } from '@/lib/readiness'
 
@@ -466,14 +466,13 @@ const unis = useMemo(() => diversifyByCountry(programs.map((p: any, i: number) =
   // прямого сигнала, что показанный вариант вообще не подходит под его
   // ограничение, только менее заметное отличие в цифре скора.
   const budgetLimit = BUDGET_LIMIT[profile.budget] ?? 15000
-  const overBudget = isOverBudget(p, budgetLimit)
   return {
     ...p,
     _n: p.university?.name || '',
     _p: p.name,
     _days: daysUntil(p.deadline_month, p.deadline_day),
     _cost: tuitionLabel(p),
-    _overBudget: overBudget,
+    _budgetState: budgetState(p, budgetLimit) as BudgetState,
     _rank: p.university?.ranking_qs ? `#${p.university.ranking_qs} QS` : '—',
     _c: COLORS[i % COLORS.length],
     _country: p.university?.country || '',
@@ -870,8 +869,30 @@ const getVerdict = async (p: any) => {
         </button>
       </div>
     )}
+    {(() => {
+      // Честный счётчик наверху — раньше бюджет спрашивали в анкете и
+      // почти не использовали: сортировка была только по шансу поступить,
+      // "⚠ дороже бюджета" стояло почти на каждой платной строке и
+      // переставало что-либо сообщать (см. аудит продукта 2026-09-07).
+      const order: Record<BudgetState,number> = { fits:0, scholarship:1, over:2 }
+      const fitsN = unis.filter((u:any)=>u._budgetState==='fits').length
+      const scholarshipN = unis.filter((u:any)=>u._budgetState==='scholarship').length
+      const overN = unis.filter((u:any)=>u._budgetState==='over').length
+      if (!unis.length) return null
+      return (
+        <div style={{marginBottom:20,padding:'12px 16px',borderRadius:8,background:'rgba(255,255,255,.03)',border:`1px solid ${line}`,display:'flex',gap:18,flexWrap:'wrap',fontFamily:sans,fontSize:12}}>
+          <span style={{color:t1}}><b style={{color:grn}}>{fitsN}</b> в бюджет</span>
+          {scholarshipN>0 && <span style={{color:t2}}><b style={{color:gold}}>{scholarshipN}</b> — нужна стипендия или цена уточняется</span>}
+          {overN>0 && <span style={{color:t2}}><b style={{color:red}}>{overN}</b> — не по бюджету</span>}
+        </div>
+      )
+    })()}
     {(['reach','target','safety'] as const).map(bucket => {
       const items = unis.filter((u:any) => u._bucket === bucket)
+        .sort((a:any,b:any)=>{
+          const order: Record<BudgetState,number> = { fits:0, scholarship:1, over:2 }
+          return order[a._budgetState as BudgetState] - order[b._budgetState as BudgetState]
+        })
       if (!items.length) return null
       const cfg = BUCKET_CFG[bucket]
       return (
@@ -907,7 +928,9 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 <span style={{justifySelf:'center'}} title={CNAME[u._country]||u._country}>
                   <Flag code={u._country}/>
                 </span>
-                <Mono style={{color:u._overBudget?red:t2}}>{u._overBudget?'⚠ ':''}{u._cost}</Mono>
+                <Mono style={{color:u._budgetState==='over'?red:u._budgetState==='scholarship'?gold:t2}}>
+                  {u._budgetState==='over'?'⚠ ':u._budgetState==='scholarship'?'🎓 ':''}{u._cost}
+                </Mono>
                 <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:18,color:cfg.color}}>{u._score}</div>
                 <Mono style={{color:u._days<30?red:t2}}>{u._days} дн.</Mono>
               </div>
@@ -1359,13 +1382,13 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',borderTop:`1px solid ${line}`,borderLeft:`1px solid ${line}`,marginBottom:24}}>
                 {[
-                  {l:'РЕЙТИНГ',v:selectedProgram._rank},
-                  {l:'СТОИМОСТЬ',v:selectedProgram._cost,warn:selectedProgram._overBudget},
-                  {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,warn:selectedProgram._days<30},
+                  {l:'РЕЙТИНГ',v:selectedProgram._rank,color:t1},
+                  {l:'СТОИМОСТЬ',v:selectedProgram._cost,color:selectedProgram._budgetState==='over'?red:selectedProgram._budgetState==='scholarship'?gold:t1},
+                  {l:'ДЕДЛАЙН',v:`${selectedProgram._days} дн.`,color:selectedProgram._days<30?red:t1},
                 ].map((m,i)=>(
                   <div key={i} style={{padding:'12px 14px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                     <div style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',color:t3,marginBottom:4}}>{m.l}</div>
-                    <div style={{fontFamily:sans,fontSize:13,color:m.warn?red:t1}}>{m.v}</div>
+                    <div style={{fontFamily:sans,fontSize:13,color:m.color}}>{m.v}</div>
                   </div>
                 ))}
               </div>

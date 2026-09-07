@@ -32,3 +32,23 @@ export function isWithinBudget(p: TuitionLike, budgetLimit: number): boolean {
 export function isUnknownTuition(p: TuitionLike): boolean {
   return p.tuition_eur == null
 }
+
+// Три честных состояния вместо одного предупреждающего треугольника на
+// каждой платной строке (см. аудит продукта 2026-09-07: раньше бюджет
+// собирался в анкете и почти ни на что не влиял — "⚠" стоял почти
+// везде, а предупреждение, которое везде, не читается нигде).
+// 'fits' — реально укладывается. 'scholarship' — не укладывается, но у
+// программы есть реальные стипендии в базе (может закрыть разницу) или
+// цена ещё не подтверждена. 'over' — не укладывается и без известной
+// стипендии рассчитывать не на что.
+export type BudgetState = 'fits' | 'scholarship' | 'over'
+
+export function budgetState(
+  p: TuitionLike & { scholarships?: unknown },
+  budgetLimit: number
+): BudgetState {
+  if (isWithinBudget(p, budgetLimit)) return 'fits'
+  if (isUnknownTuition(p)) return 'scholarship'
+  const hasScholarship = Array.isArray(p.scholarships) && p.scholarships.length > 0
+  return hasScholarship ? 'scholarship' : 'over'
+}
