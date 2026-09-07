@@ -44,11 +44,9 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const countries: string[] = profile.countries?.split(',').filter(Boolean) || []
   const wantsHu = countries.includes('hu')
   const wantsIt = countries.includes('it')
-  const wantsDe = countries.includes('de')
   const wantsSe = countries.includes('se')
   const wantsNl = countries.includes('nl')
   const wantsFr = countries.includes('fr')
-  const deUrgent = sf && wantsDe
   const isPro = !!profile.is_pro
 
   // Дедлайны (стипендии, подача в вуз) — всегда ближайшее будущее
@@ -91,7 +89,7 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   // Дедлайны стипендий Венгрии/Италии (Гайд · PRO) — по просьбе Дениса
   // (2026-08-31), "все дедлайны должны падать в таймлайн". Даты — годовые
   // повторяющиеся (не собраны из profile.programs), поэтому те же
-  // допущения точности, что и у DAAD/Eiffel/SI ниже (фиксированная дата
+  // допущения точности, что и у Eiffel/SI ниже (фиксированная дата
   // каждый год, могут немного сдвигаться — см. предупреждение в шапке).
   //
   // SH и MAECI — стипендии, на которые подаются ДО поступления, вместе с
@@ -125,13 +123,19 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   ]
 
   /* calendar events */
-  // Раньше Eiffel/DAAD/SI/Holland показывались абсолютно всем — студент,
+  // Германская стипендия убрана отсюда целиком 2026-09-08: Генпрокуратура
+  // признала DAAD нежелательной организацией 23.01.2026 (Минюст внёс в
+  // реестр 10.02.2026), служба закрыла офисы и ушла из России. Советовать
+  // подаваться туда — подводить пользователя под ст. 284.1 УК / ст. 20.33
+  // КоАП, ровно как было с British Council. Замену не подставляем: реальные
+  // дедлайны своих программ студент видит на дорожке вузов ниже.
+  //
+  // Раньше Eiffel/SI/Holland показывались абсолютно всем — студент,
   // выбравший только Италию и Испанию, видел в своём календаре дедлайн
   // немецкой стипендии как будто это его дедлайн. Теперь каждая привязана
   // к реально выбранной стране, тем же принципом, что уже применён к HU/IT.
   const calEvents: CalEvent[] = [
     ...(wantsFr ? [{date:dateStr(1,9),  label:'Дедлайн — Eiffel Excellence', desc:'Стипендия Франция · €1 181/мес', urgent:true}] : []),
-    ...(wantsDe ? [{date:dateStr(1,14), label:'Дедлайн — DAAD',              desc:'Стипендия Германия · €934/мес', urgent:deUrgent}] : []),
     ...(wantsSe ? [{date:dateStr(2,15), label:'Дедлайн — SI Scholarship',    desc:'Стипендия Швеция · SEK 10 000/мес'}] : []),
     ...(wantsNl ? [{date:dateStr(2,1),  label:'Дедлайн — Holland Scholarship',desc:'Стипендия Нидерланды · €5 000'}] : []),
     ...scholEvents,
@@ -170,12 +174,11 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
     },
     {
       id:'schol', label:'Стипендии',
-      sub: deUrgent?'⚡ DAAD — дедлайн 14 января':'Параллельно с документами',
+      sub: 'Параллельно с документами',
       color:gold,
-      bars:[{startIdx:0, endIdx:D(1,14), label:[wantsDe&&'DAAD',wantsFr&&'Eiffel',wantsSe&&'SI',wantsNl&&'Holland'].filter(Boolean).join(' · ')||'Стипендии по выбранным странам', blocker:deUrgent}],
+      bars:[{startIdx:0, endIdx:D(1,14), label:[wantsFr&&'Eiffel',wantsSe&&'SI',wantsNl&&'Holland'].filter(Boolean).join(' · ')||'Стипендии по выбранным странам'}],
       markers:[
         ...(wantsFr ? [{idx:D(1,9),  label:'Eiffel 9 янв', urgent:true}] : []),
-        ...(wantsDe ? [{idx:D(1,14), label:'DAAD 14 янв',  urgent:deUrgent}] : []),
         ...(wantsSe ? [{idx:D(2,15), label:'SI 15 фев'}] : []),
         ...(wantsNl ? [{idx:D(2,1),  label:'Holland 1 фев'}] : []),
         ...(wantsHu ? [{idx:D(1,15), label: isPro?'SH 15 янв':'Важный дедлайн', urgent:true, locked:!isPro}] : []),

@@ -20,7 +20,6 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
   const wantsDe = countries.includes('de')
   const wantsSe = countries.includes('se')
   const wantsNl = countries.includes('nl')
-  const deUrgent = sf && wantsDe
   const isPro = !!p.is_pro
   // p.timeline может быть 'later' ("пока не решил") или протухшим годом
   // из анкеты (см. lib/admissionYear.ts) — раньше оба случая подставлялись
@@ -80,23 +79,24 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
     },
     {
       id:'schol', label:'Стипендии',
-      sub: deUrgent ? 'СРОЧНО — 14 янв (DAAD)' : wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
-      color: gold, status: (deUrgent||wantsHu) ? 'active' : 'parallel', zone:2, row:1, parallel:true,
-      insight: deUrgent ? 'DAAD закрывается 14 января — раньше вузовских дедлайнов! Motivation Letter — отдельный документ, не SoP.'
-        : wantsHu ? (isPro
+      sub: wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
+      color: gold, status: wantsHu ? 'active' : 'parallel', zone:2, row:1, parallel:true,
+      insight: wantsHu ? (isPro
             ? 'Stipendium Hungaricum закрывается 15 января — и это ДВЕ отдельные подачи (Tempus + Минобрнауки РФ), не одна.'
             : 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.')
         : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
-      // Раньше DAAD/SI/Holland показывались абсолютно всем, независимо от
+      // Германская стипендия убрана 2026-09-08 — DAAD признан в России
+      // нежелательной организацией (23.01.2026 Генпрокуратура, 10.02.2026
+      // реестр Минюста), офисы закрыты. Прямая инструкция "подать через
+      // portal.daad.de" была здесь худшим местом из всех: это уже не намёк,
+      // а пошаговый совет совершить то, за что есть ст. 284.1 УК.
+      //
+      // Раньше SI/Holland показывались абсолютно всем, независимо от
       // того, выбрана ли вообще Германия/Швеция/Нидерланды — студент,
       // подающий только в Италию и Испанию, видел дедлайн немецкой
       // стипендии как будто это его дедлайн. Теперь каждая привязана к
       // реально выбранной стране, как уже было сделано для HU/IT.
       tasks:[
-        ...(wantsDe ? [
-          {t:'Motivation Letter для DAAD — отдельный документ, не SoP!', urgent:deUrgent},
-          {t:'Подать на DAAD через portal.daad.de — дедлайн 14 января', urgent:deUrgent},
-        ] : []),
         ...(wantsSe ? [{t:'SI Scholarship (Швеция) — дедлайн 15 февраля'}] : []),
         ...(wantsNl ? [{t:'Holland Scholarship (Нидерланды) — дедлайн 1 февраля'}] : []),
         {t:'Проверить Erasmus Mundus — общеевропейская стипендия, не привязана к одной стране'},

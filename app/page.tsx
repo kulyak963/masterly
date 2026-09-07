@@ -65,7 +65,7 @@ input::placeholder{color:rgba(242,239,233,.2)}
 // de 116, ie 116, se 111, dk 106, ch 94, be 61, fi 60, es 57, at 32,
 // no 25, cz 22, ee 14, pl 5. Проверить перед следующим изменением.
 const COUNTRIES_MAIN = [
-  {c:'de',f:'DE',n:'Германия',   tag:'В основном бесплатно · DAAD'},
+  {c:'de',f:'DE',n:'Германия',   tag:'Госвузы — без платы за обучение'},
   {c:'it',f:'IT',n:'Италия',     tag:'Дешёвые госвузы · стипендии DSU'},
   {c:'nl',f:'NL',n:'Нидерланды', tag:'Holland Scholarship'},
   {c:'hu',f:'HU',n:'Венгрия',    tag:'Stipendium Hungaricum'},
@@ -442,7 +442,7 @@ setStep((s:any)=> s+1)
     // Швейцария, по которым гайда нет, то есть витрина вела не туда,
     // где продукт сильнее всего.
     const BOARD_ROWS = [
-      {code:'DE', name:'Германия',   tag:'В основном бесплатно · DAAD',   status:'ПРИЁМ ОТКРЫТ',      color:gold},
+      {code:'DE', name:'Германия',   tag:'Госвузы — без платы за обучение', status:'ПРИЁМ ОТКРЫТ',    color:gold},
       {code:'IT', name:'Италия',     tag:'Дешёвые госвузы · стипендии DSU', status:'ПРИЁМ ОТКРЫТ',    color:gold},
       {code:'NL', name:'Нидерланды', tag:'Holland Scholarship',           status:'ПРИЁМ ОТКРЫТ',      color:gold},
       {code:'HU', name:'Венгрия',    tag:'Stipendium Hungaricum',         status:'ДЕДЛАЙН 15 ЯНВАРЯ', color:red},
@@ -743,7 +743,7 @@ setStep((s:any)=> s+1)
         // на чешском, англоязычные программы платные). Оставляем то,
         // что подтверждается нашими же данными: госвузы Германии.
         {v:'free', l:'Учёба должна быть бесплатной',s:'Госвузы Германии, стипендия в Венгрии'},
-        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, Stipendium Hungaricum, MAECI, DSU'},
+        {v:'schol',l:'Готов платить если дадут стипендию',s:'Stipendium Hungaricum, MAECI, DSU'},
         {v:'any',  l:'Деньги не ключевой фактор',s:'Фокус на качестве программы'},
       ]},
       {id:'stay',q:'Планируешь остаться в Европе после учёбы?',opts:[
@@ -944,7 +944,7 @@ setStep((s:any)=> s+1)
           <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>ФИНАНСОВЫЙ ВОПРОС</div>
           {a.pain==='money'&&(
             <div style={{padding:'10px 14px',marginBottom:16,background:`${grn}10`,borderLeft:`2px solid ${grn}`,borderRadius:'0 4px 4px 0'}}>
-              <span style={{fontFamily:sans,fontSize:12,color:grn}}>В Германии большинство вузов бесплатны даже для не-ЕС (кроме отдельных вузов вроде TUM). Плюс реальные стипендии вроде DAAD, которые покрывают проживание. Это реально.</span>
+              <span style={{fontFamily:sans,fontSize:12,color:grn}}>В Германии большинство госвузов не берут плату за обучение даже с не-ЕС студентов (исключения есть — например TUM и вузы Баден-Вюртемберга). Платить придётся за жизнь, а не за учёбу — это уже сильно меняет математику.</span>
             </div>
           )}
           <div style={{display:'flex',flexDirection:'column',gap:2}}>
@@ -1037,7 +1037,11 @@ setStep((s:any)=> s+1)
     const selectedFlags = a.countries.map(c=>flags[c]).join(' · ')
     const firstSteps = [
       a.ielts<6.5  && {t:'Записаться на языковой экзамен — это первый шаг', c:red},
-      a.budget==='zero' && {t:'DAAD дедлайн 14 января — начни Motivation Letter сегодня', c:gold},
+      // Здесь стоял совет "DAAD дедлайн 14 января" — убран 2026-09-08,
+      // см. комментарий про нежелательный статус в GanttTimeline.tsx.
+      // Замены "той же стипендией другого имени" нет и не должно быть:
+      // конкретные дедлайны программ студент и так видит в Таймлайне.
+      a.budget==='zero' && {t:'Собрать документы на стипендию вуза — подавать заранее, вместе с заявкой', c:gold},
       // Предложный падеж: подстановка именительного давала "Изучить
       // программы в Германия" / "в Нидерланды" прямо на экране, где мы
       // просим почту — мелочь, но читается как небрежность.
