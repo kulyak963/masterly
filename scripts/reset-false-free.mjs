@@ -41,6 +41,16 @@ const DE_UNIVERSITIES_THAT_CHARGE = {
   'University of Mannheim': 'Маннгейм — в земле Баден-Вюртемберг, которая взимает ~€3 000/год со всех не-ЕС студентов независимо от вуза — 0 в базе был ошибкой генератора.',
   'Karlsruhe Institute of Technology': 'KIT — в земле Баден-Вюртемберг, которая взимает ~€3 000/год со всех не-ЕС студентов независимо от вуза — 0 в базе был ошибкой генератора.',
   'University of Freiburg': 'Фрайбург — в земле Баден-Вюртемберг, которая взимает ~€3 000/год со всех не-ЕС студентов независимо от вуза — 0 в базе был ошибкой генератора.',
+  // Найдено при систематической проверке 0.5 (2026-09-08, не в первой
+  // партии) — точечное решение отдельного вуза внутри "бесплатной" в
+  // остальном Баварии, как и TUM, а не общая политика земли.
+  'Friedrich-Alexander-Universität Erlangen-Nürnberg': 'FAU вводит плату для НОВЫХ не-ЕС студентов с летнего семестра 2027 (подтверждено на €4 000/семестр для Medical Engineering, возможно и другие программы) — уже поступившие до этого не затронуты, но для целевой аудитории продукта (поступление 2027+) это актуальная плата, не 0.',
+}
+
+// Не страновая и не земельная политика — просто конкретный вуз с реальной
+// (не нулевой) ценой, ошибочно попавший в 0 тем же багом генератора.
+const SPECIFIC_UNIVERSITIES_THAT_CHARGE = {
+  "Sant'Anna School of Advanced Studies": "У Sant'Anna Pisa есть плата за обучение (около €7 500 за программу по данным официального сайта) — не бесплатно, 0 в базе был ошибкой генератора. Точную цифру для конкретной программы стоит перепроверить на официальной странице.",
 }
 
 import { readFileSync } from 'node:fs'
@@ -76,6 +86,8 @@ async function main() {
       targets.push({ p, uni, note: NATIONAL_POLICY_COUNTRIES[uni.country] })
     } else if (uni.country === 'de' && DE_UNIVERSITIES_THAT_CHARGE[uni.name]) {
       targets.push({ p, uni, note: DE_UNIVERSITIES_THAT_CHARGE[uni.name] })
+    } else if (SPECIFIC_UNIVERSITIES_THAT_CHARGE[uni.name]) {
+      targets.push({ p, uni, note: SPECIFIC_UNIVERSITIES_THAT_CHARGE[uni.name] })
     }
   }
 
