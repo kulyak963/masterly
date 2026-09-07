@@ -358,7 +358,7 @@ If you found a real, sourced figure, use it and set verified accordingly. If you
     "deadline_month": 4,
     "deadline_day": 30,
     "ielts_min": 6.0,
-    "gpa_min": 3,
+    "gpa_min": null,
     "url": "https://direct-link-to-the-program-admissions-page",
     "scholarships": [],
     "summary_ru": "1-2 предложения по-русски для абитуриента",
@@ -368,7 +368,7 @@ If you found a real, sourced figure, use it and set verified accordingly. If you
     "source_note_ru": "что подтверждено и почему verified true/false, по-русски"
   }
 ]
-"ielts_min" null only if genuinely no fixed threshold. "tuition_eur" annual EUR (convert if needed), or null if truly not found — never 0 unless tuition is actually, confirmedly free.`
+"ielts_min" null only if genuinely no fixed threshold. "tuition_eur" annual EUR (convert if needed), or null if truly not found — never 0 unless tuition is actually, confirmedly free. "gpa_min": most European programs (especially Dutch/Nordic ones) do NOT publish a numeric GPA threshold at all — they say things like "comparable to a Dutch bachelor's" or select holistically. Do not invent a plausible-sounding number (3.0 on a 5-point scale is NOT a safe default — it's exactly the kind of confident-looking guess that's actually fabricated). Only put a number if a page explicitly states one (e.g. "minimum 60% average" or "GPA 3.0/4.0 required") — otherwise null, and say in cons that admission is holistic/motivation-letter-based rather than GPA-gated.`
 }
 
 async function researchField(field, existingPrograms) {
@@ -600,7 +600,7 @@ Confirm/refine tuition, deadline, and IELTS requirement — specifically for NON
 A few parallel searches around the known URL and program name is enough. No second round — it silently loses the response on this platform.
 
 ## Never fabricate
-If a real figure can't be found, use your best-sourced estimate, set verified=false, explain what's missing in cons. If you found NOTHING usable at all, set tuition_eur to null rather than inventing a plausible-sounding number — a labeled "unknown" beats a confident-looking guess. verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME page cited in "url".
+If a real figure can't be found, use your best-sourced estimate, set verified=false, explain what's missing in cons. If you found NOTHING usable at all, set tuition_eur to null rather than inventing a plausible-sounding number — a labeled "unknown" beats a confident-looking guess. verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME page cited in "url". Same rule for gpa_min — most European programs (especially Dutch/Nordic) don't publish one at all; a plausible "3.0" when none was actually found is fabrication, not an estimate. Leave it null unless a page states an actual number.
 
 ## URLs must be real
 Only use a URL that literally appeared in search results — the known URL above, or one you found confirming/refining it. Never invent one.
@@ -613,7 +613,7 @@ Only use a URL that literally appeared in search results — the known URL above
   "deadline_month": 4,
   "deadline_day": 30,
   "ielts_min": 6.0,
-  "gpa_min": 3,
+  "gpa_min": null,
   "url": "https://real-url-you-confirmed-or-found",
   "scholarships": [],
   "summary_ru": "1-2 предложения по-русски",
