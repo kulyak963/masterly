@@ -44,11 +44,11 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
 
   return [
     {
-      id:'ielts', label:'Язык', sub: ni ? `${p.ielts} → 6.5+` : `${p.ielts} ✓`,
+      id:'ielts', label:'Язык', sub: ni ? `${p.ielts||'нет'} → 6.5+` : `${p.ielts} ✓`,
       color: ni ? red : grn,
       status: ni ? 'blocker' : 'done',
       zone:1, row:1, parallel:false,
-      insight: ni ? `Текущий балл ${p.ielts} — ниже минимума 6.5. Это единственный жёсткий блокер. Без него ни один вуз не примет заявку.` : `Языковой балл ${p.ielts} принят всеми вузами шортлиста. Для ETH нужно 7.0+.`,
+      insight: ni ? `${p.ielts ? `Текущий балл ${p.ielts} — ниже минимума 6.5.` : 'Сертификата ещё нет.'} Это единственный жёсткий блокер. Без него ни один вуз не примет заявку.` : `Языковой балл ${p.ielts} принят всеми вузами шортлиста. Для ETH нужно 7.0+.`,
       tasks: ni ? [
         {t:'Выбрать экзамен: TOEFL/Duolingo (сдаются из России онлайн) или другой языковой экзамен — уточни в требованиях программы', urgent:true},
         {t:'Пройти бесплатный mock test на Cambridge One'},

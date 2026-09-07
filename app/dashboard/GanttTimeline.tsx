@@ -146,7 +146,7 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
   const lanes: Lane[] = [
     {
       id:'ielts', label:'Языковой экзамен',
-      sub: ni?`Балл ${profile.ielts} → нужно 6.5+`:`Сдан — ${profile.ielts} ✓`,
+      sub: ni?`${profile.ielts?`Балл ${profile.ielts}`:'Сертификата нет'} → нужно 6.5+`:`Сдан — ${profile.ielts} ✓`,
       color: ni?red:grn,
       bars: ni?[
         {startIdx:0, endIdx:2.8, label:'Подготовка 8–12 недель', blocker:true},

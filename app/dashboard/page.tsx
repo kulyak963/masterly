@@ -13,6 +13,7 @@ import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
 import { tuitionLabel, isOverBudget } from '@/lib/tuition'
 import { isDeadLink } from '@/lib/linkHealth'
+import { readinessScore } from '@/lib/readiness'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -649,17 +650,10 @@ const getVerdict = async (p: any) => {
   setVerdictLoading(false)
 }
 
-    // Раньше тут были две безусловные константы (+10+15 = 25 очков "просто
-    // так"), из-за которых минимум для самого слабого профиля был ~49% —
-    // метрика физически не могла честно сказать "ты не готов", даже когда
-    // это правда. Убраны — теперь диапазон реально идёт от почти нуля до
-    // высоких значений, и направление магистратуры (совпадает ли оно с
-    // бэкграундом) тоже учитывается, как и в скоре программ выше.
-    const gpaC = profile.gpa>=4.7?30:profile.gpa>=4.3?24:profile.gpa>=4.0?17:profile.gpa>=3.5?9:2
-    const langC = profile.ielts>=7.5?28:profile.ielts>=7.0?24:profile.ielts>=6.5?18:profile.ielts>=6.0?10:2
-    const workC = profile.work==='yes'?20:profile.work==='some'?12:4
-    const dirC = profile.master_direction==='same'?8:profile.master_direction==='related'?3:profile.master_direction==='change'?-6:0
-    const score = Math.max(4,Math.min(96,Math.round(gpaC+langC+workC+dirC)))
+    // Теперь общая с лендингом (app/page.tsx) — см. lib/readiness.ts,
+    // раньше это была отдельная копия формулы, из-за чего один и тот же
+    // профиль показывал разные проценты на лендинге и в кабинете.
+    const score = readinessScore(profile)
   const toggleTask = async (key:string) => {
   const newDone = { ...taskDone, [key]: !taskDone[key] }
   setTaskDone(newDone)
@@ -760,7 +754,7 @@ const getVerdict = async (p: any) => {
                 {l:'ГОТОВНОСТЬ',       v:`${score}%`},
                 {l:'ПРОГРАММ',         v:`${unis.length}`},
                 {l:'GPA',              v:`${profile.gpa} / 5`},
-                {l:'ЯЗЫК',             v:`${profile.ielts}`, warn:profile.ielts<6.5},
+                {l:'ЯЗЫК',             v: profile.ielts ? `${profile.ielts}` : 'нет', warn:profile.ielts<6.5},
               ].map((s,i)=>(
                 <div key={i} style={{padding:'18px',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                   <Mono style={{display:'block',marginBottom:8}}>{s.l}</Mono>
@@ -776,7 +770,7 @@ const getVerdict = async (p: any) => {
               <div style={{padding:'14px 18px',marginBottom:24,borderRadius:8,background:`${red}0D`,borderLeft:`3px solid ${red}`}}>
                 <Mono style={{display:'block',color:red,marginBottom:6,animation:'pulse 2s infinite'}}>БЛОКЕР</Mono>
                 <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.65,fontWeight:300}}>
-                  Языковой балл {profile.ielts} — ниже минимума 6.5. Без этого ни один вуз не примет заявку. TOEFL/Duolingo сдаются онлайн из России, если программа их принимает — уточни в требованиях; другие языковые экзамены обычно доступны только за пределами РФ, от ~$200.
+                  {profile.ielts ? `Языковой балл ${profile.ielts} — ниже минимума 6.5.` : 'Сертификата ещё нет.'} Без результата 6.5+ ни один вуз не примет заявку. TOEFL/Duolingo сдаются онлайн из России, если программа их принимает — уточни в требованиях; другие языковые экзамены обычно доступны только за пределами РФ, от ~$200.
                 </p>
               </div>
             )}
@@ -1140,10 +1134,14 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
     <div style={{marginBottom:28}}>
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:12}}>
         <Mono>ЯЗЫКОВОЙ ЭКЗАМЕН</Mono>
-        <Mono style={{color:profile.ielts>=6.5?grn:red}}>{profile.ielts?.toFixed(1)}</Mono>
+        <Mono style={{color:profile.ielts>=6.5?grn:red}}>{profile.ielts ? profile.ielts.toFixed(1) : 'нет'}</Mono>
       </div>
+      {/* Раньше пустой балл (никогда не сдавал) молча показывался как 6.5 —
+          ровно проходной порог, будто экзамен уже сдан (см. аудит продукта
+          2026-09-07). Теперь пустое значение — это 4.0, низ шкалы, а не
+          подарок в виде готового результата. */}
       <input type="range" min="4.0" max="9.0" step="0.5"
-        value={profile.ielts||6.5}
+        value={profile.ielts||4.0}
         onChange={e=>setProfile((p:any)=>({...p,ielts:parseFloat(e.target.value)}))}
         style={{width:'100%',height:2,background:'rgba(255,255,255,.1)',borderRadius:1,outline:'none',cursor:'pointer',appearance:'none',WebkitAppearance:'none'}}/>
     </div>

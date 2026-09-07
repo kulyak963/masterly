@@ -7,6 +7,7 @@ import { displayFont } from '@/lib/fonts'
 import { CITY_SHOTS } from '@/components/PhotoCycler'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { soonestAdmissionYear } from '@/lib/admissionYear'
+import { readinessScore } from '@/lib/readiness'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -192,7 +193,7 @@ export default function Home() {
   countries:[] as string[],
 
     timeline:'', budget:'',
-    gpa:4.0, ielts:6.5, work:'', quiz_cost:'', quiz_stay:'', quiz_lang:'', quiz_vibe:'',
+    gpa:4.0, ielts:0, ielts_status:'none' as 'none'|'planned'|'have', work:'', quiz_cost:'', quiz_stay:'', quiz_lang:'', quiz_vibe:'',
   })
   const [showMoreCountries, setShowMoreCountries] = useState(false)
   const [quizMode, setQuizMode] = useState(false)
@@ -368,12 +369,10 @@ setStep((s:any)=> s+1)
     else setOtpVerifying(false)
   }
 
-  const score = Math.min(97, Math.round(
-    (a.gpa>=4.5?28:a.gpa>=4.0?20:12)+
-    (a.ielts>=6.5?22:8)+
-    (a.work==='yes'?18:a.work==='some'?10:4)+
-    (a.countries.length>=2?10:5)+15
-  ))
+  // Общая с кабинетом формула (lib/readiness.ts) — раньше здесь была
+  // отдельная копия с двумя безусловными константами, из-за которых один
+  // и тот же профиль показывал 77% тут и 55% в кабинете (аудит 2026-09-07).
+  const score = readinessScore(a)
 
   const name = a.name.split(' ')[0] || 'друг'
 
@@ -850,21 +849,41 @@ setStep((s:any)=> s+1)
       <Divider/>
 
       <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>ЯЗЫКОВОЙ ЭКЗАМЕН</div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
-        <span style={{fontFamily:sans,fontSize:13,color:a.ielts>=6.5?grn:a.ielts>=6.0?gold:red}}>
-          {a.ielts>=7.0?'Отлично — подходит для ETH':a.ielts>=6.5?'Достаточно для всех программ':a.ielts>=6.0?'Чуть не хватает до 6.5':'Блокер — сдать в первую очередь'}
-        </span>
-        <span style={{fontFamily:mono,fontSize:22,color:a.ielts>=6.5?grn:red}}>{a.ielts.toFixed(1)}<span style={{fontSize:12,color:t3}}> балл</span></span>
+      {/* Раньше тут сразу был ползунок со стартовым значением 6.5 —
+          человек, который ни разу не сдавал экзамен, физически не мог
+          показать "у меня его нет": любое положение ползунка читалось
+          как реальный балл, и дашборд потом честно (по своим меркам)
+          показывал "Английский — 100%" и вычёркивал задачу "сдать
+          экзамен" (см. аудит продукта 2026-09-07). Три варианта вместо
+          одного значения по умолчанию — экзамена нет вообще, что для
+          этой аудитории норма, а не исключение. */}
+      <div style={{display:'flex',flexDirection:'column',gap:2,marginBottom:a.ielts_status==='have'?16:24}}>
+        {[
+          {v:'none' as const, l:'Ещё не сдавал(а)', s:'Это нормально — начнём именно с этого шага'},
+          {v:'planned' as const, l:'Записан(а) на экзамен', s:'Дата уже назначена'},
+          {v:'have' as const, l:'Есть результат', s:'Знаю точный балл'},
+        ].map(o=>(
+          <SelectRow key={o.v} label={o.l} sub={o.s} selected={a.ielts_status===o.v}
+            onClick={()=>{ set('ielts_status',o.v); if (o.v!=='have') set('ielts',0); else if (a.ielts===0) set('ielts',6.0) }}/>
+        ))}
       </div>
-      <input type="range" min="4.0" max="9.0" step="0.5" value={a.ielts} onChange={e=>set('ielts',parseFloat(e.target.value))}/>
-      <div style={{display:'flex',justifyContent:'space-between',fontFamily:mono,fontSize:10,color:t3,marginTop:6,marginBottom:6}}>
-        <span>4.0</span><span style={{color:a.ielts<6.5?red:t3}}>6.5 min</span><span>9.0</span>
-      </div>
-      {a.ielts<6.5&&(
-        <div style={{padding:'9px 12px',background:`${red}12`,borderRadius:5,borderLeft:`2px solid ${red}`,marginBottom:4}} className="in">
-          <span style={{fontFamily:sans,fontSize:12,color:red}}>Нужно улучшить — включим в roadmap как первый шаг</span>
+      {a.ielts_status==='have' && (<>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:12}}>
+          <span style={{fontFamily:sans,fontSize:13,color:a.ielts>=6.5?grn:a.ielts>=6.0?gold:red}}>
+            {a.ielts>=7.0?'Отлично — подходит для ETH':a.ielts>=6.5?'Достаточно для всех программ':a.ielts>=6.0?'Чуть не хватает до 6.5':'Ниже минимума большинства программ'}
+          </span>
+          <span style={{fontFamily:mono,fontSize:22,color:a.ielts>=6.5?grn:red}}>{a.ielts.toFixed(1)}<span style={{fontSize:12,color:t3}}> балл</span></span>
         </div>
-      )}
+        <input type="range" min="4.0" max="9.0" step="0.5" value={a.ielts} onChange={e=>set('ielts',parseFloat(e.target.value))}/>
+        <div style={{display:'flex',justifyContent:'space-between',fontFamily:mono,fontSize:10,color:t3,marginTop:6,marginBottom:6}}>
+          <span>4.0</span><span style={{color:a.ielts<6.5?red:t3}}>6.5 min</span><span>9.0</span>
+        </div>
+        {a.ielts<6.5&&(
+          <div style={{padding:'9px 12px',background:`${red}12`,borderRadius:5,borderLeft:`2px solid ${red}`,marginBottom:4}} className="in">
+            <span style={{fontFamily:sans,fontSize:12,color:red}}>Нужно улучшить — включим в roadmap как первый шаг</span>
+          </div>
+        )}
+      </>)}
 
       <Divider/>
 
@@ -914,7 +933,7 @@ setStep((s:any)=> s+1)
             {[
               {l:'СТРАНЫ',v:selectedFlags||'—',c:t1},
               {l:'GPA',   v:`${a.gpa.toFixed(1)} / 5`,c:a.gpa>=4.0?blue:t1},
-              {l:'ЯЗЫК', v:a.ielts.toFixed(1),c:a.ielts>=6.5?grn:red},
+              {l:'ЯЗЫК', v:a.ielts_status==='have'?a.ielts.toFixed(1):a.ielts_status==='planned'?'записан(а)':'нет',c:a.ielts>=6.5?grn:red},
             ].map((s,i)=>(
               <div key={i} style={{padding:'14px',textAlign:'center',borderRight:`1px solid ${line}`,borderBottom:`1px solid ${line}`}}>
                 <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>{s.l}</div>
