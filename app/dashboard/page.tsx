@@ -8,6 +8,8 @@ import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
+import GermanyReality from './GermanyReality'
+import NetherlandsReality from './NetherlandsReality'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
@@ -683,7 +685,11 @@ const getVerdict = async (p: any) => {
   {id:'saved',    l:'Избранное'},
   {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
-  ...((countries.includes('hu')||countries.includes('it')) ? [{id:'scholarship-guide', l:'Стипендии · PRO'}] : []),
+  // Раньше вкладка появлялась только у выбравших Венгрию или Италию —
+  // остальные (в том числе большинство, кто идёт в Германию/Нидерланды)
+  // вообще не видели, что в Pro есть русский слой (виза/оплата/документы),
+  // не только гайды по стипендиям (см. аудит продукта 2026-09-07).
+  {id:'reality', l:'Реальность · PRO'},
   {id:'settings', l:'Настройки'},
 ]
 
@@ -829,26 +835,22 @@ const getVerdict = async (p: any) => {
               </div>
             </div>
 
-            {/* баннер гайда по стипендиям — единственный вход на мобиле, т.к. в
-                нижнем нав-баре мобилы всего 5 иконок и своей вкладки там нет */}
-            {(countries.includes('hu')||countries.includes('it'))&&(
-              <button onClick={()=>setTab('scholarship-guide')} style={{
-                display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
-                width:'100%',marginTop:16,padding:'16px 18px',borderRadius:8,
-                border:`1px solid ${gold}40`,background:`${gold}0D`,cursor:'pointer',
-                textAlign:'left',fontFamily:'inherit'}}>
-                <div>
-                  <Mono style={{display:'block',color:gold,marginBottom:4}}>СТИПЕНДИИ · PRO</Mono>
-                  <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
-                    {countries.includes('hu')&&countries.includes('it')
-                      ? 'Гайды по Stipendium Hungaricum и льготам в Италии'
-                      : countries.includes('hu') ? 'Полный гайд по Stipendium Hungaricum'
-                      : 'Полный гайд по стипендиям и льготам в Италии'}
-                  </div>
+            {/* баннер вкладки "Реальность" — единственный вход на мобиле, т.к. в
+                нижнем нав-баре мобилы всего 5 иконок и своей вкладки там нет.
+                Теперь видна всем странам, не только HU/IT (см. выше). */}
+            <button onClick={()=>setTab('reality')} style={{
+              display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
+              width:'100%',marginTop:16,padding:'16px 18px',borderRadius:8,
+              border:`1px solid ${gold}40`,background:`${gold}0D`,cursor:'pointer',
+              textAlign:'left',fontFamily:'inherit'}}>
+              <div>
+                <Mono style={{display:'block',color:gold,marginBottom:4}}>РЕАЛЬНОСТЬ · PRO</Mono>
+                <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
+                  Виза, оплата и документы для гражданина РФ по твоим странам
                 </div>
-                <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
-              </button>
-            )}
+              </div>
+              <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
+            </button>
           </div>
         )}
 
@@ -1343,15 +1345,40 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
     : <ProUpsell title="Таймлайн — функция Pro"
         desc="Полный план-график от сегодня до переезда со всеми дедлайнами и экспортом в календарь (Google/Apple) — часть платного тарифа."/>
 )}
-{tab==='scholarship-guide'&&(
-  <div style={{padding:'36px 40px'}}>
-    {countries.includes('hu')&&<HungaryGuide programs={programs} isPro={!!profile.is_pro}/>}
-    {countries.includes('hu')&&countries.includes('it')&&(
-      <div style={{height:1,background:line,margin:'40px 0'}}/>
-    )}
-    {countries.includes('it')&&<ItalyGuide programs={programs} isPro={!!profile.is_pro}/>}
-  </div>
-)}
+{tab==='reality'&&(() => {
+  // Раньше эта вкладка показывала только гайды по стипендиям HU/IT и была
+  // не видна вообще, если ни одна из этих двух стран не выбрана — то есть
+  // для большинства студентов (Германия/Нидерланды) русского слоя не было
+  // ни в каком виде (см. аудит продукта 2026-09-07). Собираем блоки по
+  // тем странам, что реально выбраны, с разделителем между ними.
+  const blocks: React.ReactNode[] = []
+  if (countries.includes('de')) blocks.push(<GermanyReality key="de" isPro={!!profile.is_pro}/>)
+  if (countries.includes('nl')) blocks.push(<NetherlandsReality key="nl" isPro={!!profile.is_pro}/>)
+  if (countries.includes('hu')) blocks.push(<HungaryGuide key="hu" programs={programs} isPro={!!profile.is_pro}/>)
+  if (countries.includes('it')) blocks.push(<ItalyGuide key="it" programs={programs} isPro={!!profile.is_pro}/>)
+  return (
+    <div style={{padding:'36px 40px'}}>
+      {blocks.length === 0 ? (
+        <div style={{maxWidth:520}}>
+          <Mono style={{display:'block',marginBottom:10}}>РЕАЛЬНОСТЬ · PRO</Mono>
+          <div style={{fontFamily:displayFont.style.fontFamily,fontSize:24,color:t1,fontWeight:800,marginBottom:10}}>
+            Пока не готово для твоих стран
+          </div>
+          <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6}}>
+            Разбор визы, оплаты и документов для не-ЕС студентов сейчас есть по Германии, Нидерландам,
+            Венгрии и Италии. По остальным странам добавляем постепенно — если это критично для тебя,
+            напиши нам, что в первую очередь.
+          </p>
+        </div>
+      ) : blocks.map((b, i) => (
+        <div key={i}>
+          {i > 0 && <div style={{height:1,background:line,margin:'40px 0'}}/>}
+          {b}
+        </div>
+      ))}
+    </div>
+  )
+})()}
       </main>
       {/* Раньше эта модалка жила внутри {tab==='unis'&&(...)} — открыть
           программу можно было только со вкладки «Вузы»; клик на карточку

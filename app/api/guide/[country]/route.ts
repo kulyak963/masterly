@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { HUNGARY_GUIDE_GATED } from '../../../../lib/guides/hungary'
 import { ITALY_GUIDE_GATED } from '../../../../lib/guides/italy'
+import { GERMANY_REALITY_GATED } from '../../../../lib/guides/germany'
+import { NETHERLANDS_REALITY_GATED } from '../../../../lib/guides/netherlands'
 
 // Раньше платный контент гайдов (Венгрия/Италия) жил прямо в клиентских
 // компонентах (app/dashboard/HungaryGuide.tsx, ItalyGuide.tsx) как обычные
@@ -14,6 +16,8 @@ import { ITALY_GUIDE_GATED } from '../../../../lib/guides/italy'
 const GUIDES: Record<string, unknown> = {
   hu: HUNGARY_GUIDE_GATED,
   it: ITALY_GUIDE_GATED,
+  de: GERMANY_REALITY_GATED,
+  nl: NETHERLANDS_REALITY_GATED,
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ country: string }> }) {
