@@ -13,6 +13,7 @@ import NetherlandsReality from './NetherlandsReality'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
+import { hasGuideCoverage, GUIDE_COUNTRIES, GUIDE_COUNTRY_NAMES } from '@/lib/legal'
 import { tuitionLabel, budgetState, type BudgetState } from '@/lib/tuition'
 import { isDeadLink } from '@/lib/linkHealth'
 import { readinessScore } from '@/lib/readiness'
@@ -203,9 +204,14 @@ function Mono({children,style={}}:{children:React.ReactNode,style?:React.CSSProp
 // Полноэкранная заглушка для Pro-фич целиком (не частичный блюр, как
 // ScholarshipLock — здесь скрывать нечего, просто фича недоступна на
 // бесплатном тарифе). Платежа всё ещё нет — честно говорим об этом.
-function ProUpsell({title,desc}:{title:string,desc:string}) {
+function ProUpsell({title,desc,countries}:{title:string,desc:string,countries?:string[]}) {
   const [buying,setBuying] = useState(false)
   const [error,setError] = useState<string|null>(null)
+  // Страновые гайды — главная ценность Pro, но существуют они пока по
+  // четырём странам. Если ни одна из выбранных не покрыта, честно
+  // говорим об этом ДО оплаты: несостоявшаяся продажа дешевле возврата
+  // и отзыва «обещали по каждой стране, а там пусто».
+  const covered = hasGuideCoverage(countries)
   const onBuy = async () => {
     setBuying(true)
     setError(null)
@@ -220,6 +226,17 @@ function ProUpsell({title,desc}:{title:string,desc:string}) {
         <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🔒</div>
         <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>{title}</div>
         <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:16}}>{desc}</p>
+        {!covered&&countries&&countries.length>0&&(
+          <div style={{padding:'11px 13px',marginBottom:16,borderRadius:8,textAlign:'left',
+            background:`${gold}12`,border:`1px solid ${gold}45`}}>
+            <p style={{fontFamily:sans,fontSize:11.5,color:gold,lineHeight:1.55,margin:0}}>
+              Подробные разборы визы, оплаты и документов есть пока по 4 странам:{' '}
+              {GUIDE_COUNTRIES.map(c=>GUIDE_COUNTRY_NAMES[c]).join(', ')}. Твоих стран
+              среди них нет — оплатив, ты получишь безлимитное избранное, таймлайн и
+              ИИ-анализ, но не страновой гайд.
+            </p>
+          </div>
+        )}
         <div style={{fontFamily:sans,fontSize:22,fontWeight:700,color:t1,marginBottom:2}}>2 990 ₽</div>
         <p style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:18}}>разово, без подписки</p>
         <button onClick={onBuy} disabled={buying} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
@@ -1367,6 +1384,7 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
   profile.is_pro
     ? <GanttTimeline profile={profile} programs={timelinePrograms}/>
     : <ProUpsell title="Таймлайн — функция Pro"
+        countries={countries}
         desc="Полный план-график от сегодня до переезда со всеми дедлайнами и экспортом в календарь (Google/Apple) — часть платного тарифа."/>
 )}
 {tab==='reality'&&(() => {

@@ -8,6 +8,7 @@ import { CITY_SHOTS } from '@/components/PhotoCycler'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { soonestAdmissionYear } from '@/lib/admissionYear'
 import { readinessScore } from '@/lib/readiness'
+import { GUIDE_COUNTRIES, GUIDE_COUNTRY_NAMES } from '@/lib/legal'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -564,7 +565,12 @@ setStep((s:any)=> s+1)
                 <span style={{fontFamily:sans,fontSize:11,color:t3}}>разово</span>
               </div>
               <ul style={{margin:0,padding:0,listStyle:'none',display:'flex',flexDirection:'column',gap:6}}>
-                {['Виза, оплата и документы по каждой стране','Полные гайды по стипендиям','Безлимитное избранное · таймлайн · ИИ-анализ'].map(t=>(
+                {/* Было "по каждой стране" — прямая неправда: гайды есть по
+                    четырём странам из семнадцати. Обещание, которое человек
+                    проверяет уже после оплаты, — это возврат и злой отзыв.
+                    Список стран берём из lib/legal.ts, чтобы текст не разошёлся
+                    с реальностью, когда добавим следующую страну. */}
+                {[`Виза, оплата и документы: ${GUIDE_COUNTRIES.map(c=>GUIDE_COUNTRY_NAMES[c]).join(', ')}`,'Полные гайды по стипендиям этих стран','Безлимитное избранное · таймлайн · ИИ-анализ'].map(t=>(
                   <li key={t} style={{fontFamily:sans,fontSize:12,color:t2,display:'flex',gap:8}}><span style={{color:gold}}>—</span>{t}</li>
                 ))}
               </ul>
@@ -573,6 +579,16 @@ setStep((s:any)=> s+1)
           <p style={{fontFamily:sans,fontSize:11,color:t3,lineHeight:1.6,marginTop:12,maxWidth:640}}>
             Сейчас база сильнее всего покрывает IT, инженерию, данные и бизнес-направления — если ты гуманитарий или медик, часть фильтров пока будет пустой, честно предупреждаем сразу.
           </p>
+          {/* Ссылок на документы на лендинге не было вообще. При приёме
+              платежей оферта обязана быть доступна до оплаты, а не только
+              из кабинета — иначе человек акцептует то, чего не видел. */}
+          <div style={{marginTop:28,paddingTop:18,borderTop:`1px solid ${line}`,
+            display:'flex',gap:18,flexWrap:'wrap',alignItems:'center'}}>
+            {[{h:'/offer',l:'Оферта'},{h:'/terms',l:'Условия'},{h:'/privacy',l:'Конфиденциальность'},{h:'/cookies',l:'Cookie'}].map(x=>(
+              <a key={x.h} href={x.h} style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',
+                color:t3,textDecoration:'none',textTransform:'uppercase'}}>{x.l}</a>
+            ))}
+          </div>
         </div>
       </div>
     </div>

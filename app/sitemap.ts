@@ -19,6 +19,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/login`, changeFrequency: 'monthly', priority: 0.3 },
     { url: `${BASE_URL}/privacy`, changeFrequency: 'yearly', priority: 0.2 },
     { url: `${BASE_URL}/terms`, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${BASE_URL}/offer`, changeFrequency: 'yearly', priority: 0.2 },
+    { url: `${BASE_URL}/cookies`, changeFrequency: 'yearly', priority: 0.2 },
   ]
 
   const programRoutes: MetadataRoute.Sitemap = (programs || []).map((p) => ({
