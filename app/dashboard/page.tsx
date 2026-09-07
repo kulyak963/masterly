@@ -364,7 +364,11 @@ useEffect(() => {
       all.push(...data)
       if (data.length < 1000) break
     }
-    const masterField = profile.master_field || ''
+    // 'other:...' — свободный текст с шага "Другое" в анкете (см. app/page.tsx,
+    // аудит 2026-09-07): направления нет в базе, поэтому фильтр по полю
+    // отключаем совсем, как и для честно пустого master_field, а не
+    // сравниваем с текстом буквально (иначе совпадений не будет никогда).
+    const masterField = profile.master_field?.startsWith('other:') ? '' : (profile.master_field || '')
     const filtered = all.filter(p =>
       p.university &&
       countries.includes(p.university.country) &&

@@ -110,11 +110,15 @@ if (!COUNTRY_CODE || !COUNTRY_NAME) {
 // FIELD_KEYWORD_RULES и просто терялись как classified=null, даже когда
 // реально встречались на этапе перечисления (шаг 1 ищет по всем
 // факультетам вуза, шаг 2 — классификация — их просто выбрасывал).
+// Синхронизировано с lib/masterFields.ts (MASTER_FIELDS) — 2026-09-08,
+// расширено с 12 до 20 категорий, см. комментарий там же.
 const ALL_FIELDS = [
   'Computer Science', 'Artificial Intelligence', 'Data Science',
-  'Cybersecurity', 'Business Analytics', 'Robotics',
-  'Human-Computer Interaction', 'Computational Engineering',
-  'Biotechnology', 'Design', 'Social Sciences', 'Natural Sciences',
+  'Cybersecurity', 'Economics', 'Finance', 'Management', 'Marketing',
+  'Business Analytics', 'Robotics', 'Human-Computer Interaction',
+  'Computational Engineering', 'Biotechnology', 'Design', 'Architecture',
+  'Social Sciences', 'International Relations', 'Natural Sciences',
+  'Law', 'Medicine', 'Psychology', 'Linguistics', 'Journalism', 'Education',
 ]
 const FIELDS = args.fields ? args.fields.split(',').map((f) => f.trim()) : ALL_FIELDS
 for (const f of FIELDS) {
@@ -323,9 +327,8 @@ ${skipList ? `Programs already in our database for "${field}" in ${COUNTRY_NAME}
 ## Critical rule: the EU vs non-EU tuition trap
 Universities in many European countries show ONE tuition figure that is actually the EU/EEA-citizen rate, while a real non-EU student (our target audience) pays a HIGHER rate — sometimes 1.5-3x higher, sometimes the same, occasionally even lower. Actively search for "non-EU tuition"/"international (non-EU/EEA)"/"third-country nationals" tables. If only one figure is shown with no split, use it but set verified=false. verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME page cited in "url".
 
-## Field values (STRICT — use exactly one of these 8, nothing else)
-"Computer Science", "Artificial Intelligence", "Data Science", "Cybersecurity", "Business Analytics", "Robotics", "Human-Computer Interaction", "Computational Engineering"
-This program's field must be "${field}" for every entry you return.
+## Field value
+This program's field must be exactly "${field}" for every entry you return — not a related or broader term.
 
 ## Never fabricate
 If you found a real, sourced figure, use it and set verified accordingly. If you found nothing but have a genuinely well-grounded estimate (e.g. a clearly comparable program at the same university), use it, set verified=false, and say in cons that it's an estimate. If you found NOTHING usable — no figure, no comparable — set tuition_eur to null rather than guessing a plausible-sounding number. A null we can label "unknown" is far better than a confident-looking number that's actually invented — that's exactly the bug that made ~96 unverified programs display as "free" (2026-09 audit). Never invent a URL — only cite ones you actually found.
@@ -436,9 +439,14 @@ async function enumerateUniversityPrograms(uni) {
 // Business Analytics).
 const FIELD_KEYWORD_RULES = [
   // Жёсткие исключения — проверяются ПЕРВЫМИ, до любых совпадений по полю.
-  // "social work" убран отсюда 2026-09-03 — теперь это законное
-  // направление (Social Sciences), раньше просто выбрасывалось целиком.
-  { exclude: true, re: /\b(medicine|medical|dentist|dental|pharma(cy|ceutical)?(?! innovation)|nursing|clinical|theology|theological|divinity|law\b|llm\b|legal(?! tech)|history|literature|linguistics(?! computational)|philosophy|philology|fine arts|performing arts|music(?! informatics)|painting|sculpture|agricultur|forestry|pedagog|teacher education|veterinary)\b/i },
+  // "social work" убран 2026-09-03 (теперь Social Sciences). 2026-09-08:
+  // medicine/law/linguistics/pedagogy убраны отсюда же — это уже не
+  // исключения, а полноправные категории (см. правила ниже и аудит
+  // продукта 2026-09-07: юрист/медик/лингвист/педагог не имели вообще
+  // никакой категории). Оставлены только то, что реально вне таксономии
+  // продукта — теология, чистое искусство/музыка, сельское хозяйство,
+  // ветеринария.
+  { exclude: true, re: /\b(theology|theological|divinity|fine arts|performing arts|music(?! informatics)|painting|sculpture|agricultur|forestry|veterinary)\b/i },
 
   { field: 'Cybersecurity', re: /\b(cyber ?security|information security|network security|infosec)\b/i },
   { field: 'Artificial Intelligence', re: /\b(artificial intelligence|\bai\b|machine learning|deep learning)\b/i },
@@ -455,36 +463,62 @@ const FIELD_KEYWORD_RULES = [
     field: 'Computational Engineering',
     re: /\b(electrical engineering|mechanical engineering|civil engineering|environmental engineering|energy engineering|materials engineering|telecommunications?|structural engineering|infrastructural engineering|transportation engineering|vehicle engineering|construction|chemical engineering|biomedical engineering|quantum engineering|aerospace engineering|automotive engineering|electronic(s)? engineering|nuclear engineering|nanotechnology engineering|control (systems? )?engineering)\b/i,
   },
-  {
-    field: 'Business Analytics',
-    re: /\b(business|management|marketing|finance|financial|accounting|entrepreneur|sport management|hr\b|human resources?|supply chain|logistics|hospitality|tourism|economic|econom(y|ics)|innovation|mba|international trade|banking|insurance)\b/i,
-  },
-  // 2026-09-03: 4 новые категории — раньше программы по этим направлениям
-  // либо выбрасывались как classified=null (несмотря на то что шаг 1
-  // прицельно перечисляет и такие факультеты через "other"-кластер), либо
-  // (Биотех/Дизайн/Соцнауки) насильно приписывались к одной из 8 старых
-  // категорий на уровне анкеты (см. lib/masterFields.ts) — второе честнее
-  // называть багом, не приближением: студент-биотехнолог получал в выдаче
-  // Computational Engineering. Порядок — ПОСЛЕ всех старых правил
-  // намеренно: ничего, что уже классифицировалось раньше, не должно
-  // сменить категорию задним числом, эти 4 правила ловят только то, что
-  // раньше проваливалось мимо всех восьми.
+  // 2026-09-08: старый единый "Business Analytics" разобран на 5 честных
+  // категорий — раньше сюда сваливалось всё бизнес-образование сразу
+  // (609 из 1414 программ на момент аудита 2026-09-07, 43% базы) и фильтр
+  // по направлению для самого массового сегмента аудитории фактически не
+  // работал. Порядок правил важен: более специфичные (Finance/Marketing/
+  // Management) проверяются раньше общего Business Analytics, чтобы
+  // "MSc Finance" не утекал в общую кучу через совпадение с "financial".
+  { field: 'Finance', re: /\b(finance|financial|banking|insurance|accounting|actuarial|investment)\b/i },
+  { field: 'Marketing', re: /\b(marketing|brand management|advertising|digital marketing)\b/i },
+  { field: 'Management', re: /\b(management(?! technology)|entrepreneur|sport management|hr\b|human resources?|supply chain|logistics|hospitality|tourism|mba\b|business leadership|organi[sz]ational (behaviou?r|development))\b/i },
+  { field: 'Economics', re: /\b(economic|econom(y|ics)|international trade|development economics|econometrics)\b/i },
+  { field: 'Business Analytics', re: /\b(business analytics|business intelligence|business administration|international business|innovation management)\b/i },
+  // 2026-09-03: Биотех/Дизайн/Соцнауки/Естественные науки — раньше
+  // выбрасывались как classified=null или силком приписывались к одной
+  // из 8 старых категорий на уровне анкеты (см. lib/masterFields.ts):
+  // студент-биотехнолог получал в выдаче Computational Engineering.
   {
     field: 'Biotechnology',
     re: /\b(biotechnology|biotech|molecular biology|genetic engineering|genomics|synthetic biology|biomedicine|biomedical sciences|life sciences|cell biology|microbiology|biochemistry|bioprocess|biopharmaceutical|neuroscience)\b/i,
   },
+  // 2026-09-08: Architecture отделена от Design в свою категорию —
+  // раньше архитектурные программы (например, Bauhaus-Universität Weimar)
+  // попадали в один общий "Дизайн", хотя это разные специальности с
+  // разным набором вступительных требований (портфолио другого типа).
+  {
+    field: 'Architecture',
+    re: /\b(architecture|architectural design|urban design|urban planning|landscape architecture|spatial design)\b/i,
+  },
   {
     field: 'Design',
-    re: /\b(industrial design|product design|design engineering|graphic design|fashion design|interior design|architecture|architectural design|urban design|spatial design|design management|service design)\b/i,
+    re: /\b(industrial design|product design|design engineering|graphic design|fashion design|interior design|design management|service design)\b/i,
+  },
+  // 2026-09-08: International Relations выделены из Social Sciences в
+  // отдельную категорию — по частоте запроса (внешнеполитическая карьера,
+  // дипломатия) заслуживают своей, а не общей политологической корзины.
+  {
+    field: 'International Relations',
+    re: /\b(international relations|international studies|diplomacy|global studies|peace and conflict|area studies)\b/i,
   },
   {
     field: 'Social Sciences',
-    re: /\b(political science|international relations|international studies|sociology|social sciences?|public policy|public administration|development studies|area studies|anthropology|social psychology|peace and conflict|gender studies|global studies|diplomacy|social work)\b/i,
+    re: /\b(political science|sociology|social sciences?|public policy|public administration|development studies|anthropology|social psychology(?!.*clinical)|gender studies|social work)\b/i,
   },
   {
     field: 'Natural Sciences',
     re: /\b(applied physics|theoretical physics|astrophysics|astronomy|\bphysics\b|chemistry|\bmathematics\b|applied mathematics|pure mathematics|\bstatistics\b|earth science|geoscience|geology|environmental science|climate science|oceanography|materials science|nanoscience)\b/i,
   },
+  // 2026-09-08: 6 категорий, добавленных по итогам аудита продукта
+  // 2026-09-07 — раньше юрист/медик/психолог/лингвист/журналист/педагог
+  // не находили себя ни в одной категории вообще (см. lib/masterFields.ts).
+  { field: 'Law', re: /\b(\blaw\b|\bllm\b|legal(?! tech)|jurisprudence)\b/i },
+  { field: 'Medicine', re: /\b(medicine|medical(?! engineering)|dentist|dental|pharma(cy|ceutical)?(?! innovation)|nursing|clinical(?! psychology)|public health|epidemiology|health sciences)\b/i },
+  { field: 'Psychology', re: /\b(psycholog(y|ical)|clinical psychology|cognitive science(?! and artificial)|behavioral science)\b/i },
+  { field: 'Linguistics', re: /\b(linguistics(?! computational)|translation studies|interpreting|applied linguistics|language teaching|philology)\b/i },
+  { field: 'Journalism', re: /\b(journalism|media studies|mass communication|broadcast(ing)?|digital media(?! design)|publishing)\b/i },
+  { field: 'Education', re: /\b(pedagog|teacher education|education(al)? (sciences?|leadership|policy|management|studies)|curriculum (design|studies)|didactics)\b/i },
 ]
 
 function classifyByKeywords(name) {

@@ -76,7 +76,9 @@ const COUNTRIES_MORE = [
   {c:'ie',f:'IE',n:'Ирландия',   tag:'Trinity College Dublin'},
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
-const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Другое']
+// Синхронизировано с lib/masterFields.ts (FIELD_TO_DB) — расширено
+// 2026-09-08 с 8 до 13 категорий бакалавриата, см. комментарий там же.
+const FIELDS = ['Компьютерные науки / ИИ','Инженерия','Экономика','Физика / Математика','Биотех','Дизайн','Социальные науки','Право','Медицина','Психология','Лингвистика','Журналистика','Образование','Другое']
 const BUDGETS = [
   {id:'zero',l:'Только стипендия',   s:'Финансирование — обязательное условие'},
   {id:'low', l:'До €5 000 / год',    s:'Подработка или частичная помощь'},
@@ -629,12 +631,29 @@ setStep((s:any)=> s+1)
       {MASTER_FIELDS.map(f=>(
         <Chip key={f.v} selected={a.master_field===f.v} onClick={()=>set('master_field',f.v)}>{f.l}</Chip>
       ))}
+      {/* Раньше "Другое" было только на шаге бакалавриата — на этом шаге
+          выбора точного направления магистратуры такого варианта не было
+          вообще, и человек был вынужден выбрать что-то неточное из списка
+          (см. аудит продукта 2026-09-07). Свободный текст вместо
+          неверного совпадения — честнее и даёт сигнал, что расширять. */}
+      <Chip selected={a.master_field.startsWith('other:')} onClick={()=>set('master_field','other:')}>Другое</Chip>
     </div>
+    {a.master_field.startsWith('other:')&&(
+      <div className="in" style={{marginTop:10}}>
+        <input type="text" placeholder="Какое направление ты искал(а)?"
+          value={a.master_field.slice(6)}
+          onChange={e=>set('master_field','other:'+e.target.value)}/>
+        <p style={{fontFamily:sans,fontSize:11,color:t3,marginTop:6,lineHeight:1.5}}>
+          Пока точного совпадения может не быть в базе — покажем всё, что подобралось по стране,
+          и сообщим тебе, когда добавим твоё направление.
+        </p>
+      </div>
+    )}
   </div>
 )}
 </div>
 )}
-<NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&!!a.master_field}/>
+<NavBtns step={step} onBack={goBack} onNext={goNext} can={!!a.university&&!!a.field&&!!a.master_direction&&!!a.master_field&&a.master_field!=='other:'}/>
     </Shell>
   )
 
