@@ -53,27 +53,44 @@ input::placeholder{color:rgba(242,239,233,.2)}
 // Швеция и Дания берут с не-ЕС студентов давно, широкий диапазон по
 // программам, никакого единого "Free". Германия оставлена "в основном
 // бесплатно" — это правда почти везде, кроме TUM и Баден-Вюртемберга.
+// Порядок стран пересобран 2026-09-08 по трём признакам сразу:
+// реальный спрос у российской аудитории, глубина нашего каталога
+// (чтобы человек не упирался в пустой список после 8 вопросов) и
+// наличие платного гайда — DE/NL (вкладка "Реальность") и HU/IT
+// (гайды по стипендиям). До этой правки Италия (206 программ, гайд)
+// и Венгрия (124, гайд) были спрятаны под "ещё N стран", а Чехия
+// с 22 программами занимала видное место — то есть свёрнутыми
+// оказались ровно те страны, которые лучше всего монетизируются.
+// Цифры каталога на момент правки: it 206, nl 183, fr 155, hu 124,
+// de 116, ie 116, se 111, dk 106, ch 94, be 61, fi 60, es 57, at 32,
+// no 25, cz 22, ee 14, pl 5. Проверить перед следующим изменением.
 const COUNTRIES_MAIN = [
   {c:'de',f:'DE',n:'Германия',   tag:'В основном бесплатно · DAAD'},
+  {c:'it',f:'IT',n:'Италия',     tag:'Дешёвые госвузы · стипендии DSU'},
   {c:'nl',f:'NL',n:'Нидерланды', tag:'Holland Scholarship'},
-  {c:'se',f:'SE',n:'Швеция',     tag:'Стипендия SI'},
-  {c:'ch',f:'CH',n:'Швейцария',  tag:'ETH · EPFL'},
-  {c:'fi',f:'FI',n:'Финляндия',  tag:'Aalto University'},
+  {c:'hu',f:'HU',n:'Венгрия',    tag:'Stipendium Hungaricum'},
   {c:'fr',f:'FR',n:'Франция',    tag:'Eiffel Excellence'},
-  {c:'cz',f:'CZ',n:'Чехия',      tag:'Прага · Брно'},
+  {c:'es',f:'ES',n:'Испания',    tag:'Barcelona · Madrid'},
   {c:'at',f:'AT',n:'Австрия',    tag:'TU Wien · WU'},
+  // Чехия оставлена на виду вопреки тонкому каталогу (22): спрос у
+  // российских абитуриентов на неё реально высокий, а честное число
+  // найденных программ человек теперь видит ещё до регистрации.
+  {c:'cz',f:'CZ',n:'Чехия',      tag:'Прага · Брно'},
 ]
 
+// Северные страны уехали сюда осознанно: с 2023 Норвегия, а до неё
+// Швеция и Дания берут плату с не-ЕС — для аудитории, которая в анкете
+// массово выбирает "только стипендия", они уже не то, чем выглядели.
 const COUNTRIES_MORE = [
-  {c:'it',f:'IT',n:'Италия',     tag:'Politecnico · Bologna'},
-  {c:'dk',f:'DK',n:'Дания',      tag:'DTU · Copenhagen'},
-  {c:'no',f:'NO',n:'Норвегия',   tag:'NTNU · Бесплатно для EU/EEA'},
-  {c:'be',f:'BE',n:'Бельгия',    tag:'KU Leuven · UCL'},
-  {c:'es',f:'ES',n:'Испания',    tag:'Barcelona · Madrid'},
-  {c:'ee',f:'EE',n:'Эстония',    tag:'Tallinn · Startup'},
-  {c:'pl',f:'PL',n:'Польша',     tag:'Warsaw · Wrocław'},
-  {c:'hu',f:'HU',n:'Венгрия',    tag:'Стипендия Stipendium'},
+  {c:'se',f:'SE',n:'Швеция',     tag:'Стипендия SI'},
   {c:'ie',f:'IE',n:'Ирландия',   tag:'Trinity College Dublin'},
+  {c:'dk',f:'DK',n:'Дания',      tag:'DTU · Copenhagen'},
+  {c:'ch',f:'CH',n:'Швейцария',  tag:'ETH · EPFL'},
+  {c:'fi',f:'FI',n:'Финляндия',  tag:'Aalto University'},
+  {c:'be',f:'BE',n:'Бельгия',    tag:'KU Leuven · UCL'},
+  {c:'ee',f:'EE',n:'Эстония',    tag:'Tallinn · Startup'},
+  {c:'no',f:'NO',n:'Норвегия',   tag:'NTNU · платно для не-ЕС с 2023'},
+  {c:'pl',f:'PL',n:'Польша',     tag:'Warsaw · Wrocław'},
 ]
 const UNIS = ['МГТУ им. Баумана','МГУ','СПбГУ','НИУ ВШЭ','МФТИ','ИТМО','УрФУ','Другой']
 // Синхронизировано с lib/masterFields.ts (FIELD_TO_DB) — расширено
@@ -419,11 +436,16 @@ setStep((s:any)=> s+1)
 
   // STEP 0 — WELCOME
   if(step===0) {
+    // Витрина на первом экране: показываем те же 4 страны, по которым у
+    // нас есть глубокий русскоязычный гайд (виза/оплата/документы для
+    // DE/NL, стипендии для HU/IT) — раньше здесь стояли Швеция и
+    // Швейцария, по которым гайда нет, то есть витрина вела не туда,
+    // где продукт сильнее всего.
     const BOARD_ROWS = [
-      {code:'DE', name:'Германия',   tag:'В основном бесплатно · DAAD', status:'ПРИЁМ ОТКРЫТ',   color:gold},
-      {code:'NL', name:'Нидерланды', tag:'Holland Scholarship',   status:'ПРИЁМ ОТКРЫТ',   color:gold},
-      {code:'SE', name:'Швеция',     tag:'Стипендия SI',          status:'СКОРО ЗАКРЫТИЕ', color:red},
-      {code:'CH', name:'Швейцария',  tag:'ETH · EPFL',            status:'ВЫСОКИЙ ШАНС',   color:blue},
+      {code:'DE', name:'Германия',   tag:'В основном бесплатно · DAAD',   status:'ПРИЁМ ОТКРЫТ',      color:gold},
+      {code:'IT', name:'Италия',     tag:'Дешёвые госвузы · стипендии DSU', status:'ПРИЁМ ОТКРЫТ',    color:gold},
+      {code:'NL', name:'Нидерланды', tag:'Holland Scholarship',           status:'ПРИЁМ ОТКРЫТ',      color:gold},
+      {code:'HU', name:'Венгрия',    tag:'Stipendium Hungaricum',         status:'ДЕДЛАЙН 15 ЯНВАРЯ', color:red},
     ]
     return (
     <div style={{minHeight:'100vh',position:'relative',overflow:'hidden',background:bg0}}>
@@ -716,8 +738,12 @@ setStep((s:any)=> s+1)
   <div className="in">
     {[
       {id:'cost',q:'Что важнее по деньгам?',opts:[
-        {v:'free', l:'Учёба должна быть бесплатной',s:'Германия, Финляндия, Чехия'},
-        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, SI, Stipendium Hungaricum, MAECI'},
+        // Подсказка обещала Финляндию и Чехию как бесплатные — обе
+        // берут с не-ЕС полную плату (в Чехии бесплатно только обучение
+        // на чешском, англоязычные программы платные). Оставляем то,
+        // что подтверждается нашими же данными: госвузы Германии.
+        {v:'free', l:'Учёба должна быть бесплатной',s:'Госвузы Германии, стипендия в Венгрии'},
+        {v:'schol',l:'Готов платить если дадут стипендию',s:'DAAD, Stipendium Hungaricum, MAECI, DSU'},
         {v:'any',  l:'Деньги не ключевой фактор',s:'Фокус на качестве программы'},
       ]},
       {id:'stay',q:'Планируешь остаться в Европе после учёбы?',opts:[
@@ -761,17 +787,30 @@ setStep((s:any)=> s+1)
                     // стипендиям и глубоко собранными данными) физически не
                     // могли попасть в топ-3, сколько бы приоритетов
                     // студент ни назвал. Добавлены в общий скоринг.
-                    const scores: Record<string,number>={de:0,nl:0,se:0,ch:0,fi:0,fr:0,cz:0,at:0,hu:0,it:0}
-                    if(qa.cost==='free')    {scores.de+=3;scores.fi+=3;scores.cz+=3;scores.se+=2;scores.hu+=2}
-                    if(qa.cost==='schol')   {scores.de+=2;scores.se+=2;scores.fr+=2;scores.nl+=1;scores.hu+=3;scores.it+=2}
-                    if(qa.cost==='any')     {scores.ch+=2;scores.nl+=2;scores.it+=1}
-                    if(qa.stay==='yes')     {scores.nl+=3;scores.de+=2;scores.se+=2;scores.fi+=1}
-                    if(qa.stay==='no')      {scores.cz+=2;scores.at+=1;scores.hu+=1;scores.it+=1}
-                    if(qa.lang==='en')      {scores.nl+=2;scores.se+=2;scores.fi+=2;scores.hu+=2;scores.it+=2}
-                    if(qa.lang==='de')      {scores.de+=3;scores.at+=2;scores.ch+=1}
-                    if(qa.vibe==='research'){scores.ch+=3;scores.de+=2;scores.se+=2;scores.it+=1}
-                    if(qa.vibe==='startup') {scores.nl+=3;scores.fi+=2}
-                    if(qa.vibe==='life')    {scores.de+=2;scores.at+=2;scores.fr+=1;scores.it+=2}
+                    // Пересобрано 2026-09-08. Старая версия на ответ
+                    // "нужно бесплатно" давала fi+=3 и se+=2 — но и
+                    // Финляндия, и Швеция берут с не-ЕС полную плату
+                    // (та же неправда про деньги, что мы вычищали из
+                    // данных). Чехия бесплатна только на чешском языке,
+                    // а англоязычные программы там платные, поэтому она
+                    // тоже опустилась. Реально бесплатно для не-ЕС —
+                    // госвузы Германии; Венгрия и Италия закрываются
+                    // стипендией (Stipendium покрывает всё, DSU/no-tax
+                    // area в Италии обнуляют взнос).
+                    // Заодно добавлены 7 стран, которые раньше вообще не
+                    // могли попасть в рекомендацию: es, ie, dk, be, ee,
+                    // no, pl — они есть в списке выбора, но квиз их не знал.
+                    const scores: Record<string,number>={de:0,nl:0,se:0,ch:0,fi:0,fr:0,cz:0,at:0,hu:0,it:0,es:0,ie:0,dk:0,be:0,ee:0,no:0,pl:0}
+                    if(qa.cost==='free')    {scores.de+=3;scores.hu+=3;scores.it+=2;scores.at+=1;scores.cz+=1}
+                    if(qa.cost==='schol')   {scores.hu+=3;scores.de+=2;scores.fr+=2;scores.it+=2;scores.nl+=1;scores.es+=1}
+                    if(qa.cost==='any')     {scores.ch+=2;scores.nl+=2;scores.ie+=2;scores.dk+=1;scores.se+=1;scores.it+=1}
+                    if(qa.stay==='yes')     {scores.nl+=3;scores.de+=2;scores.ie+=2;scores.se+=2;scores.dk+=1}
+                    if(qa.stay==='no')      {scores.cz+=2;scores.hu+=2;scores.it+=1;scores.at+=1;scores.es+=1;scores.pl+=1}
+                    if(qa.lang==='en')      {scores.nl+=3;scores.ie+=3;scores.hu+=2;scores.it+=2;scores.se+=2;scores.dk+=2;scores.fi+=2;scores.ee+=2}
+                    if(qa.lang==='de')      {scores.de+=3;scores.at+=3;scores.ch+=2}
+                    if(qa.vibe==='research'){scores.ch+=3;scores.de+=2;scores.nl+=2;scores.se+=2;scores.dk+=1;scores.it+=1}
+                    if(qa.vibe==='startup') {scores.nl+=3;scores.ie+=2;scores.ee+=2;scores.fi+=2;scores.de+=1}
+                    if(qa.vibe==='life')    {scores.es+=3;scores.it+=3;scores.at+=2;scores.fr+=2;scores.de+=1}
                     const top3 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c])=>c)
                     set('countries', top3)
                     setQuizMode(false)
@@ -840,7 +879,10 @@ setStep((s:any)=> s+1)
   onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,.2)'}
   onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=line}>
   <span style={{fontFamily:mono,fontSize:9,color:t2,letterSpacing:'0.1em'}}>
-    {showMoreCountries?'СКРЫТЬ':'ЕЩЁ 8 СТРАН — Италия, Дания, Норвегия...'}
+    {/* Считаем из самого списка: подпись была захардкожена ("ЕЩЁ 8
+        СТРАН — Италия, Дания, Норвегия..."), из-за чего разошлась и по
+        числу, и по составу, как только список поменяли. */}
+    {showMoreCountries?'СКРЫТЬ':`ЕЩЁ ${COUNTRIES_MORE.length} ${COUNTRIES_MORE.length%10===1&&COUNTRIES_MORE.length%100!==11?'СТРАНА':'СТРАН'} — ${COUNTRIES_MORE.slice(0,3).map(c=>c.n).join(', ')}...`}
   </span>
   <span style={{fontFamily:mono,fontSize:11,color:t2}}>
     {showMoreCountries?'↑':'↓'}
