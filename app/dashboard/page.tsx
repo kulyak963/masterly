@@ -10,6 +10,7 @@ import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
+import { startCheckout } from '@/lib/checkout'
 
 /* ── country names ── */
 const CNAME: Record<string,string> = {
@@ -192,7 +193,15 @@ function Mono({children,style={}}:{children:React.ReactNode,style?:React.CSSProp
 // ScholarshipLock — здесь скрывать нечего, просто фича недоступна на
 // бесплатном тарифе). Платежа всё ещё нет — честно говорим об этом.
 function ProUpsell({title,desc}:{title:string,desc:string}) {
-  const [msg,setMsg] = useState(false)
+  const [buying,setBuying] = useState(false)
+  const [error,setError] = useState<string|null>(null)
+  const onBuy = async () => {
+    setBuying(true)
+    setError(null)
+    const res = await startCheckout()
+    if (res.error) { setError(res.error); setBuying(false) }
+    // при успехе — редирект на Lava.top
+  }
   return (
     <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
       <div style={{maxWidth:420,textAlign:'center',padding:'36px 32px',borderRadius:12,
@@ -200,15 +209,14 @@ function ProUpsell({title,desc}:{title:string,desc:string}) {
         <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🔒</div>
         <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>{title}</div>
         <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:20}}>{desc}</p>
-        <button onClick={()=>setMsg(true)} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
-          background:gold,color:bg0,fontFamily:sans,fontSize:13,fontWeight:600,cursor:'pointer',
-          letterSpacing:'-.01em',marginBottom:msg?10:0}}>
-          Разблокировать Pro
+        <button onClick={onBuy} disabled={buying} style={{width:'100%',padding:'13px',borderRadius:8,border:'none',
+          background:gold,color:bg0,fontFamily:sans,fontSize:13,fontWeight:600,cursor:buying?'not-allowed':'pointer',
+          letterSpacing:'-.01em',marginBottom:error?10:0,opacity:buying?0.7:1}}>
+          {buying?'Открываем оплату…':'Разблокировать Pro'}
         </button>
-        {msg&&(
-          <p style={{fontFamily:sans,fontSize:11,color:t2,lineHeight:1.5}}>
-            Оплата пока не подключена — эта часть продукта в разработке. Скоро можно будет
-            разблокировать разовым платежом.
+        {error&&(
+          <p style={{fontFamily:sans,fontSize:11,color:red,lineHeight:1.5}}>
+            {error}
           </p>
         )}
       </div>
@@ -230,6 +238,7 @@ const [selectedProgram, setSelectedProgram] = useState<any>(null)
 const [verdict, setVerdict] = useState<any>(null)
 const [verdictLoading, setVerdictLoading] = useState(false)
 const [verdictError, setVerdictError] = useState<string|null>(null)
+const [verdictLocked, setVerdictLocked] = useState(false)
 const [favorites, setFavorites] = useState<Map<string,{status:ApplicationStatus;status_updated_at:string}>>(new Map())
 const [compareList, setCompareList] = useState<string[]>([])
 
@@ -593,6 +602,7 @@ const toggleCompare = (programId: string, e: React.MouseEvent) => {
 const getVerdict = async (p: any) => {
   setVerdict(null)
   setVerdictError(null)
+  setVerdictLocked(false)
   setVerdictLoading(true)
   // Без таймаута зависший прокси/AI-запрос вешал кнопку "Анализируем..."
   // на неопределённое время. Живой прогон показал большой разброс:
@@ -618,7 +628,8 @@ const getVerdict = async (p: any) => {
     })
     const data = await res.json()
     if (res.status === 403 && data?.locked) {
-      setVerdictError('Персональный анализ — платная функция Pro. Оплата пока не подключена, скоро можно будет разблокировать.')
+      setVerdictError('Персональный анализ — платная функция Pro.')
+      setVerdictLocked(true)
     } else if (!res.ok) {
       setVerdictError('Не получилось получить анализ — попробуй позже')
     } else {
@@ -1439,6 +1450,13 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 <div style={{marginTop:20,padding:'14px 16px',borderRadius:8,
                   background:`${red}0D`,border:`1px solid ${red}30`}}>
                   <span style={{fontFamily:sans,fontSize:13,color:red}}>{verdictError}</span>
+                  {verdictLocked&&(
+                    <button onClick={async()=>{const r=await startCheckout();if(r.error)setVerdictError(r.error)}}
+                      style={{display:'block',width:'100%',marginTop:10,padding:'10px',borderRadius:6,border:'none',
+                        background:gold,color:bg0,fontFamily:sans,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                      Разблокировать Pro
+                    </button>
+                  )}
                 </div>
               )}
               {verdict&&(

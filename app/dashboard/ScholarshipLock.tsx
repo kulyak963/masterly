@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { bg0, bg1, bg2, line, t1, t2, gold, sans, mono } from '@/lib/theme'
+import { bg0, bg1, bg2, line, t1, t2, gold, red, sans, mono } from '@/lib/theme'
+import { startCheckout } from '@/lib/checkout'
 
 /**
  * Общий "замок" для платного контента гайдов по стипендиям (Венгрия,
@@ -14,8 +15,8 @@ import { bg0, bg1, bg2, line, t1, t2, gold, sans, mono } from '@/lib/theme'
  * (когда unlocked=true), либо ничего, и компонент сам рисует общий
  * скелетон-плейсхолдер вместо попытки "заблюрить" несуществующий текст.
  *
- * Платежа в проекте всё ещё нет — кнопка честно говорит об этом, не
- * делает вид, что что-то происходит.
+ * 2026-09-07: кнопка ведёт на реальный чек-аут Lava.top (см.
+ * lib/checkout.ts) — раньше честно говорила "оплата не подключена".
  */
 function SkeletonLines({ n = 3 }: { n?: number }) {
   const widths = ['92%', '78%', '85%', '65%', '90%']
@@ -38,8 +39,17 @@ function SkeletonCard() {
 }
 
 export default function ScholarshipLock({ children, unlocked = false, loading = false }: { children: React.ReactNode; unlocked?: boolean; loading?: boolean }) {
-  const [unlockMsg, setUnlockMsg] = useState(false)
+  const [buying, setBuying] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   if (unlocked) return <>{children}</>
+
+  const onBuy = async () => {
+    setBuying(true)
+    setError(null)
+    const res = await startCheckout()
+    if (res.error) { setError(res.error); setBuying(false) }
+    // при успехе — редирект на Lava.top, компонент размонтируется сам
+  }
 
   return (
     <div style={{ position: 'relative' }}>
@@ -64,17 +74,17 @@ export default function ScholarshipLock({ children, unlocked = false, loading = 
           <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.5, marginBottom: 16 }}>
             Требования, документы, дедлайны и частые ошибки — разово, без подписки.
           </p>
-          <button onClick={() => setUnlockMsg(true)} style={{
+          <button onClick={onBuy} disabled={buying} style={{
             width: '100%', padding: '11px', borderRadius: 8, border: 'none',
             background: gold, color: bg0, fontFamily: sans, fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: '-.01em', marginBottom: unlockMsg ? 10 : 0,
+            cursor: buying ? 'not-allowed' : 'pointer', letterSpacing: '-.01em',
+            marginBottom: error ? 10 : 0, opacity: buying ? 0.7 : 1,
           }}>
-            Разблокировать
+            {buying ? 'Открываем оплату…' : 'Разблокировать'}
           </button>
-          {unlockMsg && (
-            <p style={{ fontFamily: sans, fontSize: 11, color: t2, lineHeight: 1.5 }}>
-              Оплата пока не подключена — эта часть продукта в разработке. Скоро можно будет
-              разблокировать гайд разовым платежом.
+          {error && (
+            <p style={{ fontFamily: sans, fontSize: 11, color: red, lineHeight: 1.5 }}>
+              {error}
             </p>
           )}
         </div>
