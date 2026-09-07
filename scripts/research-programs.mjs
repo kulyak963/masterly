@@ -67,6 +67,18 @@
 //   Лечится только повторными попытками (см. withRetry ниже)
 // Если в будущем это исправят на стороне прокси — можно будет снова
 // пробовать более крупные/амбициозные запросы за один раз.
+//
+// 2026-09-07, подтверждено на новых широких категориях (Law/Medicine/
+// Psychology): обычный `--fields` режим (researchField, "найди 3 реальные
+// программы по стране без привязки к вузу") систематически проваливается
+// на этих направлениях даже с withRetry(3) — слишком открытая задача,
+// модель тянется исследовать множество вузов и специализаций сразу.
+// `--comprehensive` (задача уже привязана к ОДНОМУ известному вузу) на
+// тех же полях отработал нормально. Практическое правило: для широких
+// гуманитарных/профессиональных категорий (Law, Medicine, Psychology,
+// Education, Journalism, Linguistics, International Relations) всегда
+// использовать `--comprehensive [--fields "..."]`, а не обычный режим —
+// не полагаться на retry, чинящий что-то другое.
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
@@ -360,7 +372,14 @@ If you found a real, sourced figure, use it and set verified accordingly. If you
 }
 
 async function researchField(field, existingPrograms) {
-  return callWithSearchExpectArray(buildPrompt(field, existingPrograms), { maxTokens: 32000 })
+  // 2026-09-07: обнаружено на новых категориях таксономии (Law/Medicine/
+  // Psychology) — этот вызов был единственным во всём файле без withRetry,
+  // хотя страдает от того же самого известного проксевого бага
+  // "многораундовый поиск ломается" (см. комментарий в шапке файла), что
+  // и остальные. --comprehensive выживал за счёт retry (см. buildEnumeratePrompt
+  // выше), а researchField просто падал на первой же неудаче — широкие
+  // гуманитарные направления явно провоцируют это чаще узких технических.
+  return withRetry(() => callWithSearchExpectArray(buildPrompt(field, existingPrograms), { maxTokens: 32000 }), 3)
 }
 
 // =====================================================================
