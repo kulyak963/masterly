@@ -933,6 +933,15 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
                     <div style={{fontFamily:sans,fontSize:13,fontWeight:500,color:t1,letterSpacing:'-.01em'}}>{u._n}</div>
                     <VerifiedBadge verified={u.verified}/>
+                    {/* Про мёртвую ссылку честнее предупредить прямо в
+                        списке, а не только внутри карточки — иначе про
+                        неё узнаёшь, уже кликнув (см. isDeadLink). */}
+                    {isDeadLink(u.url_status)&&(
+                      <span title="Официальная страница программы не открылась при последней проверке"
+                        style={{fontFamily:mono,fontSize:9,fontWeight:700,color:gold,
+                          border:`1px solid ${gold}55`,borderRadius:3,padding:'1px 4px',
+                          letterSpacing:'.04em',whiteSpace:'nowrap'}}>⚠ ССЫЛКА</span>
+                    )}
                   </div>
                   <div style={{fontFamily:sans,fontSize:11,color:t2,marginBottom:6}}>{u._p}</div>
                   <div style={{width:100}}><Bar v={u._score} color={cfg.color} h={2}/></div>
@@ -1488,8 +1497,9 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
                 </p>
               )}
               {(() => {
-                // Ссылка, о которой уже известно, что она мёртвая (404/403/
-                // DNS — см. scripts/check-links.mjs, 25% базы на 2026-09-08),
+                // Ссылка, о которой уже известно, что она мёртвая (404/410
+                // или запрос не дошёл — см. isDeadLink в lib/linkHealth.ts;
+                // 403 НЕ считается мёртвой, это защита сайта от ботов),
                 // не лучше отсутствующей — гугл-поиск по названию хотя бы
                 // куда-то приведёт, а не гарантированно на пустую страницу.
                 const linkBroken = isDeadLink(selectedProgram.url_status)
