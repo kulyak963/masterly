@@ -7,6 +7,7 @@ import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
 import { tuitionLabel } from '@/lib/tuition'
 import { isDeadLink } from '@/lib/linkHealth'
+import ReportIssueButton from '@/components/ReportIssueButton'
 
 export const revalidate = 3600
 
@@ -207,6 +208,7 @@ export default async function ProgramPage({ params }: Props) {
             textDecoration: 'none', letterSpacing: '-.01em' }}>
             Построить свой план поступления →
           </Link>
+          <ReportIssueButton programId={program.id} />
         </div>
       </div>
     </div>
