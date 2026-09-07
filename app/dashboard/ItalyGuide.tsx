@@ -138,6 +138,22 @@ export default function ItalyGuide({ programs = [], isPro = false }: { programs?
         ))}
       </div>
 
+      {/* русский слой — свободный крючок про визу/оплату, тот же паттерн,
+          что в GermanyReality/NetherlandsReality (см. аудит 2026-09-07) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 24 }}>
+        {[
+          { l: 'ВИЗА', v: 'Только биометрический паспорт', sub: 'через визовые центры' },
+          { l: 'СРОК РАССМОТРЕНИЯ', v: 'До 3-4 месяцев', sub: 'начинай заранее' },
+          { l: 'ОПЛАТА ИЗ РФ', v: 'Poste Italiane, BNL', sub: 'ещё принимают переводы' },
+        ].map(c => (
+          <div key={c.l} style={{ background: bg1, border: `1px solid ${line}`, borderRadius: 8, padding: '14px 12px' }}>
+            <Mono style={{ display: 'block', marginBottom: 6 }}>{c.l}</Mono>
+            <div style={{ fontFamily: sans, fontSize: 16, fontWeight: 700, color: t1, letterSpacing: '-.01em' }}>{c.v}</div>
+            <div style={{ fontFamily: sans, fontSize: 11, color: t3 }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
       {/* free section — hook */}
       <Card>
         <SectionTitle>Три уровня льгот — и как они складываются</SectionTitle>
@@ -154,6 +170,31 @@ export default function ItalyGuide({ programs = [], isPro = false }: { programs?
       <ScholarshipLock unlocked={!!content} loading={loading}>
         {content && (
           <>
+            <Card>
+              <SectionTitle>Виза — шаг за шагом</SectionTitle>
+              {content.visaSteps.map(s => (
+                <div key={s.t} style={{ marginBottom: 14 }}>
+                  <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 3 }}>{s.t}</div>
+                  <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6 }}>{s.d}</div>
+                </div>
+              ))}
+            </Card>
+
+            <Card>
+              <SectionTitle>Как оплатить обучение из России</SectionTitle>
+              {content.paymentMethods.map(s => (
+                <div key={s.t} style={{ marginBottom: 14 }}>
+                  <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 3 }}>{s.t}</div>
+                  <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6 }}>{s.d}</div>
+                </div>
+              ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {content.realitySources.map((s: any) => (
+                  <a key={s.u} href={s.u} target="_blank" rel="noopener noreferrer" style={{ fontFamily: sans, fontSize: 11, color: blue, textDecoration: 'none' }}>{s.n}</a>
+                ))}
+              </div>
+            </Card>
+
             <Card>
               <SectionTitle>Что такое ISEE — ключ ко всей системе</SectionTitle>
               <p style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: 12 }}>
