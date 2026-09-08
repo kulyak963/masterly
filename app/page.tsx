@@ -9,6 +9,7 @@ import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { soonestAdmissionYear } from '@/lib/admissionYear'
 import { readinessScore } from '@/lib/readiness'
 import { GUIDE_COUNTRIES, GUIDE_COUNTRY_NAMES } from '@/lib/legal'
+import { humanAuthError } from '@/lib/authErrors'
 
 const CSS = `
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -368,6 +369,10 @@ setStep((s:any)=> s+1)
   // Если ввели пароль — регистрируем аккаунт с паролем, иначе шлём ссылку на
   // почту. В обоих случаях анкета дублируется в pending_profiles по email —
   // подтверждение может прийти на другое устройство, где localStorage пустой.
+  // Регистрация возможна только с паролем — путь «ссылка на почту»
+  // молча не доходит до пользователя (см. комментарий у поля пароля).
+  const canSubmitSignup = a.email.trim().length > 0 && password.length >= 8
+
   const sendMagicLink = async () => {
     const email = a.email.trim()
     if (!email || emailSending) return
@@ -404,7 +409,7 @@ setStep((s:any)=> s+1)
       }
     } catch (e: any) {
       console.error(e)
-      alert(e?.message || 'Не получилось — попробуй ещё раз')
+      alert(humanAuthError(e))
     }
     setEmailSending(false)
   }
@@ -1234,19 +1239,29 @@ setStep((s:any)=> s+1)
       <input type="email" placeholder="твой@email.com"
         value={a.email} onChange={e=>set('email',e.target.value)}
         onKeyDown={e=>{ if(e.key==='Enter') sendMagicLink() }}/>
-      <input type="password" placeholder="Пароль (необязательно) — входить без письма"
+      {/* Пароль был помечен «необязательно», и пустое поле уводило
+          в регистрацию по ссылке на почту. Проверено 2026-09-08: на этом
+          пути Supabase возвращает УСПЕХ, создаёт пользователя, но письмо
+          не доходит — ловить в коде нечего, человек просто ждёт письмо,
+          которого нет. Поэтому регистрация теперь только по паролю: это
+          единственный путь, который работает без внешней почты. */}
+      <input type="password" placeholder="Придумай пароль — от 8 символов"
         value={password} onChange={e=>setPassword(e.target.value)}
-        onKeyDown={e=>{ if(e.key==='Enter') sendMagicLink() }}/>
+        onKeyDown={e=>{ if(e.key==='Enter'&&canSubmitSignup) sendMagicLink() }}/>
       {turnstile.enabled && <div ref={turnstile.containerRef} style={{margin:'2px auto 0'}}/>}
-      <button onClick={sendMagicLink} disabled={!a.email.trim()||emailSending} style={{
+      <button onClick={sendMagicLink} disabled={!canSubmitSignup||emailSending} style={{
         width:'100%',padding:'13px',borderRadius:8,border:'none',
-        background:a.email.trim()?t1:'rgba(255,255,255,.06)',
-        color:a.email.trim()?bg0:t3,
+        background:canSubmitSignup?t1:'rgba(255,255,255,.06)',
+        color:canSubmitSignup?bg0:t3,
         fontFamily:sans,fontSize:14,fontWeight:500,
-        cursor:a.email.trim()&&!emailSending?'pointer':'not-allowed',
+        cursor:canSubmitSignup&&!emailSending?'pointer':'not-allowed',
       }}>
-        {emailSending ? 'Отправляем...' : password ? 'Зарегистрироваться с паролем' : 'Отправить ссылку на email'}
+        {emailSending ? 'Создаём аккаунт...' : 'Создать аккаунт'}
       </button>
+      <p style={{fontFamily:sans,fontSize:11,color:t3,textAlign:'center',lineHeight:1.5,marginTop:-2}}>
+        Нажимая, ты соглашаешься с <a href="/offer" style={{color:t3}}>офертой</a> и{' '}
+        <a href="/privacy" style={{color:t3}}>политикой конфиденциальности</a>
+      </p>
     </>
   )}
 </div>
