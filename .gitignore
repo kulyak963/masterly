@@ -36,6 +36,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Выгрузки базы. Содержат персональные данные пользователей (имена,
+# почты, анкеты) — в git им нельзя ни при каких обстоятельствах.
+/backup/
+
 # vercel
 .vercel
 
