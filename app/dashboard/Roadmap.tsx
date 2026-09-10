@@ -11,6 +11,82 @@ interface Node {
   tasks: Task[]; insight: string; blockedBy?: string[]
 }
 
+// Портфолио для заявки — единственная часть узла "Профиль", которая
+// реально зависит от направления. Раньше здесь для всех стоял GitHub,
+// подходящий только техническим специальностям — юрист или биолог видел
+// совет добавить код-проекты с readme (запрос Дениса: "зачем там всем
+// подряд github... продумай что бы он реально соответствовал направлению
+// и реальным реквайрментс"). Кластеры ниже — не 24 отдельных блока на
+// каждое из полей lib/masterFields.ts (избыточно — многие поля хотят от
+// абитуриента одно и то же), а группировка по тому, что реально смотрит
+// приёмная комиссия для этого типа программы:
+//   tech      — код физически проверяют (репозиторий, читаемость)
+//   creative  — визуальный портфолио — стандартное требование дизайна/
+//               архитектуры при поступлении, не наша придумка
+//   business  — LinkedIn + многие MBA/Business Analytics программы
+//               реально требуют GMAT/GRE, это стоит проверить заранее
+//   research  — лабораторный/исследовательский опыт, публикации, если есть
+//   writing   — портфолио публикаций / writing sample — стандартное
+//               требование программ по журналистике и части лингвистики
+//   academic  — практика/стажировка в академическом формате, без визуала
+//   generic   — честный нейтральный вариант для "Другое" и пустого
+//               master_field: лучше сказать уместно-общее, чем уверенно
+//               предложить GitHub тому, чьё направление нам неизвестно
+const PORTFOLIO_CLUSTERS = {
+  tech: {
+    sub: 'CV + GitHub',
+    noWorkAdvice: 'Добавь проекты на GitHub — комиссия это проверяет.',
+    task: 'GitHub: проекты с читаемым кодом, readme на английском',
+  },
+  creative: {
+    sub: 'CV + портфолио',
+    noWorkAdvice: 'Собери портфолио работ (Behance или личный сайт) — для творческих направлений это смотрят раньше диплома.',
+    task: 'Портфолио работ (Behance / личный сайт / PDF) — 10–15 лучших проектов',
+  },
+  business: {
+    sub: 'CV + LinkedIn',
+    noWorkAdvice: 'Заполни LinkedIn на английском и проверь, не требует ли программа GMAT/GRE.',
+    task: 'LinkedIn на английском + проверь, не требует ли программа GMAT/GRE',
+  },
+  research: {
+    sub: 'CV + лабораторный опыт',
+    noWorkAdvice: 'Опиши лабораторный/исследовательский опыт конкретно — методики и результат, не общие фразы.',
+    task: 'Список исследовательского опыта: конкретные методики и результат, не «работал в лаборатории»',
+  },
+  writing: {
+    sub: 'CV + портфолио текстов',
+    noWorkAdvice: 'Собери портфолио публикаций или writing sample — многие программы просят его отдельно от SoP.',
+    task: 'Портфолио публикаций / writing sample — 3–5 лучших текстов',
+  },
+  academic: {
+    sub: 'CV + профильная практика',
+    noWorkAdvice: 'Опиши стажировки/практику в академическом формате — конкретные задачи, не общие обязанности.',
+    task: 'Описать стажировки/практику академическим языком — конкретные задачи и результат',
+  },
+  generic: {
+    sub: 'CV + подтверждение опыта',
+    noWorkAdvice: 'Собери конкретные доказательства опыта в своей области — то, что подходит именно твоему направлению.',
+    task: 'Собрать 2–3 конкретных доказательства опыта в своей области — то, что подходит направлению',
+  },
+} as const
+
+const FIELD_TO_PORTFOLIO_CLUSTER: Record<string, keyof typeof PORTFOLIO_CLUSTERS> = {
+  'Computer Science':'tech', 'Artificial Intelligence':'tech', 'Data Science':'tech',
+  'Cybersecurity':'tech', 'Robotics':'tech', 'Human-Computer Interaction':'tech',
+  'Computational Engineering':'tech',
+  'Design':'creative', 'Architecture':'creative',
+  'Economics':'business', 'Finance':'business', 'Management':'business',
+  'Marketing':'business', 'Business Analytics':'business',
+  'Biotechnology':'research', 'Natural Sciences':'research', 'Medicine':'research', 'Psychology':'research',
+  'Journalism':'writing', 'Linguistics':'writing',
+  'Law':'academic', 'Social Sciences':'academic', 'International Relations':'academic', 'Education':'academic',
+}
+
+function portfolioFor(masterField?: string) {
+  const field = masterField?.startsWith('other:') ? '' : (masterField || '')
+  return PORTFOLIO_CLUSTERS[FIELD_TO_PORTFOLIO_CLUSTER[field] || 'generic']
+}
+
 function buildNodes(p: any, programs: any[] = []): Node[] {
   const ni = p.ielts < 6.5
   const sf = p.budget === 'zero'
@@ -56,12 +132,12 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
       ] : [{t:`Языковой балл ${p.ielts} — зачтено`, done:true}],
     },
     {
-      id:'profile', label:'Профиль', sub:'CV + GitHub',
+      id:'profile', label:'Профиль', sub: portfolioFor(p.master_field).sub,
       color: purp, status:'active', zone:1, row:2, parallel:true,
-      insight:`GPA ${p.gpa} — ${p.gpa>=4.0?'выше среднего для Европы':'достаточно для большинства программ'}. ${p.work==='no'?'Добавь проекты на GitHub — комиссия это проверяет.':'Опыт работы усиляет заявку.'}`,
+      insight:`GPA ${p.gpa} — ${p.gpa>=4.0?'выше среднего для Европы':'достаточно для большинства программ'}. ${p.work==='no'?portfolioFor(p.master_field).noWorkAdvice:'Опыт работы усиляет заявку.'}`,
       tasks:[
         {t:'Academic CV — Europass или Harvard формат, не LinkedIn'},
-        {t:'GitHub: проекты с читаемым кодом, readme на английском'},
+        {t: portfolioFor(p.master_field).task},
         {t:'Онлайн-курс от целевого вуза на Coursera / edX'},
         {t: p.work==='no' ? 'Найти стажировку или research project' : 'Описать опыт в academic формате'},
       ],
@@ -240,9 +316,18 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
               </p>
             </div>
             <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>ПРОГРЕСС</div>
+              {/* Раньше здесь тоже был "X%" — визуально то же самое, что
+                  "ГОТОВНОСТЬ" на Обзоре, но считается совсем иначе: это не
+                  сила профиля (readinessScore — GPA/язык/опыт/направление),
+                  а просто доля отмеченных чекбоксов чек-листа. Отмечаешь
+                  задачу здесь — этот процент растёт, а Обзор не шевелится,
+                  и наоборот. Два разных числа, названных одинаково "%",
+                  читались как один и тот же прогресс, который должен
+                  синхронизироваться — не должен, это разные метрики.
+                  Дробь "сделано/всего" такого ложного ожидания не создаёт. */}
+              <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>ЗАДАЧ ВЫПОЛНЕНО</div>
               <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:800,fontSize:36,color:t1,letterSpacing:'-.03em',lineHeight:1}}>
-                {Math.round(doneT/totalT*100)||0}<span style={{fontSize:16,opacity:.4}}>%</span>
+                {doneT}<span style={{fontSize:16,opacity:.4}}>/{totalT}</span>
               </div>
               <div style={{width:80,marginTop:8,marginLeft:'auto'}}>
                 <Bar v={Math.round(doneT/totalT*100)||0} color={t1} h={2}/>

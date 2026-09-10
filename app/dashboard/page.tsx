@@ -522,7 +522,16 @@ const unis = useMemo(() => diversifyByCountry(programs.filter((p:any) => qualifi
     </div>
   )
 
-  if(!profile) return (
+  // Раньше проверялось только "строка profiles существует хоть какая-то" —
+  // но /login создаёт аккаунт через обычный supabase.auth.signUp() без
+  // единого поля анкеты (см. signUpWithPassword в app/login/page.tsx), и
+  // если у такой строки в будущем каким-то путём появится user_id без
+  // выбранных стран (пустой countries) — !profile тут не сработает: это
+  // не "анкеты нет", а "анкета есть, но пустая", и дашборд ниже строил бы
+  // пустой/полупустой набор программ вместо честного экрана "заполни
+  // анкету". Считаем это тем же случаем.
+  const hasRealProfile = !!profile && !!profile.countries?.split(',').filter(Boolean).length
+  if(!hasRealProfile) return (
     <div style={{minHeight:'100vh',background:bg0,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{textAlign:'center',maxWidth:360,padding:'0 20px'}}>
         <div style={{fontFamily:displayFont.style.fontFamily,fontWeight:800,fontSize:22,color:t1,marginBottom:12}}>Анкета не найдена</div>
