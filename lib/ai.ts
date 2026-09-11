@@ -5,12 +5,20 @@ const client = new Anthropic({
   baseURL: process.env.ANTHROPIC_BASE_URL,
 })
 
-export async function askAI(prompt: string, opts?: { model?: string; maxTokens?: number }): Promise<string> {
+type ChatMessage = { role: 'user' | 'assistant'; content: string }
+
+export async function askAI(promptOrMessages: string | ChatMessage[], opts?: { model?: string; maxTokens?: number; system?: string }): Promise<string> {
+  const messages = typeof promptOrMessages === 'string' ? [{ role: 'user' as const, content: promptOrMessages }] : promptOrMessages
   const msg = await client.messages.create({
     model: opts?.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5',
     max_tokens: opts?.maxTokens ?? 800,
-    messages: [{ role: 'user', content: prompt }],
-  })
+    ...(opts?.system ? { system: opts.system } : {}),
+    messages,
+  // Прокси иногда просто виснет — соединение открыто, но ни ответа, ни
+  // ошибки не приходит (см. тот же баг у scripts/research-programs.mjs).
+  // Без таймаута такой запрос завис бы навсегда, а клиент — с вечным
+  // "печатает…" без единого способа выйти из этого состояния.
+  }, { timeout: 60_000 })
   const block = msg.content.find((b) => b.type === 'text')
   if (!block || block.type !== 'text') throw new Error('Unexpected AI response type')
   return block.text.trim()

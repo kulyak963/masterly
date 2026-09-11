@@ -10,6 +10,7 @@ import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
 import GermanyReality from './GermanyReality'
 import NetherlandsReality from './NetherlandsReality'
+import CVMotivationAssistant from './CVMotivationAssistant'
 import { MASTER_FIELDS, FIELD_TO_DB } from '@/lib/masterFields'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { startCheckout } from '@/lib/checkout'
@@ -720,6 +721,7 @@ const getVerdict = async (p: any) => {
   {id:'journey',  l:'Journey'},
   {id:'unis',     l:'Программы'},
   {id:'saved',    l:'Избранное'},
+  {id:'cv-motivation', l:'CV и письмо'},
   {id:'applications', l:'Заявки'},
   {id:'timeline', l:'Таймлайн'},
   // Раньше вкладка появлялась только у выбравших Венгрию или Италию —
@@ -884,6 +886,23 @@ const getVerdict = async (p: any) => {
                 <Mono style={{display:'block',color:gold,marginBottom:4}}>РЕАЛЬНОСТЬ · PRO</Mono>
                 <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
                   Виза, оплата и документы для гражданина РФ по твоим странам
+                </div>
+              </div>
+              <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
+            </button>
+
+            {/* та же логика, что у баннера "Реальность" выше — своей вкладки
+                в нижнем мобильном нав-баре нет, баннер на Обзоре — единственный
+                вход с телефона. */}
+            <button onClick={()=>setTab('cv-motivation')} style={{
+              display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,
+              width:'100%',marginTop:10,padding:'16px 18px',borderRadius:8,
+              border:`1px solid ${gold}40`,background:`${gold}0D`,cursor:'pointer',
+              textAlign:'left',fontFamily:'inherit'}}>
+              <div>
+                <Mono style={{display:'block',color:gold,marginBottom:4}}>CV И МОТИВАЦИОННОЕ · PRO</Mono>
+                <div style={{fontFamily:sans,fontSize:13,color:t1,fontWeight:500}}>
+                  ИИ-помощник поможет написать CV и мотивационное письмо
                 </div>
               </div>
               <span style={{fontFamily:sans,fontSize:18,color:gold,flexShrink:0}}>→</span>
@@ -1395,6 +1414,12 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
     : <ProUpsell title="Таймлайн — функция Pro"
         countries={countries}
         desc="Полный план-график от сегодня до переезда со всеми дедлайнами и экспортом в календарь (Google/Apple) — часть платного тарифа."/>
+)}
+{tab==='cv-motivation'&&(
+  profile.is_pro
+    ? <CVMotivationAssistant profile={profile} programs={timelinePrograms}/>
+    : <ProUpsell title="CV и мотивационное — функция Pro"
+        desc="ИИ-помощник разберётся в твоём бэкграунде и поможет написать CV и мотивационное письмо под конкретную программу — без выдуманных достижений за тебя, только реальные факты в сильной подаче."/>
 )}
 {tab==='reality'&&(() => {
   // Раньше эта вкладка показывала только гайды по стипендиям HU/IT и была
