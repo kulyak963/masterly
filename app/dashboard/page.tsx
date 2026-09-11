@@ -1416,10 +1416,21 @@ padding:'16px 20px',alignItems:'center',cursor:'pointer',
         desc="Полный план-график от сегодня до переезда со всеми дедлайнами и экспортом в календарь (Google/Apple) — часть платного тарифа."/>
 )}
 {tab==='cv-motivation'&&(
-  profile.is_pro
-    ? <CVMotivationAssistant profile={profile} programs={timelinePrograms}/>
-    : <ProUpsell title="CV и мотивационное — функция Pro"
-        desc="ИИ-помощник разберётся в твоём бэкграунде и поможет написать CV и мотивационное письмо под конкретную программу — без выдуманных достижений за тебя, только реальные факты в сильной подаче."/>
+  // Временно спрятано по просьбе Дениса (2026-09-11) — компонент и API
+  // рабочие и протестированы, просто пока не показываем пользователям.
+  // Вернуть: замени этот блок на закомментированную версию ниже.
+  <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
+    <div style={{maxWidth:380,textAlign:'center',padding:'36px 32px',borderRadius:12,
+      background:bg1,border:`1px solid ${line}`,boxShadow:'0 20px 48px rgba(0,0,0,.35)'}}>
+      <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🚧</div>
+      <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>В разработке</div>
+      <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,margin:0}}>ИИ-помощник для CV и мотивационного письма скоро появится здесь.</p>
+    </div>
+  </div>
+  // profile.is_pro
+  //   ? <CVMotivationAssistant profile={profile} programs={timelinePrograms}/>
+  //   : <ProUpsell title="CV и мотивационное — функция Pro"
+  //       desc="ИИ-помощник разберётся в твоём бэкграунде и поможет написать CV и мотивационное письмо под конкретную программу — без выдуманных достижений за тебя, только реальные факты в сильной подаче."/>
 )}
 {tab==='reality'&&(() => {
   // Раньше эта вкладка показывала только гайды по стипендиям HU/IT и была
