@@ -63,6 +63,11 @@ const args = Object.fromEntries(
 const DRY_RUN = !!args['dry-run']
 const LIMIT = args.limit ? Number(args.limit) : Infinity
 const CONCURRENCY = Number(args.concurrency ?? 3)
+// --exclude-country de,hu: пропустить страны, уже прогнанные вручную (через
+// агентов) — экономит бюджет прокси, не тратя его повторно на то, что уже
+// сделано. --only-country nl: наоборот, ограничиться одной/несколькими.
+const EXCLUDE_COUNTRIES = args['exclude-country'] ? new Set(args['exclude-country'].split(',')) : null
+const ONLY_COUNTRIES = args['only-country'] ? new Set(args['only-country'].split(',')) : null
 const MODEL = args.model ?? 'claude-sonnet-5'
 
 // см. lib/legal.ts GUIDE_COUNTRIES — платный гайд покрывает эти 4 страны,
@@ -129,13 +134,51 @@ async function callWithSearch(prompt, { maxTokens = 16000, maxUses = 5 } = {}) {
     messages = [...messages, { role: 'assistant', content: response.content }]
   }
   const fullText = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n')
-  const start = fullText.indexOf('[')
-  const end = fullText.lastIndexOf(']')
-  if (start === -1 || end === -1) {
+  const jsonStr = extractJsonArray(fullText)
+  if (!jsonStr) {
     const blockSummary = response?.content?.map((b) => b.type).join(', ') ?? '?'
     throw new Error(`нет JSON в ответе. stop_reason=${response?.stop_reason}, blocks=[${blockSummary}]. Text: ${fullText.slice(0, 300) || '(пусто)'}`)
   }
-  return JSON.parse(fullText.slice(start, end + 1))
+  // Модель иногда пишет реальный перевод строки ВНУТРИ строкового значения
+  // (например в cons_note_ru/source_note_ru) — валидный текст, но невалидный
+  // JSON (control character в string literal). Заменяем на пробел — это
+  // всегда безопасно: тем же самым пробелом было бы структурное
+  // форматирование, если бы перевод строки стоял МЕЖДУ токенами, а не внутри
+  // строки. Нашёл на живом прогоне 2026-09-13 — 214 из 492 попыток (44%)
+  // падали именно на этом, хотя ответ был полностью настоящим и годным.
+  const controlCharsRe = new RegExp('[' + String.fromCharCode(0) + '-' + String.fromCharCode(31) + ']', 'g')
+  const sanitized = jsonStr.replace(controlCharsRe, ' ')
+  return JSON.parse(sanitized)
+}
+
+// Ищет ПЕРВЫЙ '[' и его настоящую парную ']' через подсчёт глубины (не
+// lastIndexOf) — модель иногда добавляет пояснение ПОСЛЕ JSON-массива,
+// и если в этом пояснении случайно встречается ']', старый код
+// (fullText.lastIndexOf(']')) хватал не ту скобку и ловил "Unexpected
+// non-whitespace character after JSON". Учитывает строки в кавычках, чтобы
+// '[' /']' внутри текстовых полей не сбивали подсчёт.
+function extractJsonArray(text) {
+  const start = text.indexOf('[')
+  if (start === -1) return null
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < text.length; i++) {
+    const c = text[i]
+    if (inString) {
+      if (escape) escape = false
+      else if (c === '\\') escape = true
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') inString = true
+    else if (c === '[') depth++
+    else if (c === ']') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
 }
 
 function buildPrompt(p) {
@@ -245,9 +288,15 @@ async function buildQueue() {
   }
   const enriched = all.map((p) => ({ ...p, university: idToUni.get(p.university_id)?.name, city: idToUni.get(p.university_id)?.city, website: idToUni.get(p.university_id)?.website, country: idToUni.get(p.university_id)?.country }))
 
-  const dead = enriched.filter((p) => isDeadLink(p.url_status))
+  const countryFiltered = enriched.filter((p) => {
+    if (ONLY_COUNTRIES && !ONLY_COUNTRIES.has(p.country)) return false
+    if (EXCLUDE_COUNTRIES && EXCLUDE_COUNTRIES.has(p.country)) return false
+    return true
+  })
+
+  const dead = countryFiltered.filter((p) => isDeadLink(p.url_status))
   const deadIds = new Set(dead.map((p) => p.id))
-  const needsVerify = enriched.filter((p) => !p.verified && !deadIds.has(p.id))
+  const needsVerify = countryFiltered.filter((p) => !p.verified && !deadIds.has(p.id))
 
   const byGuideFirst = (a, b) => (GUIDE_COUNTRIES.has(b.country) ? 1 : 0) - (GUIDE_COUNTRIES.has(a.country) ? 1 : 0)
   dead.sort(byGuideFirst)
