@@ -1,16 +1,19 @@
-import { mono, gold, grn } from '@/lib/theme'
+import { mono, grn } from '@/lib/theme'
 
 /**
- * Бейдж «данные проверены человеком» / «оценка ИИ, не проверено».
+ * Бейдж «данные проверены человеком». Раньше был продублирован дважды с
+ * чуть разной версткой: один раз в `app/dashboard/page.tsx`, второй раз
+ * вручную инлайн в `app/program/[id]/page.tsx`. Теперь один вариант,
+ * используется в обоих местах.
  *
- * Раньше был продублирован дважды с чуть разной версткой: один раз в
- * `app/dashboard/page.tsx`, второй раз вручную инлайн в
- * `app/program/[id]/page.tsx`. Теперь один вариант, используется в обоих
- * местах — иначе бейдж «доверия к данным» на публичной странице программы
- * и в личном кабинете мог незаметно разъехаться в оформлении.
+ * 2026-09-13, по просьбе Дениса: непроверенные программы больше не
+ * получают отдельную плашку «⚠ Оценка ИИ» — только verified=true
+ * показывает бейдж, остальные — ничего (не привлекать внимание к тому,
+ * что не проверено, только подчёркивать то, что проверено).
  */
 export default function VerifiedBadge({ verified }: { verified?: boolean }) {
-  return verified ? (
+  if (!verified) return null
+  return (
     <span
       style={{
         fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.06em',
@@ -19,16 +22,6 @@ export default function VerifiedBadge({ verified }: { verified?: boolean }) {
       }}
     >
       ✓ ПРОВЕРЕНО
-    </span>
-  ) : (
-    <span
-      style={{
-        fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.06em',
-        padding: '2px 6px', borderRadius: 3, flexShrink: 0,
-        background: `${gold}15`, border: `1px solid ${gold}35`, color: gold,
-      }}
-    >
-      ⚠ ОЦЕНКА ИИ
     </span>
   )
 }
