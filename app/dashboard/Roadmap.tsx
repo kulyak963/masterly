@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
+import { MASTER_FIELDS } from '@/lib/masterFields'
 
 interface Task { t: string; done?: boolean; urgent?: boolean; locked?: boolean }
 interface Node {
@@ -83,7 +84,14 @@ const FIELD_TO_PORTFOLIO_CLUSTER: Record<string, keyof typeof PORTFOLIO_CLUSTERS
 }
 
 function portfolioFor(masterField?: string) {
-  const field = masterField?.startsWith('other:') ? '' : (masterField || '')
+  // Тот же случай, что и в dashboard/page.tsx (живой пример 2026-09-14,
+  // "Другое" -> "Медицина" вручную) — сверяем текст с известными
+  // направлениями, прежде чем сдаваться на generic-совет.
+  const otherText = masterField?.startsWith('other:') ? masterField.slice(6).trim().toLowerCase() : null
+  const matchedOther = otherText
+    ? MASTER_FIELDS.find(f => f.l.toLowerCase() === otherText || f.v.toLowerCase() === otherText)?.v
+    : null
+  const field = otherText ? (matchedOther || '') : (masterField || '')
   return PORTFOLIO_CLUSTERS[FIELD_TO_PORTFOLIO_CLUSTER[field] || 'generic']
 }
 

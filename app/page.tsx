@@ -243,7 +243,18 @@ export default function Home() {
   const [matchCount, setMatchCount] = useState<number|null>(null)
   useEffect(() => {
     if (step !== 8) return
-    if (!a.countries.length || !a.master_field || a.master_field.startsWith('other:')) return
+    if (!a.countries.length || !a.master_field) return
+    // "Другое" с текстом, который на деле совпадает с одним из настоящих
+    // направлений (живой случай 2026-09-14 — вписали "Медицина" вручную,
+    // хотя такой пункт уже есть в списке) — считаем по нему, а не молчим.
+    // Действительно новый текст без совпадения — статистику честно не показываем.
+    let masterField = a.master_field
+    if (masterField.startsWith('other:')) {
+      const otherText = masterField.slice(6).trim().toLowerCase()
+      const matched = MASTER_FIELDS.find(f => f.l.toLowerCase() === otherText || f.v.toLowerCase() === otherText)?.v
+      if (!matched) return
+      masterField = matched
+    }
     let cancelled = false
     ;(async () => {
       const { data: unis } = await supabase.from('universities').select('id').in('country', a.countries)
@@ -251,7 +262,7 @@ export default function Home() {
       let q = supabase.from('programs')
         .select('*', { count: 'exact', head: true })
         .in('university_id', unis.map(u => u.id))
-        .eq('field', a.master_field)
+        .eq('field', masterField)
       // Кабинет прячет программы, требующие опыта работы, от тех, у кого
       // его нет (qualifiesForExperienceGated в app/dashboard/page.tsx).
       // Считать без этого фильтра — значит пообещать больше, чем человек

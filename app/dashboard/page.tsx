@@ -383,10 +383,20 @@ useEffect(() => {
       if (data.length < 1000) break
     }
     // 'other:...' — свободный текст с шага "Другое" в анкете (см. app/page.tsx,
-    // аудит 2026-09-07): направления нет в базе, поэтому фильтр по полю
-    // отключаем совсем, как и для честно пустого master_field, а не
-    // сравниваем с текстом буквально (иначе совпадений не будет никогда).
-    const masterField = profile.master_field?.startsWith('other:') ? '' : (profile.master_field || '')
+    // аудит 2026-09-07). Живой случай 2026-09-14: студентка выбрала "Другое"
+    // и вручную вписала "Медицина" — хотя в списке уже есть готовый пункт
+    // "Медицина" (просто она либо не заметила его, либо предложенная
+    // автоподстановка не сработала). Раньше такой текст полностью отключал
+    // фильтр по направлению — человек видел все 1492 программы без разбора
+    // вместо 12 настоящих медицинских. Теперь сверяем текст с известными
+    // направлениями (без учёта регистра/пробелов) — если совпало, фильтруем
+    // по нему как обычно; если это правда что-то новое, чего нет в базе —
+    // фильтр по-прежнему просто отключается, как и раньше.
+    const otherText = profile.master_field?.startsWith('other:') ? profile.master_field.slice(6).trim().toLowerCase() : null
+    const matchedOther = otherText
+      ? MASTER_FIELDS.find(f => f.l.toLowerCase() === otherText || f.v.toLowerCase() === otherText)?.v
+      : null
+    const masterField = otherText ? (matchedOther || '') : (profile.master_field || '')
     const filtered = all.filter(p =>
       p.university &&
       countries.includes(p.university.country) &&
