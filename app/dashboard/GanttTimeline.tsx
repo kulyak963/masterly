@@ -110,15 +110,15 @@ function buildLanes(profile: any, programs: any[]): { lanes: Lane[], calEvents: 
     ...(wantsHu ? [
       isPro
         ? {date:dateStr(1,15), label:'Дедлайн — Stipendium Hungaricum (Tempus/DreamApply)', desc:'Не забыть параллельный трек Минобрнауки — дедлайн обычно раньше', urgent:true}
-        : {date:dateStr(1,15), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
+        : {date:dateStr(1,15), label:'Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Венгрия · PRO, чтобы увидеть детали', urgent:true},
     ] : []),
     ...(wantsIt ? [
       isPro
         ? {date:dateStr(3,26), label:'Дедлайн — MAECI (стипендия Правительства Италии)', desc:'€10 800, подача на studyinitaly.esteri.it'}
-        : {date:dateStr(3,26), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+        : {date:dateStr(3,26), label:'Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
       isPro
         ? {date:dateStrY(impliedAdmYear,9,1), label:'Дедлайн подачи на DSU (регион)', desc:'Подаётся уже после зачисления; точная дата различается по региону'}
-        : {date:dateStrY(impliedAdmYear,9,1), label:'🔒 Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
+        : {date:dateStrY(impliedAdmYear,9,1), label:'Важный дедлайн по стипендии', desc:'Разблокируй Гайд · Италия · PRO, чтобы увидеть детали'},
     ] : []),
   ]
 
@@ -519,7 +519,7 @@ export default function GanttTimeline({profile,programs=[]}:{profile:any,program
                           border:mk.locked?`1px dashed ${gold}50`:`1px solid ${mk.urgent?red+'35':lane.color+'25'}`,
                           animation:mk.urgent?'pulse 2s infinite':'none',
                         }}>
-                          {mk.locked?'🔒 ':''}{mk.label}
+                          {mk.label}
                         </div>
                       </div>
                     ))}

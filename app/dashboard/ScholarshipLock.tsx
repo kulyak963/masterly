@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
-import { bg0, bg1, bg2, line, t1, t2, gold, red, sans, mono } from '@/lib/theme'
+import { bg0, bg1, bg2, line, t1, t2, gold, red, sans } from '@/lib/theme'
 import { startCheckout } from '@/lib/checkout'
+import LockIcon from '@/components/LockIcon'
 
 /**
  * Общий "замок" для платного контента гайдов по стипендиям (Венгрия,
@@ -67,7 +68,7 @@ export default function ScholarshipLock({ children, unlocked = false, loading = 
           background: bg2, border: `1px solid ${line}`, borderRadius: 10, padding: '24px 28px',
           textAlign: 'center', maxWidth: 380, boxShadow: '0 20px 48px rgba(0,0,0,.55)',
         }}>
-          <div style={{ fontFamily: mono, fontSize: 20, marginBottom: 10 }}>🔒</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><LockIcon size={26} color={gold} /></div>
           <div style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: t1, marginBottom: 6 }}>
             Полный гайд — платная фича
           </div>

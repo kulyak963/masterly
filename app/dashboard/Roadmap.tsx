@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 import { resolveAdmissionYear } from '@/lib/admissionYear'
 import { MASTER_FIELDS } from '@/lib/masterFields'
+import LockIcon from '@/components/LockIcon'
 
 interface Task { t: string; done?: boolean; urgent?: boolean; locked?: boolean }
 interface Node {
@@ -163,7 +164,7 @@ function buildNodes(p: any, programs: any[] = []): Node[] {
     },
     {
       id:'schol', label:'Стипендии',
-      sub: wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'🔒 Важный дедлайн') : 'Параллельно',
+      sub: wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'Важный дедлайн') : 'Параллельно',
       color: gold, status: wantsHu ? 'active' : 'parallel', zone:2, row:1, parallel:true,
       insight: wantsHu ? (isPro
             ? 'Stipendium Hungaricum закрывается 15 января — и это ДВЕ отдельные подачи (Tempus + Минобрнауки РФ), не одна.'
@@ -485,7 +486,7 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
                                 <div key={ti} style={{display:'flex',gap:8,alignItems:'center',
                                   marginBottom:4,opacity:done?.5:1}}>
                                   {task.locked
-                                    ?<span style={{fontSize:8,flexShrink:0}}>🔒</span>
+                                    ?<LockIcon size={8} color={gold} />
                                     :<div style={{width:5,height:5,borderRadius:'50%',flexShrink:0,
                                       background:done?grn:task.urgent?red:node.color,opacity:.7}}/>}
                                   <span style={{fontFamily:sans,fontSize:11,color:task.locked?gold:done?t3:t2,
@@ -615,7 +616,7 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
                     background:`${gold}0D`,border:`1px dashed ${gold}40`,
                     borderLeft:`2px dashed ${gold}70`}}>
                     <div style={{width:16,height:16,flexShrink:0,marginTop:1,
-                      display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>🔒</div>
+                      display:'flex',alignItems:'center',justifyContent:'center'}}><LockIcon size={12} color={gold} /></div>
                     <div style={{flex:1}}>
                       <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:gold,
                         letterSpacing:'-.01em',lineHeight:1.4}}>

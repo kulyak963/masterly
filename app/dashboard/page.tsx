@@ -6,6 +6,7 @@ import GanttTimeline from './GanttTimeline'
 import { bg0, bg1, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
 import { displayFont } from '@/lib/fonts'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import LockIcon from '@/components/LockIcon'
 import HungaryGuide from './HungaryGuide'
 import ItalyGuide from './ItalyGuide'
 import GermanyReality from './GermanyReality'
@@ -224,7 +225,7 @@ function ProUpsell({title,desc,countries}:{title:string,desc:string,countries?:s
     <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:40}}>
       <div style={{maxWidth:420,textAlign:'center',padding:'36px 32px',borderRadius:12,
         background:bg1,border:`1px solid ${line}`,boxShadow:'0 20px 48px rgba(0,0,0,.35)'}}>
-        <div style={{fontFamily:mono,fontSize:24,marginBottom:14}}>🔒</div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><LockIcon size={30} color={gold} /></div>
         <div style={{fontFamily:displayFont.style.fontFamily,fontSize:20,fontWeight:800,color:t1,marginBottom:10,letterSpacing:'-.01em'}}>{title}</div>
         <p style={{fontFamily:sans,fontSize:13,color:t2,lineHeight:1.6,marginBottom:16}}>{desc}</p>
         {!covered&&countries&&countries.length>0&&(
