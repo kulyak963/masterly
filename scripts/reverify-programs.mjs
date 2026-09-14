@@ -196,7 +196,7 @@ Specifically for NON-EU/international students (our audience) — many European 
 Issue a few PARALLEL search queries in a single round. Do not search again after seeing results — a second round silently discards the whole response on this platform.
 
 ## Never fabricate
-verified=true only when tuition+deadline+language are ALL confirmed for non-EU students on the SAME official page cited in "url". If a real figure can't be found, use your best-sourced estimate and set verified=false, explaining what's missing in cons_ru. If you found NOTHING usable, set that field to null rather than inventing a plausible-sounding number — a labeled "unknown" beats a confident-looking guess. Never invent a URL — only use one that literally appeared in search results.
+verified=true when tuition+deadline+language are ALL confirmed for non-EU students on the university's OWN official website — they do NOT need to be the same single page (tuition on a fees page, deadline on an admissions page, language requirement on a general entry-requirements page is fine, as long as all three are on that university's own domain, not an aggregator like Mastersportal/Studyportals/etc). The one hard requirement: all three must clearly belong to the SAME admission cycle/intake year — never combine this year's tuition with a deadline left over from a past cycle already passed, or vice versa. If a page doesn't label its year, prefer figures that are explicitly for the upcoming/next intake, and say in source_note_ru how you satisfied yourself the year matches. If a real figure can't be found, use your best-sourced estimate and set verified=false, explaining what's missing in cons_note_ru. If you found NOTHING usable, set that field to null rather than inventing a plausible-sounding number — a labeled "unknown" beats a confident-looking guess. Never invent a URL — only use one that literally appeared in search results.
 
 ## Output — ONLY this JSON array with exactly one object, no markdown fences, no other text:
 [{
@@ -209,8 +209,9 @@ verified=true only when tuition+deadline+language are ALL confirmed for non-EU s
   "gpa_min": null,
   "verified": true,
   "cons_note_ru": "если verified=false — что именно не подтвердилось",
-  "source_note_ru": "что подтверждено и почему verified true/false, по-русски"
+  "source_note_ru": "что подтверждено, на каких страницах (если не одна), и почему verified true/false, по-русски"
 }]
+"url" should be the main program/admissions page (the best single link for a student to click), even when a different page on the same site had the tuition figure.
 Use still_offered=false and url=null only if the program is genuinely gone — never as a substitute for "couldn't find pricing".`
 }
 
