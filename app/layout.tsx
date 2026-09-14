@@ -19,11 +19,43 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
 }
+const siteTitle = "Mastersly — магистратура в Европе"
+const siteDescription = "Персональный гид поступления в европейскую магистратуру. Шортлист программ, дедлайны стипендий и roadmap за 3 минуты."
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://mastersly.ru"),
-  title: "Mastersly — магистратура в Европе",
-  description: "Персональный гид поступления в европейскую магистратуру. Шортлист программ, дедлайны стипендий и roadmap за 3 минуты.",
+  title: { default: siteTitle, template: "%s — Mastersly" },
+  description: siteDescription,
+  keywords: [
+    "магистратура в Европе", "поступление в магистратуру", "учеба за рубежом",
+    "master's degree Europe", "гранты на обучение", "стипендии для студентов",
+    "европейские университеты для россиян", "DAAD", "Erasmus",
+  ],
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: "https://mastersly.ru",
+    siteName: "Mastersly",
+    locale: "ru_RU",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+  },
 };
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Mastersly',
+  url: 'https://mastersly.ru',
+  description: siteDescription,
+  inLanguage: 'ru',
+}
 
 export default function RootLayout({
   children,
@@ -35,7 +67,10 @@ export default function RootLayout({
       lang="ru"
       className={`${overpass.variable} ${overpassMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {children}
+      </body>
     </html>
   );
 }

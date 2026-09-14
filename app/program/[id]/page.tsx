@@ -48,11 +48,15 @@ type Props = { params: Promise<{ id: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const program = await getProgram(id)
-  if (!program) return { title: 'Программа не найдена — Mastersly' }
+  if (!program) return { title: 'Программа не найдена' }
 
   const uniName = program.university?.name || ''
   const countryName = CNAME[program.university?.country] || ''
-  const title = `${program.name} в ${uniName} — Mastersly`
+  // Простой title — для <title> (шаблон в layout.tsx сам допишет "— Mastersly").
+  // openGraph/twitter такой шаблон не подхватывают (это отдельный механизм
+  // Next.js, применяется только к <title>) — там нужен полный вариант.
+  const title = `${program.name} в ${uniName}`
+  const fullTitle = `${title} — Mastersly`
   const description = program.summary
     ? program.summary.slice(0, 155)
     : `${program.name} — программа магистратуры в ${uniName}${countryName ? `, ${countryName}` : ''}. Дедлайны, стоимость, требования — на Mastersly.`
@@ -61,8 +65,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: `/program/${id}` },
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: { title: fullTitle, description, type: 'website' },
+    twitter: { card: 'summary_large_image', title: fullTitle, description },
   }
 }
 
