@@ -166,7 +166,7 @@ function PathView({parallelPhases, chainPhases, pct, taskDone, onToggle, onOpenR
   return (
     <>
       <div style={{fontFamily:mono,fontSize:9,color:gold,letterSpacing:'.1em',textAlign:'center',marginBottom:14}}>ПЕРЕСАДОЧНАЯ ПЛОЩАДЬ — ВСЁ ОДНОВРЕМЕННО</div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:14,
+      <div className="journey-cluster-grid" style={{['--n' as any]:parallelPhases.length,display:'grid',gap:14,
         padding:16,border:`1px dashed ${line}`,borderRadius:16,background:'rgba(255,255,255,.015)',marginBottom:8}}>
         {parallelPhases.map(ph=>(
           <div key={ph.id} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8}}>
@@ -241,6 +241,10 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
     s.textContent = `
       @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+      .journey-cluster-grid{grid-template-columns:repeat(var(--n),1fr)}
+      @media (max-width:860px){
+        .journey-cluster-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+      }
     `
     document.head.appendChild(s)
     return()=>s.remove()
@@ -272,7 +276,7 @@ export default function Roadmap({profile, programs = [], taskDone = {}, onToggle
 
   return (
     <div style={{height:'100%',overflowY:'auto'}}>
-      <div style={{maxWidth:660,margin:'0 auto',padding:'28px 20px 60px'}}>
+      <div style={{maxWidth:1200,margin:'0 auto',padding:'28px 24px 60px'}}>
 
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:20,flexWrap:'wrap'}}>
           <div>
