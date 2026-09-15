@@ -11,6 +11,17 @@ import LockIcon from '@/components/LockIcon'
 // теперь у задачи просто короткое предложение (task.detail) и компактная
 // метка срока/цены (task.meta) без лейблов.
 
+// Русское склонение зависит не только от 1 vs "остальное" (см. правку
+// по просьбе Дениса "перепроверь текст, иногда фигня без смысла") —
+// "5 задачи"/"12 задачи"/"5 блока" грамматически неверно.
+function pluralRu(n:number, one:string, few:string, many:string) {
+  const mod10 = n%10, mod100 = n%100
+  if (mod10===1 && mod100!==11) return one
+  if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return few
+  return many
+}
+const taskWord = (n:number) => pluralRu(n, 'задача', 'задачи', 'задач')
+
 function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
   return (
     <div style={{height:h,background:'rgba(255,255,255,.07)',borderRadius:1,overflow:'hidden'}}>
@@ -69,7 +80,7 @@ function BlocksPhase({phase, isOpen, pct, onToggleOpen, taskDone, onToggleTask, 
         <span style={{fontFamily:sans,fontSize:14,fontWeight:700,color:t1}}>{phase.title}</span>
         {phase.proBadge&&<span style={{fontFamily:mono,fontSize:7.5,fontWeight:700,letterSpacing:'.06em',padding:'2px 5px',borderRadius:3,background:`${gold}18`,border:`1px solid ${gold}40`,color:gold}}>PRO</span>}
         {isBlocker&&<span style={{fontFamily:mono,fontSize:7.5,fontWeight:700,letterSpacing:'.08em',color:red,animation:'pulse 2s infinite'}}>СРОЧНО</span>}
-        <span style={{fontFamily:mono,fontSize:9,color:t3}}>{phase.tasks.length} {phase.tasks.length===1?'задача':'задачи'}</span>
+        <span style={{fontFamily:mono,fontSize:9,color:t3}}>{phase.tasks.length} {taskWord(phase.tasks.length)}</span>
         <span style={{flex:1}}/>
         {pct>0&&<span style={{fontFamily:mono,fontSize:9,color:pct===100?grn:phase.color}}>{pct}%</span>}
         <span style={{fontFamily:mono,fontSize:11,color:t3,transform:isOpen?'rotate(90deg)':'none',transition:'transform .15s',display:'inline-block'}}>›</span>
@@ -101,7 +112,7 @@ function BlocksView({parallelPhases, chainPhases, open, togglePhase, pct, taskDo
     <>
       <div style={{position:'relative',paddingLeft:16,marginBottom:4}}>
         <div style={{position:'absolute',left:0,top:4,bottom:22,width:2,background:`linear-gradient(180deg,${gold}60,${gold}20)`,borderRadius:1}}/>
-        <div style={{fontFamily:mono,fontSize:9,color:gold,letterSpacing:'.1em',marginBottom:12}}>⇉ ЭТИ {parallelPhases.length} БЛОКА — ОДНОВРЕМЕННО, ПОРЯДОК НЕ ВАЖЕН</div>
+        <div style={{fontFamily:mono,fontSize:9,color:gold,letterSpacing:'.1em',marginBottom:12}}>⇉ ЭТИ {parallelPhases.length} {pluralRu(parallelPhases.length,'БЛОК','БЛОКА','БЛОКОВ')} — ОДНОВРЕМЕННО, ПОРЯДОК НЕ ВАЖЕН</div>
         {parallelPhases.map(ph=>(
           <BlocksPhase key={ph.id} phase={ph} isOpen={open.has(ph.id)} pct={pct(ph)}
             onToggleOpen={()=>togglePhase(ph.id)} taskDone={taskDone} onToggleTask={onToggle} onOpenReality={onOpenReality}/>
