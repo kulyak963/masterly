@@ -924,7 +924,7 @@ const getVerdict = async (p: any) => {
         {/* ══ JOURNEY ══ */}
         {tab==='journey'&&(
   <div style={{height:'100%',display:'flex',flexDirection:'column'}}>
-   <Roadmap profile={profile} programs={timelinePrograms} taskDone={taskDone} onToggle={toggleTask}/>
+   <Roadmap profile={profile} programs={timelinePrograms} taskDone={taskDone} onToggle={toggleTask} onOpenReality={()=>setTab('reality')}/>
   </div>
 )}
 

@@ -1,255 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { bg0, bg1, bg2, line, t1, t2, t3, gold, blue, red, grn, purp, amb, sans, serif, mono } from '@/lib/theme'
-import { resolveAdmissionYear } from '@/lib/admissionYear'
-import { MASTER_FIELDS } from '@/lib/masterFields'
+import { bg0, bg1, bg2, line, t1, t2, t3, gold, red, grn, sans, serif, mono } from '@/lib/theme'
+import { buildJourney, UNIVERSAL_DOCS, FINANCIAL_DOCS, type JourneyPhase, type JourneyTask } from '@/lib/journey'
 import LockIcon from '@/components/LockIcon'
+import DocCard from '@/components/DocCard'
 
-interface Task { t: string; done?: boolean; urgent?: boolean; locked?: boolean }
-interface Node {
-  id: string; label: string; sub: string; color: string
-  status: 'blocker'|'done'|'active'|'parallel'|'upcoming'|'locked'
-  zone: 1|2|3; row: number; parallel: boolean
-  tasks: Task[]; insight: string; blockedBy?: string[]
-}
-
-// Портфолио для заявки — единственная часть узла "Профиль", которая
-// реально зависит от направления. Раньше здесь для всех стоял GitHub,
-// подходящий только техническим специальностям — юрист или биолог видел
-// совет добавить код-проекты с readme (запрос Дениса: "зачем там всем
-// подряд github... продумай что бы он реально соответствовал направлению
-// и реальным реквайрментс"). Кластеры ниже — не 24 отдельных блока на
-// каждое из полей lib/masterFields.ts (избыточно — многие поля хотят от
-// абитуриента одно и то же), а группировка по тому, что реально смотрит
-// приёмная комиссия для этого типа программы:
-//   tech      — код физически проверяют (репозиторий, читаемость)
-//   creative  — визуальный портфолио — стандартное требование дизайна/
-//               архитектуры при поступлении, не наша придумка
-//   business  — LinkedIn + многие MBA/Business Analytics программы
-//               реально требуют GMAT/GRE, это стоит проверить заранее
-//   research  — лабораторный/исследовательский опыт, публикации, если есть
-//   writing   — портфолио публикаций / writing sample — стандартное
-//               требование программ по журналистике и части лингвистики
-//   academic  — практика/стажировка в академическом формате, без визуала
-//   generic   — честный нейтральный вариант для "Другое" и пустого
-//               master_field: лучше сказать уместно-общее, чем уверенно
-//               предложить GitHub тому, чьё направление нам неизвестно
-const PORTFOLIO_CLUSTERS = {
-  tech: {
-    sub: 'CV + GitHub',
-    noWorkAdvice: 'Добавь проекты на GitHub — комиссия это проверяет.',
-    task: 'GitHub: проекты с читаемым кодом, readme на английском',
-  },
-  creative: {
-    sub: 'CV + портфолио',
-    noWorkAdvice: 'Собери портфолио работ (Behance или личный сайт) — для творческих направлений это смотрят раньше диплома.',
-    task: 'Портфолио работ (Behance / личный сайт / PDF) — 10–15 лучших проектов',
-  },
-  business: {
-    sub: 'CV + LinkedIn',
-    noWorkAdvice: 'Заполни LinkedIn на английском и проверь, не требует ли программа GMAT/GRE.',
-    task: 'LinkedIn на английском + проверь, не требует ли программа GMAT/GRE',
-  },
-  research: {
-    sub: 'CV + лабораторный опыт',
-    noWorkAdvice: 'Опиши лабораторный/исследовательский опыт конкретно — методики и результат, не общие фразы.',
-    task: 'Список исследовательского опыта: конкретные методики и результат, не «работал в лаборатории»',
-  },
-  writing: {
-    sub: 'CV + портфолио текстов',
-    noWorkAdvice: 'Собери портфолио публикаций или writing sample — многие программы просят его отдельно от SoP.',
-    task: 'Портфолио публикаций / writing sample — 3–5 лучших текстов',
-  },
-  academic: {
-    sub: 'CV + профильная практика',
-    noWorkAdvice: 'Опиши стажировки/практику в академическом формате — конкретные задачи, не общие обязанности.',
-    task: 'Описать стажировки/практику академическим языком — конкретные задачи и результат',
-  },
-  generic: {
-    sub: 'CV + подтверждение опыта',
-    noWorkAdvice: 'Собери конкретные доказательства опыта в своей области — то, что подходит именно твоему направлению.',
-    task: 'Собрать 2–3 конкретных доказательства опыта в своей области — то, что подходит направлению',
-  },
-} as const
-
-const FIELD_TO_PORTFOLIO_CLUSTER: Record<string, keyof typeof PORTFOLIO_CLUSTERS> = {
-  'Computer Science':'tech', 'Artificial Intelligence':'tech', 'Data Science':'tech',
-  'Cybersecurity':'tech', 'Robotics':'tech', 'Human-Computer Interaction':'tech',
-  'Computational Engineering':'tech',
-  'Design':'creative', 'Architecture':'creative',
-  'Economics':'business', 'Finance':'business', 'Management':'business',
-  'Marketing':'business', 'Business Analytics':'business',
-  'Biotechnology':'research', 'Natural Sciences':'research', 'Medicine':'research', 'Psychology':'research',
-  'Journalism':'writing', 'Linguistics':'writing',
-  'Law':'academic', 'Social Sciences':'academic', 'International Relations':'academic', 'Education':'academic',
-}
-
-function portfolioFor(masterField?: string) {
-  // Тот же случай, что и в dashboard/page.tsx (живой пример 2026-09-14,
-  // "Другое" -> "Медицина" вручную) — сверяем текст с известными
-  // направлениями, прежде чем сдаваться на generic-совет.
-  const otherText = masterField?.startsWith('other:') ? masterField.slice(6).trim().toLowerCase() : null
-  const matchedOther = otherText
-    ? MASTER_FIELDS.find(f => f.l.toLowerCase() === otherText || f.v.toLowerCase() === otherText)?.v
-    : null
-  const field = otherText ? (matchedOther || '') : (masterField || '')
-  return PORTFOLIO_CLUSTERS[FIELD_TO_PORTFOLIO_CLUSTER[field] || 'generic']
-}
-
-function buildNodes(p: any, programs: any[] = []): Node[] {
-  const ni = p.ielts < 6.5
-  const sf = p.budget === 'zero'
-  const countries: string[] = p.countries?.split(',').filter(Boolean) || []
-  const wantsHu = countries.includes('hu')
-  const wantsIt = countries.includes('it')
-  const wantsDe = countries.includes('de')
-  const wantsSe = countries.includes('se')
-  const wantsNl = countries.includes('nl')
-  const isPro = !!p.is_pro
-  // p.timeline может быть 'later' ("пока не решил") или протухшим годом
-  // из анкеты (см. lib/admissionYear.ts) — раньше оба случая подставлялись
-  // в текст буквально ("Сент later" / год, который уже прошёл).
-  const admYear = resolveAdmissionYear(p.timeline)
-
-  // Раньше узел "Подача заявок" ниже был жёстко зашит на 4 конкретных
-  // вуза (TU Munich/Aalto/TU Delft/KTH) — одинаковые для всех, независимо
-  // от того, какие страны и программы студент реально выбрал. Теперь
-  // список строится из реальных избранных/подобранных программ (тот же
-  // источник, что уже питает Таймлайн — timelinePrograms в page.tsx), с
-  // настоящим дедлайном, если он есть.
-  const appliedList: Task[] = (programs||[]).slice(0,8).map(pr => {
-    const uni = pr.university?.name || pr._n || '?'
-    const name = pr.name || pr._p || ''
-    const dl = pr.deadline_month
-      ? `дедлайн ${String(pr.deadline_day||15).padStart(2,'0')}.${String(pr.deadline_month).padStart(2,'0')}`
-      : 'дедлайн уточняется на сайте вуза'
-    return { t: `${uni} — ${name} (${dl})` }
-  })
-
-  return [
-    {
-      id:'ielts', label:'Язык', sub: ni ? `${p.ielts||'нет'} → 6.5+` : `${p.ielts} ✓`,
-      color: ni ? red : grn,
-      status: ni ? 'blocker' : 'done',
-      zone:1, row:1, parallel:false,
-      insight: ni ? `${p.ielts ? `Текущий балл ${p.ielts} — ниже минимума 6.5.` : 'Сертификата ещё нет.'} Это единственный жёсткий блокер. Без него ни один вуз не примет заявку.` : `Языковой балл ${p.ielts} принят всеми вузами шортлиста. Для ETH нужно 7.0+.`,
-      tasks: ni ? [
-        {t:'Выбрать экзамен: TOEFL/Duolingo (сдаются из России онлайн) или другой языковой экзамен — уточни в требованиях программы', urgent:true},
-        {t:'Пройти бесплатный mock test на Cambridge One'},
-        {t:'Подготовка по официальным сборникам заданий, минимум 8 недель'},
-        {t:'Целевой балл 7.0 — запас на всякий случай'},
-      ] : [{t:`Языковой балл ${p.ielts} — зачтено`, done:true}],
-    },
-    {
-      id:'profile', label:'Профиль', sub: portfolioFor(p.master_field).sub,
-      color: purp, status:'active', zone:1, row:2, parallel:true,
-      insight:`GPA ${p.gpa} — ${p.gpa>=4.0?'выше среднего для Европы':'достаточно для большинства программ'}. ${p.work==='no'?portfolioFor(p.master_field).noWorkAdvice:'Опыт работы усиляет заявку.'}`,
-      tasks:[
-        {t:'Academic CV — Europass или Harvard формат, не LinkedIn'},
-        {t: portfolioFor(p.master_field).task},
-        {t:'Онлайн-курс от целевого вуза на Coursera / edX'},
-        {t: p.work==='no' ? 'Найти стажировку или research project' : 'Описать опыт в academic формате'},
-      ],
-    },
-    {
-      id:'research', label:'Исследование', sub:'Вузы и программы',
-      color: blue, status:'active', zone:1, row:3, parallel:true,
-      insight:'Составь шортлист: 2 dream + 3 match + 2 safe. Напиши cold email 2–3 потенциальным supervisors — это даёт реальное преимущество.',
-      tasks:[
-        {t:'Изучить требования каждой программы в шортлисте'},
-        {t:'Составить таблицу: дедлайны, требования, стоимость'},
-        {t:'Написать cold email 2–3 потенциальным supervisors'},
-        {t:'Зарегистрироваться в порталах вузов заранее'},
-      ],
-    },
-    {
-      id:'schol', label:'Стипендии',
-      sub: wantsHu ? (isPro?'СРОЧНО — 15 янв (SH)':'Важный дедлайн') : 'Параллельно',
-      color: gold, status: wantsHu ? 'active' : 'parallel', zone:2, row:1, parallel:true,
-      insight: wantsHu ? (isPro
-            ? 'Stipendium Hungaricum закрывается 15 января — и это ДВЕ отдельные подачи (Tempus + Минобрнауки РФ), не одна.'
-            : 'У выбранной страны есть важный дедлайн по стипендии — детали и обе части подачи открой в Гайде · PRO.')
-        : 'Стипендии подаются параллельно с документами. Пропустишь дедлайн — ждать год.',
-      // Германская стипендия убрана 2026-09-08 — DAAD признан в России
-      // нежелательной организацией (23.01.2026 Генпрокуратура, 10.02.2026
-      // реестр Минюста), офисы закрыты. Прямая инструкция "подать через
-      // portal.daad.de" была здесь худшим местом из всех: это уже не намёк,
-      // а пошаговый совет совершить то, за что есть ст. 284.1 УК.
-      //
-      // Раньше SI/Holland показывались абсолютно всем, независимо от
-      // того, выбрана ли вообще Германия/Швеция/Нидерланды — студент,
-      // подающий только в Италию и Испанию, видел дедлайн немецкой
-      // стипендии как будто это его дедлайн. Теперь каждая привязана к
-      // реально выбранной стране, как уже было сделано для HU/IT.
-      tasks:[
-        ...(wantsSe ? [{t:'SI Scholarship (Швеция) — дедлайн 15 февраля'}] : []),
-        ...(wantsNl ? [{t:'Holland Scholarship (Нидерланды) — дедлайн 1 февраля'}] : []),
-        {t:'Проверить Erasmus Mundus — общеевропейская стипендия, не привязана к одной стране'},
-        // 2026-08-31, по просьбе Дениса: без оплаты гайда — ни названий
-        // программ, ни дат, ни процесса. Только факт "есть дедлайн" +
-        // призыв разблокировать (см. тот же принцип в GanttTimeline.tsx).
-        // isPro (profiles.is_pro) снимает заглушку — реальные задачи.
-        ...(wantsHu ? (isPro ? [
-          {t:'Stipendium Hungaricum — подать в Tempus (DreamApply), дедлайн 15 января', urgent:true},
-          {t:'Stipendium Hungaricum — параллельно отправить пакет в Минобрнауки РФ', urgent:true},
-        ] : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Венгрия · PRO', urgent:true, locked:true}]) : []),
-        ...(wantsIt ? (isPro ? [
-          {t:'Италия — начать оформление ISEE Parificato через CAF (уходит 1–2 месяца)'},
-          {t:'MAECI (Италия) — подать на studyinitaly.esteri.it, дедлайн 26 марта'},
-        ] : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
-        ...(!wantsDe&&!wantsSe&&!wantsNl&&!wantsHu&&!wantsIt ? [
-          {t:'Для выбранных стран у нас пока нет отдельного списка стипендий — проверь сайт каждого вуза напрямую'},
-        ] : []),
-      ],
-    },
-    {
-      id:'docs', label:'Документы', sub:'SoP + рекомендации',
-      color:amb, status:'upcoming', zone:2, row:2, parallel:true,
-      blockedBy:['profile'],
-      insight:'SoP пишется отдельно для каждого вуза — нельзя копировать. Рекомендации нужно запросить за 2+ месяца до дедлайна.',
-      tasks:[
-        {t:'Запросить рекомендации у 2–3 профессоров — прямо сейчас!', urgent:true},
-        {t:'Statement of Purpose для каждого вуза — упоминай лабораторию'},
-        {t:'Перевести транскрипт и диплом у нотариуса'},
-        {t:'Проверить форматы файлов в порталах каждого вуза'},
-      ],
-    },
-    {
-      id:'apply', label:'Подача заявок',
-      sub: appliedList.length ? `${appliedList.length} программ в плане` : 'Сначала добавь программы',
-      color: blue, status:'locked', zone:3, row:1, parallel:false,
-      blockedBy:['ielts','docs'],
-      insight: appliedList.length
-        ? 'Подавай последовательно — начни с менее приоритетных для практики. Каждая заявка занимает 2–4 часа.'
-        : 'Здесь появится план подачи по конкретным вузам и дедлайнам, как только добавишь программы во вкладке «Программы» или «Избранное».',
-      tasks: appliedList.length ? appliedList : [{t:'Пока пусто — открой вкладку «Программы», добавь несколько в «Избранное»'}],
-    },
-    {
-      id:'result', label:'Оффер и переезд', sub:`Сент ${admYear}`,
-      color: grn, status:'locked', zone:3, row:2, parallel:false,
-      blockedBy:['apply'],
-      insight:'Сразу после оффера — виза и жильё. Не медли: места в общежитиях заканчиваются в первые дни.',
-      tasks:[
-        {t:'Принять оффер (4–6 недель на решение)'},
-        {t:'Подать на студенческую визу сразу после оффера'},
-        {t:'Найти жильё — Wohnungssuche / Kamernet / Spotahome'},
-        // DSU (Италия) — сюда, а не в узел "Стипендии": на неё нельзя
-        // податься, пока не зачислен(а), заявка идёт уже после оффера,
-        // в августе-сентябре начала учёбы (см. тот же фикс в GanttTimeline.tsx).
-        // Без оплаты гайда — детали процесса не показываем (см. schol выше).
-        ...(wantsIt ? (isPro
-          ? [{t:'DSU (Италия) — подать заявку в региональное агентство, август–сентябрь (нужно уже быть зачисленным)'}]
-          : [{t:'Важный дедлайн по стипендии — разблокируй Гайд · Италия · PRO', locked:true}]) : []),
-        {t:`Начало учёбы — сентябрь ${admYear}`},
-      ],
-    },
-  ]
-}
-
-const STATUS_LABEL: Record<string,string> = {
-  blocker:'БЛОКЕР', done:'ГОТОВО', active:'АКТИВНО',
-  parallel:'ПАРАЛЛЕЛЬНО', upcoming:'СКОРО', locked:'ПОСЛЕ',
-}
+// Переписано 2026-09-15 по прямой просьбе Дениса: "даже 12-летний ребёнок
+// понял что нужно делать шаг за шагом от идеи до переезда... абсолютно все
+// шаги". Раньше здесь была 3-колоночная канбан-доска с параллельными
+// "зонами" и выезжающей панелью деталей — визуально насыщенно, но саму
+// идею "шаг за шагом сверху вниз" нужно было расшифровывать по легенде.
+// Теперь — просто пронумерованный список шагов (①→⑧), сверху вниз, каждый
+// разворачивается на месте. Контент/ветвление по профилю перенесены в
+// lib/journey.ts без изменения логики — здесь только рендер.
+//
+// Свободен весь список, кроме одной явно помеченной ветки "Стипендии"
+// (см. proBadge в lib/journey.ts) — так решил Денис, когда мы обсуждали
+// объём переписывания.
 
 function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
   return (
@@ -260,406 +27,245 @@ function Bar({v=0,color=t1,h=2}:{v:number,color?:string,h?:number}) {
   )
 }
 
-export default function Roadmap({profile, programs = [], taskDone = {}, onToggle}:{profile:any, programs?:any[], taskDone?:Record<string,boolean>, onToggle:(k:string)=>void}) {
-  const [active, setActive] = useState<string|null>(null)
- 
+function TaskRow({task, done, onToggle}:{task:JourneyTask, done:boolean, onToggle:()=>void}) {
+  if (task.locked) return (
+    <div style={{display:'flex',alignItems:'flex-start',gap:10,
+      padding:'10px 12px',borderRadius:8,
+      background:`${gold}0D`,border:`1px dashed ${gold}40`,
+      borderLeft:`2px dashed ${gold}70`}}>
+      <div style={{width:14,height:14,flexShrink:0,marginTop:2,
+        display:'flex',alignItems:'center',justifyContent:'center'}}><LockIcon size={11} color={gold} /></div>
+      <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:gold,letterSpacing:'-.01em',lineHeight:1.45}}>
+        {task.text}
+      </div>
+    </div>
+  )
+  const clickable = !task.done
+  return (
+    <div onClick={()=>clickable&&onToggle()}
+      className={clickable?'task-r':undefined}
+      style={{display:'flex',alignItems:'flex-start',gap:10,
+        padding:'10px 12px',borderRadius:8,
+        background:done?`${grn}0D`:'rgba(255,255,255,.02)',
+        border:`1px solid ${done?`${grn}25`:task.urgent?`${red}28`:line}`,
+        borderLeft:`2px solid ${done?grn:task.urgent?red:'transparent'}`,
+        cursor:clickable?'pointer':'default',transition:'all .15s'}}>
+      <div style={{width:15,height:15,borderRadius:'50%',flexShrink:0,marginTop:2,
+        border:`1.5px solid ${done?grn:task.urgent?red:t3}`,
+        background:done?grn:'transparent',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        transition:'all .18s',boxShadow:done?`0 0 6px ${grn}35`:'none'}}>
+        {done&&<span style={{color:bg0,fontSize:8,fontWeight:700}}>✓</span>}
+      </div>
+      <div style={{flex:1}}>
+        <div style={{fontFamily:sans,fontSize:12.5,fontWeight:500,
+          color:done?t2:t1,textDecoration:done?'line-through':'none',
+          letterSpacing:'-.01em',lineHeight:1.45,marginBottom:task.urgent&&!done?3:0}}>
+          {task.text}
+        </div>
+        {task.urgent&&!done&&(
+          <span style={{fontFamily:mono,fontSize:8,color:red,
+            letterSpacing:'0.1em',animation:'pulse 2s infinite'}}>СРОЧНО</span>
+        )}
+      </div>
+      {done&&<span style={{fontFamily:mono,fontSize:8,color:grn,flexShrink:0,paddingTop:3}}>ГОТОВО</span>}
+    </div>
+  )
+}
+
+export default function Roadmap({profile, programs = [], taskDone = {}, onToggle, onOpenReality}:
+  {profile:any, programs?:any[], taskDone?:Record<string,boolean>, onToggle:(k:string)=>void, onOpenReality?:()=>void}) {
 
   useEffect(()=>{
     const s = document.createElement('style')
     s.textContent = `
       @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
       @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-      @keyframes popIn{0%{opacity:0;transform:scale(.85) translateY(8px)}100%{opacity:1;transform:scale(1) translateY(0)}}
-      @keyframes slideR{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
-      @keyframes glow{0%,100%{box-shadow:0 0 0 0 var(--gc)}50%{box-shadow:0 0 0 8px var(--gc)}}
-      .bubble{transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;cursor:pointer}
-      .bubble:hover{transform:translateY(-4px) scale(1.04)}
-      .bubble.active-b{transform:translateY(-4px) scale(1.04)}
-      .task-r{transition:background .12s;cursor:pointer}
-      .task-r:hover{background:rgba(255,255,255,.04)!important}
+      @keyframes stepIn{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
+      .task-r{transition:background .12s}
+      .task-r:hover{background:rgba(255,255,255,.05)!important}
+      .step-head{cursor:pointer;transition:background .15s}
+      .step-head:hover{background:rgba(255,255,255,.025)}
     `
     document.head.appendChild(s)
     return()=>s.remove()
   },[])
 
-  const nodes = buildNodes(profile, programs)
-  const activeNode = nodes.find(n=>n.id===active)
-  const toggle = (id:string,ti:number) => {
-    const k=`${id}-${ti}`
-    onToggle(`${id}-${ti}`)
-  }
-  const pct = (n:Node) => {
-    const d = n.tasks.filter((t,ti)=>t.done||!!taskDone[`${n.id}-${ti}`]).length
-    return n.tasks.length?Math.round(d/n.tasks.length*100):0
-  }
-  const totalT = nodes.reduce((s,n)=>s+n.tasks.length,0)
-  const doneT  = nodes.reduce((s,n)=>s+n.tasks.filter((t,ti)=>t.done||!!taskDone[`${n.id}-${ti}`]).length,0)
+  const phases = buildJourney(profile, programs)
 
-  const zones = [
-    {n:1, label:'Старт', sub:'Начинай всё сразу', color:blue,   nodes:nodes.filter(n=>n.zone===1)},
-    {n:2, label:'Подготовка', sub:'Параллельно со стартом', color:gold, nodes:nodes.filter(n=>n.zone===2)},
-    {n:3, label:'Финал', sub:'Когда всё готово', color:grn,  nodes:nodes.filter(n=>n.zone===3)},
-  ]
+  const doneCount = (ph: JourneyPhase) => ph.tasks.filter(t=>t.done||!!taskDone[t.key]).length
+  const pct = (ph: JourneyPhase) => ph.tasks.length ? Math.round(doneCount(ph)/ph.tasks.length*100) : 0
+  const totalT = phases.reduce((s,ph)=>s+ph.tasks.length,0)
+  const doneT  = phases.reduce((s,ph)=>s+doneCount(ph),0)
 
-  const BUBBLE_SIZE = 140
+  // По умолчанию открыт первый блокер, иначе первый активный шаг, иначе
+  // самый первый — остальные свёрнуты до заголовка, чтобы страница не
+  // выглядела как стена текста при первом заходе. Свернуть/развернуть
+  // можно любой шаг, включая ещё не начатые — посмотреть, что впереди.
+  const defaultOpenId = phases.find(p=>p.status==='blocker')?.id
+    ?? phases.find(p=>p.status==='active')?.id
+    ?? phases[0]?.id
+  const [open, setOpen] = useState<Set<string>>(new Set(defaultOpenId ? [defaultOpenId] : []))
+  const toggleOpen = (id:string) => setOpen(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
+  const labelOf = (id:string) => phases.find(p=>p.id===id)?.title
 
   return (
-    <div style={{display:'flex',height:'100%',overflow:'hidden'}}>
-
-      {/* ── MAP AREA ── */}
-      <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{height:'100%',overflowY:'auto'}}>
+      <div style={{maxWidth:640,margin:'0 auto',padding:'28px 20px 60px'}}>
 
         {/* header */}
-        <div style={{padding:'28px 36px 24px',borderBottom:`1px solid ${line}`,flexShrink:0}}>
-          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-            <div>
-              <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,marginBottom:10}}>
-                ПЕРСОНАЛЬНЫЙ РОАДМАП
-              </div>
-              <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:30,color:t1,
-                fontWeight:800,letterSpacing:'-.03em',marginBottom:6}}>
-                {profile.name?.split(' ')[0]}, вот твой путь в Европу
-              </h1>
-              <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300}}>
-                Нажми на блок — увидишь задачи. Блоки в одной зоне можно делать параллельно.
-              </p>
-            </div>
-            <div style={{textAlign:'right',flexShrink:0}}>
-              {/* Раньше здесь тоже был "X%" — визуально то же самое, что
-                  "ГОТОВНОСТЬ" на Обзоре, но считается совсем иначе: это не
-                  сила профиля (readinessScore — GPA/язык/опыт/направление),
-                  а просто доля отмеченных чекбоксов чек-листа. Отмечаешь
-                  задачу здесь — этот процент растёт, а Обзор не шевелится,
-                  и наоборот. Два разных числа, названных одинаково "%",
-                  читались как один и тот же прогресс, который должен
-                  синхронизироваться — не должен, это разные метрики.
-                  Дробь "сделано/всего" такого ложного ожидания не создаёт. */}
-              <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:6}}>ЗАДАЧ ВЫПОЛНЕНО</div>
-              <div style={{fontFamily:serif,fontStyle:'normal',fontWeight:800,fontSize:36,color:t1,letterSpacing:'-.03em',lineHeight:1}}>
-                {doneT}<span style={{fontSize:16,opacity:.4}}>/{totalT}</span>
-              </div>
-              <div style={{width:80,marginTop:8,marginLeft:'auto'}}>
-                <Bar v={Math.round(doneT/totalT*100)||0} color={t1} h={2}/>
-              </div>
-            </div>
+        <div style={{marginBottom:28}}>
+          <div style={{fontFamily:mono,fontSize:10,letterSpacing:'0.11em',color:t3,marginBottom:10}}>
+            ПЕРСОНАЛЬНЫЙ ПЛАН
+          </div>
+          <h1 style={{fontFamily:serif,fontStyle:'normal',fontSize:26,color:t1,
+            fontWeight:800,letterSpacing:'-.02em',marginBottom:8,textWrap:'balance' as any}}>
+            {profile.name?.split(' ')[0]}, вот весь путь от идеи до переезда
+          </h1>
+          <p style={{fontFamily:sans,fontSize:13,color:t2,fontWeight:300,marginBottom:16}}>
+            8 шагов сверху вниз. Некоторые можно (и нужно) делать одновременно — это написано прямо на шаге.
+          </p>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em'}}>ЗАДАЧ ВЫПОЛНЕНО {doneT}/{totalT}</span>
+            <div style={{flex:1}}><Bar v={Math.round(doneT/totalT*100)||0} color={t1} h={2}/></div>
           </div>
         </div>
 
-        {/* roadmap grid */}
-        <div style={{flex:1,overflowY:'auto',padding:'32px 36px'}}>
+        {/* stepper */}
+        <div style={{position:'relative'}}>
+          {phases.map((ph, i) => {
+            const isOpen = open.has(ph.id)
+            const p = pct(ph)
+            const isLast = i === phases.length - 1
+            const isBlocker = ph.status === 'blocker'
 
-          {/* legend */}
-          <div style={{display:'flex',gap:20,marginBottom:28}}>
-            {[
-              {c:red,   l:'Блокер — разблокирует следующее', dot:true, pulse:true},
-              {c:gold,  l:'Параллельный — делай сейчас', dot:true},
-              {c:t3,    l:'Заблокировано — сначала другое', dot:true, dim:true},
-            ].map((l,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:7}}>
-                <div style={{width:8,height:8,borderRadius:'50%',
-                  background:l.dim?'transparent':l.c,
-                  border:`1.5px solid ${l.c}`,opacity:l.dim?.5:1,
-                  animation:l.pulse?'pulse 1.5s infinite':'none'}}/>
-                <span style={{fontFamily:mono,fontSize:9,color:t2,letterSpacing:'0.06em'}}>{l.l}</span>
-              </div>
-            ))}
-          </div>
+            return (
+              <div key={ph.id} style={{display:'flex',gap:16,
+                animation:`stepIn .35s ease ${i*.05}s both`}}>
 
-          {/* three zone columns */}
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:20,minHeight:400}}>
-            {zones.map((zone,zi)=>(
-              <div key={zone.n}>
-                {/* zone header */}
-                <div style={{marginBottom:20,padding:'12px 16px',borderRadius:8,
-                  background:`${zone.color}08`,
-                  border:`1px solid ${zone.color}20`,
-                  borderTop:`2px solid ${zone.color}`}}>
-                  <div style={{fontFamily:mono,fontSize:9,color:zone.color,
-                    letterSpacing:'0.1em',marginBottom:4}}>
-                    ЗОНА {zone.n} — {zone.label.toUpperCase()}
-                  </div>
-                  <div style={{fontFamily:sans,fontSize:12,color:t2}}>{zone.sub}</div>
-                </div>
-
-                {/* connector arrow between zones */}
-                {zi<2&&(
-                  <div style={{position:'absolute',
-                    /* purely decorative — shown via column gap */}}/>
-                )}
-
-                {/* bubbles */}
-                <div style={{display:'flex',flexDirection:'column',gap:16}}>
-                  {zone.nodes.map((node,ni)=>{
-                    const isActive = active===node.id
-                    const p = pct(node)
-                    const isLocked = node.status==='locked'
-                    return (
-                      <div key={node.id}
-                        onClick={()=>setActive(isActive?null:node.id)}
-                        className={`bubble${isActive?' active-b':''}`}
-                        style={{
-                          position:'relative',
-                          borderRadius:16,
-                          padding:'20px 22px',
-                          background: isActive
-                            ? `linear-gradient(135deg,${node.color}18,${node.color}08)`
-                            : isLocked ? 'rgba(255,255,255,.015)' : bg2,
-                          border:`1.5px solid ${isActive?node.color:isLocked?'rgba(255,255,255,.06)':node.color+'40'}`,
-                          boxShadow: isActive ? `0 8px 32px ${node.color}20` : 'none',
-                          opacity: isLocked ? .55 : 1,
-                          transition:'all .2s',
-                          animation:`popIn .4s cubic-bezier(.34,1.56,.64,1) ${ni*.08+zi*.15}s both`,
-                        }}>
-
-                        {/* blocker pulse ring */}
-                        {node.status==='blocker'&&(
-                          <div style={{position:'absolute',inset:-4,borderRadius:20,
-                            border:`2px solid ${red}`,
-                            animation:'pulse 1.5s infinite',pointerEvents:'none'}}/>
-                        )}
-
-                        {/* top row */}
-                        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
-                          <div>
-                            {/* status pill */}
-                            <div style={{marginBottom:8}}>
-                              <span style={{fontFamily:mono,fontSize:8,letterSpacing:'0.1em',
-                                padding:'2px 7px',borderRadius:3,
-                                background:`${node.color}20`,border:`1px solid ${node.color}40`,
-                                color:node.color,
-                                animation:node.status==='blocker'?'pulse 2s infinite':'none'}}>
-                                {STATUS_LABEL[node.status]}
-                              </span>
-                            </div>
-                            <div style={{fontFamily:sans,fontSize:15,fontWeight:600,
-                              color:isLocked?t2:t1,letterSpacing:'-.01em',marginBottom:3}}>
-                              {node.label}
-                            </div>
-                            <div style={{fontFamily:mono,fontSize:9,color:node.color,
-                              letterSpacing:'0.06em'}}>{node.sub}</div>
-                          </div>
-
-                          {/* % circle */}
-                          <div style={{width:40,height:40,borderRadius:'50%',
-                            border:`2px solid ${p===100?grn:node.color}30`,
-                            background:bg1,
-                            display:'flex',alignItems:'center',justifyContent:'center',
-                            flexShrink:0}}>
-                            <span style={{fontFamily:mono,fontSize:10,color:p===100?grn:node.color}}>
-                              {p>0?`${p}%`:'—'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* progress bar */}
-                        {p>0&&<div style={{marginBottom:10}}><Bar v={p} color={node.color} h={2}/></div>}
-
-                        {/* parallel badge */}
-                        {node.parallel&&!isLocked&&(
-                          <div style={{display:'inline-flex',alignItems:'center',gap:5,
-                            padding:'3px 8px',borderRadius:4,
-                            background:`${gold}12`,border:`1px solid ${gold}25`,marginBottom:8}}>
-                            <div style={{width:5,height:5,borderRadius:'50%',background:gold}}/>
-                            <span style={{fontFamily:mono,fontSize:8,color:gold,letterSpacing:'0.08em'}}>
-                              НАЧИНАЙ СЕЙЧАС
-                            </span>
-                          </div>
-                        )}
-
-                        {/* blocked by */}
-                        {node.blockedBy&&isLocked&&(
-                          <div style={{fontFamily:mono,fontSize:8,color:t3,letterSpacing:'0.06em'}}>
-                            ПОСЛЕ: {node.blockedBy.map(id=>nodes.find(n=>n.id===id)?.label).join(' + ')}
-                          </div>
-                        )}
-
-                        {/* task preview — узел "apply" показывает дедлайны сразу, как
-                            только программа добавлена в избранное, даже пока сам узел
-                            формально заблокирован (Язык+Документы ещё не готовы) —
-                            иначе новый дедлайн не виден на карточке, пока не откроешь
-                            панель деталей кликом */}
-                        {(!isLocked||node.id==='apply')&&(
-                          <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${line}`}}>
-                            {node.tasks.slice(0,2).map((task,ti)=>{
-                              const done=task.done||!!taskDone[`${node.id}-${ti}`]
-                              return (
-                                <div key={ti} style={{display:'flex',gap:8,alignItems:'center',
-                                  marginBottom:4,opacity:done?.5:1}}>
-                                  {task.locked
-                                    ?<LockIcon size={8} color={gold} />
-                                    :<div style={{width:5,height:5,borderRadius:'50%',flexShrink:0,
-                                      background:done?grn:task.urgent?red:node.color,opacity:.7}}/>}
-                                  <span style={{fontFamily:sans,fontSize:11,color:task.locked?gold:done?t3:t2,
-                                    textDecoration:done?'line-through':'none',
-                                    letterSpacing:'-.01em',
-                                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                                    {task.t}
-                                  </span>
-                                </div>
-                              )
-                            })}
-                            {node.tasks.length>2&&(
-                              <div style={{fontFamily:mono,fontSize:8,color:t3,marginTop:4,letterSpacing:'0.06em'}}>
-                                + ЕЩЁ {node.tasks.length-2} ЗАДАЧИ →
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* flow arrows between zones */}
-          <div style={{marginTop:28,padding:'16px 0',borderTop:`1px solid ${line}`,
-            display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em'}}>ПОСЛЕДОВАТЕЛЬНОСТЬ</span>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              {['ЗОНА 1 — Старт','→','ЗОНА 2 — Подготовка','→','ЗОНА 3 — Финал'].map((s,i)=>(
-                <span key={i} style={{fontFamily:mono,fontSize:9,
-                  color:s==='→'?t3:[blue,t3,gold,t3,grn][i],
-                  letterSpacing:'0.06em'}}>{s}</span>
-              ))}
-            </div>
-            <div style={{flex:1,height:1,background:line}}/>
-            <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.06em'}}>
-              ПАРАЛЛЕЛЬНЫЕ БЛОКИ ДЕЛАЙ ОДНОВРЕМЕННО
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── DETAIL PANEL ── */}
-      {activeNode&&(
-        <div style={{width:340,borderLeft:`1px solid ${line}`,
-          background:bg1,overflowY:'auto',flexShrink:0,
-          animation:'slideR .3s cubic-bezier(.22,.68,0,1.1) both'}}>
-
-          {/* panel header */}
-          <div style={{padding:'22px 22px 18px',borderBottom:`1px solid ${line}`,
-            background:`linear-gradient(160deg,${activeNode.color}0C,transparent 60%)`,
-            position:'relative'}}>
-            <div style={{position:'absolute',top:0,left:0,right:0,height:2,
-              background:`linear-gradient(90deg,${activeNode.color},transparent)`}}/>
-
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-              <span style={{fontFamily:mono,fontSize:9,letterSpacing:'0.1em',
-                padding:'3px 8px',borderRadius:3,
-                background:`${activeNode.color}20`,border:`1px solid ${activeNode.color}40`,
-                color:activeNode.color,
-                animation:activeNode.status==='blocker'?'pulse 2s infinite':'none'}}>
-                {STATUS_LABEL[activeNode.status]}
-              </span>
-              <button onClick={()=>setActive(null)} style={{
-                background:'none',border:'none',color:t3,cursor:'pointer',
-                fontFamily:mono,fontSize:12,padding:'2px 6px',borderRadius:3}}>✕</button>
-            </div>
-
-            <h2 style={{fontFamily:serif,fontStyle:'normal',fontSize:22,color:t1,
-              fontWeight:700,letterSpacing:'-.02em',lineHeight:1.1,marginBottom:4}}>
-              {activeNode.label}
-            </h2>
-            <div style={{fontFamily:mono,fontSize:9,color:activeNode.color,letterSpacing:'0.08em',marginBottom:14}}>
-              {activeNode.sub.toUpperCase()}
-            </div>
-
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
-              <span style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.08em'}}>ЗАДАЧ ВЫПОЛНЕНО</span>
-              <span style={{fontFamily:mono,fontSize:9,color:activeNode.color}}>
-                {activeNode.tasks.filter((t,ti)=>t.done||!!taskDone[`${activeNode.id}-${ti}`]).length} / {activeNode.tasks.length}
-              </span>
-            </div>
-            <Bar v={pct(activeNode)} color={activeNode.color} h={3}/>
-          </div>
-
-          {/* why */}
-          <div style={{padding:'14px 18px',borderBottom:`1px solid ${line}`,
-            borderLeft:`3px solid ${activeNode.color}40`}}>
-            <div style={{fontFamily:mono,fontSize:9,color:activeNode.color,
-              letterSpacing:'0.1em',marginBottom:8}}>ПОЧЕМУ ЭТО ВАЖНО</div>
-            <p style={{fontFamily:sans,fontSize:12,color:t2,lineHeight:1.7,fontWeight:300}}>
-              {activeNode.insight}
-            </p>
-          </div>
-
-          {/* parallel / blocked note */}
-          {activeNode.parallel&&(
-            <div style={{padding:'10px 18px',borderBottom:`1px solid ${line}`,background:`${gold}08`}}>
-              <div style={{fontFamily:mono,fontSize:9,color:gold,letterSpacing:'0.08em',marginBottom:3}}>ПАРАЛЛЕЛЬНЫЙ ШАГ</div>
-              <p style={{fontFamily:sans,fontSize:11,color:t2,fontWeight:300}}>
-                Начинай прямо сейчас — не жди завершения других блоков.
-              </p>
-            </div>
-          )}
-          {activeNode.blockedBy&&(
-            <div style={{padding:'10px 18px',borderBottom:`1px solid ${line}`,background:`${red}06`}}>
-              <div style={{fontFamily:mono,fontSize:9,color:red,letterSpacing:'0.08em',marginBottom:3}}>ТРЕБУЕТ ГОТОВНОСТИ</div>
-              <p style={{fontFamily:sans,fontSize:11,color:t2,fontWeight:300}}>
-                Сначала: {activeNode.blockedBy.map(id=>nodes.find(n=>n.id===id)?.label).join(' и ')}
-              </p>
-            </div>
-          )}
-
-          {/* tasks */}
-          <div style={{padding:'16px 18px'}}>
-            <div style={{fontFamily:mono,fontSize:9,color:t3,letterSpacing:'0.1em',marginBottom:12}}>ЗАДАЧИ</div>
-            <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {activeNode.tasks.map((task,ti)=>{
-                const key=`${activeNode.id}-${ti}`
-                const done=task.done||!!taskDone[key]
-                if(task.locked) return (
-                  <div key={ti} style={{display:'flex',alignItems:'flex-start',gap:12,
-                    padding:'12px 14px',borderRadius:8,
-                    background:`${gold}0D`,border:`1px dashed ${gold}40`,
-                    borderLeft:`2px dashed ${gold}70`}}>
-                    <div style={{width:16,height:16,flexShrink:0,marginTop:1,
-                      display:'flex',alignItems:'center',justifyContent:'center'}}><LockIcon size={12} color={gold} /></div>
-                    <div style={{flex:1}}>
-                      <div style={{fontFamily:sans,fontSize:12,fontWeight:500,color:gold,
-                        letterSpacing:'-.01em',lineHeight:1.4}}>
-                        {task.t}
-                      </div>
-                    </div>
-                  </div>
-                )
-                return (
-                  <div key={ti} onClick={()=>!task.done&&onToggle(`${activeNode.id}-${ti}`)}
-                    className="task-r"
-                    style={{display:'flex',alignItems:'flex-start',gap:12,
-                      padding:'12px 14px',borderRadius:8,
-                      background:done?`${grn}0D`:'rgba(255,255,255,.025)',
-                      border:`1px solid ${done?`${grn}25`:task.urgent?`${red}28`:line}`,
-                      borderLeft:`2px solid ${done?grn:task.urgent?red:'transparent'}`,
-                      cursor:task.done?'default':'pointer',transition:'all .15s'}}>
-                    <div style={{width:16,height:16,borderRadius:'50%',flexShrink:0,marginTop:1,
-                      border:`1.5px solid ${done?grn:task.urgent?red:t3}`,
-                      background:done?grn:'transparent',
+                {/* number rail */}
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',flexShrink:0,width:32}}>
+                  <div style={{position:'relative'}}>
+                    {isBlocker&&(
+                      <div style={{position:'absolute',inset:-3,borderRadius:'50%',
+                        border:`2px solid ${red}`,animation:'pulse 1.5s infinite'}}/>
+                    )}
+                    <div style={{width:32,height:32,borderRadius:'50%',flexShrink:0,
                       display:'flex',alignItems:'center',justifyContent:'center',
-                      transition:'all .18s',boxShadow:done?`0 0 6px ${grn}35`:'none'}}>
-                      {done&&<span style={{color:bg0,fontSize:8,fontWeight:700}}>✓</span>}
+                      background: p===100 ? grn : ph.color,
+                      color: bg0, fontFamily:mono, fontWeight:700, fontSize:13}}>
+                      {p===100 ? '✓' : ph.n}
                     </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontFamily:sans,fontSize:12,fontWeight:500,
-                        color:done?t2:t1,textDecoration:done?'line-through':'none',
-                        letterSpacing:'-.01em',lineHeight:1.4,marginBottom:task.urgent&&!done?3:0}}>
-                        {task.t}
+                  </div>
+                  {!isLast&&<div style={{width:2,flex:1,minHeight:20,background:line,marginTop:4}}/>}
+                </div>
+
+                {/* card */}
+                <div style={{flex:1,minWidth:0,paddingBottom:isLast?0:20}}>
+                  <div className="step-head" onClick={()=>toggleOpen(ph.id)}
+                    style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',
+                      gap:10,borderRadius:10,padding:'10px 12px',margin:'-10px -12px 0'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
+                        <span style={{fontFamily:sans,fontSize:15,fontWeight:700,color:t1,letterSpacing:'-.01em'}}>
+                          {ph.title}
+                        </span>
+                        {ph.proBadge&&(
+                          <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.06em',
+                            padding:'2px 6px',borderRadius:3,background:`${gold}18`,border:`1px solid ${gold}40`,color:gold}}>
+                            PRO
+                          </span>
+                        )}
+                        {isBlocker&&(
+                          <span style={{fontFamily:mono,fontSize:8,fontWeight:700,letterSpacing:'0.08em',
+                            color:red,animation:'pulse 2s infinite'}}>СРОЧНО</span>
+                        )}
                       </div>
-                      {task.urgent&&!done&&(
-                        <span style={{fontFamily:mono,fontSize:8,color:red,
-                          letterSpacing:'0.1em',animation:'pulse 2s infinite'}}>СРОЧНО</span>
+                      {ph.runsAlongside&&(
+                        <div style={{fontFamily:mono,fontSize:9,color:gold,letterSpacing:'0.04em',marginBottom:2}}>
+                          можно начинать одновременно с шагом {phases.find(x=>x.id===ph.runsAlongside![0])?.n}
+                        </div>
+                      )}
+                      {!isOpen&&(
+                        <p style={{fontFamily:sans,fontSize:12,color:t2,fontWeight:300,lineHeight:1.5,
+                          overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',
+                          WebkitLineClamp:2,WebkitBoxOrient:'vertical' as any}}>
+                          {ph.why}
+                        </p>
                       )}
                     </div>
-                    {done&&<span style={{fontFamily:mono,fontSize:8,color:grn,flexShrink:0,paddingTop:2}}>ГОТОВО</span>}
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                      {p>0&&<span style={{fontFamily:mono,fontSize:10,color:p===100?grn:ph.color}}>{p}%</span>}
+                      <span style={{fontFamily:mono,fontSize:12,color:t3,transform:isOpen?'rotate(90deg)':'none',
+                        transition:'transform .15s',display:'inline-block'}}>›</span>
+                    </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
+
+                  {isOpen&&(
+                    <div style={{marginTop:10}}>
+                      {p>0&&<div style={{marginBottom:12}}><Bar v={p} color={ph.color} h={2}/></div>}
+
+                      <p style={{fontFamily:sans,fontSize:12.5,color:t2,lineHeight:1.65,fontWeight:300,marginBottom:14}}>
+                        {ph.why}
+                      </p>
+
+                      {ph.blockedBy&&ph.status==='locked'&&(
+                        <div style={{padding:'9px 12px',borderRadius:8,background:`${red}08`,marginBottom:14}}>
+                          <span style={{fontFamily:mono,fontSize:9,color:red,letterSpacing:'0.06em'}}>
+                            СНАЧАЛА: {ph.blockedBy.map(labelOf).join(' и ')}
+                          </span>
+                        </div>
+                      )}
+
+                      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:ph.id==='docs'?18:0}}>
+                        {ph.tasks.map(task=>(
+                          <TaskRow key={task.key} task={task}
+                            done={!!task.done||!!taskDone[task.key]}
+                            onToggle={()=>onToggle(task.key)}/>
+                        ))}
+                      </div>
+
+                      {/* Документы — единственный шаг с полными карточками
+                          апостиля/перевода/справок, не просто чекбоксами:
+                          там нужно объяснение "что/где/сколько ждать", а не
+                          одна строка задачи. */}
+                      {ph.id==='docs'&&(
+                        <div style={{background:bg2,border:`1px solid ${line}`,borderRadius:10,padding:'16px 16px 4px'}}>
+                          <div style={{fontFamily:mono,fontSize:10,color:t3,letterSpacing:'0.1em',marginBottom:14}}>
+                            АПОСТИЛЬ И ПЕРЕВОД — ПОДРОБНО
+                          </div>
+                          {UNIVERSAL_DOCS.map((d,i)=><DocCard key={d.name} step={d} n={i+1}/>)}
+                          <div style={{fontFamily:mono,fontSize:10,color:t3,letterSpacing:'0.1em',marginTop:4,marginBottom:14}}>
+                            ФИНАНСОВЫЕ СПРАВКИ — ТОЛЬКО ЕСЛИ ТРЕБУЮТСЯ
+                          </div>
+                          {FINANCIAL_DOCS.map((d,i)=><DocCard key={d.name} step={d} n={i+1}/>)}
+                        </div>
+                      )}
+
+                      {ph.proNote&&(
+                        <div onClick={onOpenReality} style={{display:'flex',alignItems:'center',gap:10,
+                          marginTop:14,padding:'11px 13px',borderRadius:8,textAlign:'left',
+                          background:`${gold}0D`,border:`1px solid ${gold}30`,
+                          cursor:onOpenReality?'pointer':'default'}}>
+                          <span style={{fontFamily:sans,fontSize:11.5,color:gold,lineHeight:1.5,flex:1}}>
+                            {ph.proNote}
+                          </span>
+                          {onOpenReality&&<span style={{fontFamily:mono,fontSize:12,color:gold,flexShrink:0}}>→</span>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      )}
+      </div>
     </div>
   )
 }

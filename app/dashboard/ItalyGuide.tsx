@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { bg1, line, t1, t2, t3, gold, blue, red, grn, purp, sans, mono } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import ScholarshipLock from './ScholarshipLock'
+import DocCard from '@/components/DocCard'
 import type { ITALY_GUIDE_GATED } from '@/lib/guides/italy'
 
 /**
@@ -44,36 +45,6 @@ function Card({ children, style = {} }: { children: React.ReactNode; style?: Rea
   return (
     <div style={{ background: bg1, border: `1px solid ${line}`, borderRadius: 8, padding: 20, marginBottom: 16, ...style }}>
       {children}
-    </div>
-  )
-}
-
-interface DocStep { name: string; what: string; where: string; next?: string; cost?: string }
-
-function DocCard({ step, n }: { step: DocStep; n: number }) {
-  return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 18, paddingBottom: 18, borderBottom: `1px solid ${line}` }}>
-      <div style={{
-        width: 24, height: 24, borderRadius: '50%', background: `${gold}18`, border: `1px solid ${gold}40`,
-        color: gold, fontFamily: mono, fontSize: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>{n}</div>
-      <div>
-        <div style={{ fontFamily: sans, fontSize: 13, fontWeight: 600, color: t1, marginBottom: 5 }}>{step.name}</div>
-        <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: 6 }}>{step.what}</div>
-        <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: step.next ? 4 : 0 }}>
-          <span style={{ color: blue, fontWeight: 600 }}>Где получить: </span>{step.where}
-        </div>
-        {step.next && (
-          <div style={{ fontFamily: sans, fontSize: 12, color: t2, lineHeight: 1.6, marginBottom: step.cost ? 4 : 0 }}>
-            <span style={{ color: gold, fontWeight: 600 }}>Что дальше: </span>{step.next}
-          </div>
-        )}
-        {step.cost && (
-          <div style={{ fontFamily: sans, fontSize: 12, color: t3, lineHeight: 1.6 }}>
-            <span style={{ color: grn, fontWeight: 600 }}>Сколько ждать: </span>{step.cost}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
